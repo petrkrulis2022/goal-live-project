@@ -1,0 +1,59 @@
+import { useState, useEffect, useCallback } from "react";
+import { services } from "../services";
+import type { WalletState } from "../types/services.types";
+
+export function useWallet() {
+  const [wallet, setWallet] = useState<WalletState | null>(() =>
+    services.wallet.getState(),
+  );
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [topUpPending, setTopUpPending] = useState(false);
+  const [topUpError, setTopUpError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = services.wallet.onStateChange(setWallet);
+    return unsubscribe;
+  }, []);
+
+  const connect = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await services.wallet.connect();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to connect wallet");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const disconnect = useCallback(() => {
+    services.wallet.disconnect();
+  }, []);
+
+  const topUp = useCallback(async (amount: number): Promise<string> => {
+    setTopUpPending(true);
+    setTopUpError(null);
+    try {
+      return await services.wallet.topUp(amount);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Top-up failed";
+      setTopUpError(msg);
+      throw e;
+    } finally {
+      setTopUpPending(false);
+    }
+  }, []);
+
+  return {
+    wallet,
+    connect,
+    disconnect,
+    loading,
+    error,
+    topUp,
+    topUpPending,
+    topUpError,
+  };
+}

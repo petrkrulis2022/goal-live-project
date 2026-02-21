@@ -1,0 +1,23 @@
+/* goal.live – injected overlay */
+
+#goal-live-extension {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483640 !important;
+  pointer-events: none !important;
+  font-family: Inter, system-ui, -apple-system, sans-serif !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+}
+
+#goal-live-extension * {
+  box-sizing: border-box !important;
+}
+
+#goal-live-extension .gl-interactive,
+#goal-live-extension button,
+#goal-live-extension input,
+#goal-live-extension [role="dialog"] {
+  pointer-events: auto !important;
+}

@@ -1,0 +1,94 @@
+{
+  "match_id": "cf641a7ccfddaeccd926ca123d72a4b5",
+  "home_team": "Manchester City",
+  "away_team": "Newcastle United",
+  "kickoff": "2026-02-21T20:00:00Z",
+  "league": "EPL",
+  "description": "Manchester City vs Newcastle United - EPL Match Day 25",
+  "players": {
+    "Erling Haaland": {
+      "team": "Manchester City",
+      "position": "Striker",
+      "will_score": 1.52,
+      "wont_score": 2.33,
+      "score_2plus": 3.0,
+      "score_3plus": 6.7
+    },
+    "Bernardo Silva": {
+      "team": "Manchester City",
+      "position": "Midfielder",
+      "will_score": 2.4,
+      "wont_score": 1.49,
+      "score_2plus": 6.65,
+      "score_3plus": 16.2
+    },
+    "Phil Foden": {
+      "team": "Manchester City",
+      "position": "Forward",
+      "will_score": 2.8,
+      "wont_score": 1.37,
+      "score_2plus": 8.6,
+      "score_3plus": 20.5
+    },
+    "Jack Grealish": {
+      "team": "Manchester City",
+      "position": "Forward",
+      "will_score": 3.2,
+      "wont_score": 1.29,
+      "score_2plus": 10.3,
+      "score_3plus": 25.4
+    },
+    "João Nunes": {
+      "team": "Manchester City",
+      "position": "Midfielder",
+      "will_score": 5.5,
+      "wont_score": 1.1,
+      "score_2plus": 19.8,
+      "score_3plus": 70.0
+    },
+    "Alexander Isak": {
+      "team": "Newcastle United",
+      "position": "Striker",
+      "will_score": 3.5,
+      "wont_score": 1.25,
+      "score_2plus": 14.2,
+      "score_3plus": 46.0
+    },
+    "Callum Wilson": {
+      "team": "Newcastle United",
+      "position": "Striker",
+      "will_score": 4.5,
+      "wont_score": 1.18,
+      "score_2plus": 18.5,
+      "score_3plus": 65.0
+    },
+    "Anthony Gordon": {
+      "team": "Newcastle United",
+      "position": "Forward",
+      "will_score": 5.0,
+      "wont_score": 1.13,
+      "score_2plus": 21.3,
+      "score_3plus": 95.0
+    },
+    "Bruno Guimarães": {
+      "team": "Newcastle United",
+      "position": "Midfielder",
+      "will_score": 7.5,
+      "wont_score": 1.05,
+      "score_2plus": 30.0,
+      "score_3plus": 125.0
+    }
+  },
+  "bookmakers": [
+    "Betfair",
+    "DraftKings",
+    "FanDuel",
+    "Sky Bet",
+    "Paddy Power",
+    "888sport",
+    "Ladbrokes",
+    "Coral",
+    "Unibet"
+  ],
+  "note": "Odds sourced from The Odds API (historical snapshot Feb 21, 19:00 UTC). Used as baseline for in-play odds prediction model."
+}

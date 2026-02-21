@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* goal.live overlay base styles */
+#goal-live-extension {
+  font-family: Inter, system-ui, sans-serif;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 2147483640;
+  pointer-events: none;
+}
+
+#goal-live-extension * {
+  box-sizing: border-box;
+}
+
+/* Allow pointer events on interactive children */
+#goal-live-extension .gl-interactive {
+  pointer-events: auto;
+}

@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "goal.live – Live Football Betting",
+  "version": "1.0.0",
+  "description": "Bet on live football matches using crypto (Phase 1 mock)",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://tvgo.t-mobile.cz/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/watch*",
+        "https://tvgo.t-mobile.cz/*"
+      ],
+      "js": ["content-script.js"],
+      "css": ["content-styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "goal.live",
+    "default_icon": {
+      "16": "icons/icon16.svg",
+      "48": "icons/icon16.svg",
+      "128": "icons/icon16.svg"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.svg",
+    "48": "icons/icon16.svg",
+    "128": "icons/icon16.svg"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/*", "injected.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
