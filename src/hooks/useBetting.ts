@@ -11,10 +11,10 @@ export function useBetting(wallet: string | null) {
   }));
   const [loading, setLoading] = useState(false);
 
-  // Keep balance.wallet in sync with the real wallet service (MetaMask USDC)
+  // Keep balance.wallet in sync with in-app balance from wallet service
   useEffect(() => {
     return services.wallet.onStateChange((ws) => {
-      setBalance((prev) => ({ ...prev, wallet: ws?.balance ?? 0 }));
+      setBalance((prev) => ({ ...prev, wallet: ws?.inAppBalance ?? 0 }));
     });
   }, []);
 
@@ -25,9 +25,9 @@ export function useBetting(wallet: string | null) {
       services.betting.getBalance(wallet),
     ]);
     setBets(b);
-    // wallet field comes from real wallet service; locked/provisional from betting service
+    // wallet = in-app balance (what user can bet with); locked/provisional from betting service
     setBalance({
-      wallet: services.wallet.getState()?.balance ?? 0,
+      wallet: services.wallet.getState()?.inAppBalance ?? 0,
       locked: bal.locked,
       provisional: bal.provisional,
     });
@@ -68,8 +68,8 @@ export function useBetting(wallet: string | null) {
       matchId: string;
     }) => {
       if (!wallet) throw new Error("Wallet not connected");
-      // Validate against real wallet balance
-      const realBalance = services.wallet.getState()?.balance ?? 0;
+      // Validate against in-app balance (funded by top-ups)
+      const realBalance = services.wallet.getState()?.inAppBalance ?? 0;
       if (params.amount > realBalance) {
         return {
           success: false,

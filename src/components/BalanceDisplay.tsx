@@ -3,6 +3,7 @@ import type { BalanceState } from "../types";
 
 interface BalanceDisplayProps {
   balance: BalanceState;
+  walletUsdcBalance: number;
   walletAddress: string | null;
   onConnect: () => void;
   onTopUp?: () => void;
@@ -10,6 +11,7 @@ interface BalanceDisplayProps {
 
 export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   balance,
+  walletUsdcBalance,
   walletAddress,
   onConnect,
   onTopUp,
@@ -39,7 +41,7 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     );
   }
 
-  // Single horizontal line: address | $450.00 USDC | +Top Up | 🔒 $42.39
+  // address | MetaMask: $703 USDC [+ Top Up] | In-App: $50.00 | 🔒 ...
   return (
     <div
       className="gl-interactive"
@@ -65,11 +67,14 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         │
       </span>
 
-      {/* Balance */}
-      <span style={{ color: "#ffffff", fontSize: "14px", fontWeight: 700 }}>
-        ${balance.wallet.toFixed(2)}
+      {/* MetaMask on-chain USDC — source */}
+      <span style={{ color: "#6b7280", fontSize: "10px", fontWeight: 600 }}>
+        MetaMask
       </span>
-      <span style={{ color: "#9ca3af", fontSize: "11px" }}>USDC</span>
+      <span style={{ color: "#d1d5db", fontSize: "13px", fontWeight: 700 }}>
+        ${walletUsdcBalance.toFixed(2)}
+      </span>
+      <span style={{ color: "#6b7280", fontSize: "10px" }}>USDC</span>
 
       {/* Top Up button */}
       {onTopUp && (
@@ -90,6 +95,19 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           + Top Up
         </button>
       )}
+
+      <span style={{ color: "rgba(255,255,255,0.20)", fontSize: "12px" }}>
+        │
+      </span>
+
+      {/* In-App balance — what the user bets with */}
+      <span style={{ color: "#6b7280", fontSize: "10px", fontWeight: 600 }}>
+        In-App
+      </span>
+      <span style={{ color: "#ffffff", fontSize: "14px", fontWeight: 700 }}>
+        ${balance.wallet.toFixed(2)}
+      </span>
+      <span style={{ color: "#9ca3af", fontSize: "11px" }}>USDC</span>
 
       {/* Locked amount — only when non-zero */}
       {balance.locked > 0 && (

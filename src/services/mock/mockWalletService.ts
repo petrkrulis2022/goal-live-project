@@ -36,6 +36,7 @@ class MockWalletService implements IWalletService {
     this.state = {
       address: "0xMockWallet1234567890abcdef1234567890ABCDEF",
       balance: INITIAL_BALANCE,
+      inAppBalance: 0,
       connected: true,
     };
     save(this.state);

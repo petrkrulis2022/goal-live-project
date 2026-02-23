@@ -358,6 +358,7 @@ export const BettingOverlay: React.FC = () => {
         >
           <BalanceDisplay
             balance={balance}
+            walletUsdcBalance={wallet?.balance ?? 0}
             walletAddress={wallet?.address ?? null}
             onConnect={connect}
             onTopUp={wallet ? () => setModal({ type: "topup" }) : undefined}

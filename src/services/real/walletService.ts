@@ -8,7 +8,10 @@ import type { IWalletService, WalletState } from "../../types/services.types";
 declare global {
   interface Window {
     ethereum?: {
-      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+      request: (args: {
+        method: string;
+        params?: unknown[];
+      }) => Promise<unknown>;
       on: (event: string, cb: (...args: unknown[]) => void) => void;
       removeListener: (event: string, cb: (...args: unknown[]) => void) => void;
       selectedAddress: string | null;
@@ -85,10 +88,7 @@ class RealWalletService implements IWalletService {
       await this.ensureSepolia();
       const hex = (await window.ethereum.request({
         method: "eth_call",
-        params: [
-          { to: USDC_CONTRACT, data: balanceOfData(address) },
-          "latest",
-        ],
+        params: [{ to: USDC_CONTRACT, data: balanceOfData(address) }, "latest"],
       })) as string;
       return Number(BigInt(hex === "0x" ? "0x0" : hex)) / 10 ** USDC_DECIMALS;
     } catch {
@@ -102,7 +102,12 @@ class RealWalletService implements IWalletService {
       this.emit(null);
     } else {
       const balance = await this.fetchUsdc(accounts[0]);
-      this.emit({ address: accounts[0], balance, connected: true });
+      this.emit({
+        address: accounts[0],
+        balance,
+        inAppBalance: 0,
+        connected: true,
+      });
     }
   };
 
@@ -110,9 +115,7 @@ class RealWalletService implements IWalletService {
 
   async connect(): Promise<WalletState> {
     if (!window.ethereum) {
-      throw new Error(
-        "MetaMask not detected — install MetaMask and reload.",
-      );
+      throw new Error("MetaMask not detected — install MetaMask and reload.");
     }
     await this.ensureSepolia();
     const accounts = (await window.ethereum.request({
@@ -120,7 +123,12 @@ class RealWalletService implements IWalletService {
     })) as string[];
     const address = accounts[0];
     const balance = await this.fetchUsdc(address);
-    const ws: WalletState = { address, balance, connected: true };
+    const ws: WalletState = {
+      address,
+      balance,
+      inAppBalance: 0,
+      connected: true,
+    };
     this.emit(ws);
     window.ethereum.on("accountsChanged", this.onAccountsChanged);
     return ws;
@@ -145,12 +153,19 @@ class RealWalletService implements IWalletService {
   // Phase 1: optimistic in-app accounting — Phase 2 replaces with CRE escrow txn.
   async deductBalance(amount: number): Promise<void> {
     if (!this.state) throw new Error("Wallet not connected");
-    this.emit({ ...this.state, balance: this.state.balance - amount });
+    this.emit({
+      ...this.state,
+      inAppBalance: Math.max(0, (this.state.inAppBalance ?? 0) - amount),
+    });
   }
 
   async addBalance(amount: number): Promise<void> {
     if (!this.state) throw new Error("Wallet not connected");
-    this.emit({ ...this.state, balance: this.state.balance + amount });
+    this.emit({
+      ...this.state,
+      inAppBalance:
+        Math.round(((this.state.inAppBalance ?? 0) + amount) * 100) / 100,
+    });
   }
 
   /**
@@ -173,7 +188,10 @@ class RealWalletService implements IWalletService {
       params: [{ from: this.state.address, to: USDC_CONTRACT, data }],
     })) as string;
     // Optimistically credit in-app balance after user signs
-    await this.addBalance(amount);
+    const newOnChain = await this.fetchUsdc(this.state.address);
+    const newInApp =
+      Math.round(((this.state.inAppBalance ?? 0) + amount) * 100) / 100;
+    this.emit({ ...this.state, balance: newOnChain, inAppBalance: newInApp });
     return txHash;
   }
 

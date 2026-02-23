@@ -104,7 +104,10 @@ export interface IBettingService {
 // ── WalletState ────────────────────────────────
 export interface WalletState {
   address: string;
+  /** On-chain USDC in MetaMask (the source wallet) */
   balance: number;
+  /** In-app balance funded by top-ups — used for placing bets */
+  inAppBalance: number;
   connected: boolean;
 }
 
