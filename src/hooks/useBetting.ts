@@ -4,12 +4,19 @@ import type { Bet, BalanceState } from "../types";
 
 export function useBetting(wallet: string | null) {
   const [bets, setBets] = useState<Bet[]>([]);
-  const [balance, setBalance] = useState<BalanceState>({
-    wallet: 0,
+  const [balance, setBalance] = useState<BalanceState>(() => ({
+    wallet: services.wallet.getState()?.balance ?? 0,
     locked: 0,
     provisional: 0,
-  });
+  }));
   const [loading, setLoading] = useState(false);
+
+  // Keep balance.wallet in sync with the real wallet service (MetaMask USDC)
+  useEffect(() => {
+    return services.wallet.onStateChange((ws) => {
+      setBalance((prev) => ({ ...prev, wallet: ws?.balance ?? 0 }));
+    });
+  }, []);
 
   const refresh = useCallback(async () => {
     if (!wallet) return;
@@ -18,7 +25,12 @@ export function useBetting(wallet: string | null) {
       services.betting.getBalance(wallet),
     ]);
     setBets(b);
-    setBalance(bal);
+    // wallet field comes from real wallet service; locked/provisional from betting service
+    setBalance({
+      wallet: services.wallet.getState()?.balance ?? 0,
+      locked: bal.locked,
+      provisional: bal.provisional,
+    });
   }, [wallet]);
 
   // Initial load + listen for balance refresh events
@@ -26,14 +38,21 @@ export function useBetting(wallet: string | null) {
     if (!wallet) return;
     refresh();
 
+    const settledHandler = (e: Event) => {
+      const { totalPayout } = (e as CustomEvent).detail ?? {};
+      if (totalPayout > 0) {
+        services.wallet.addBalance(totalPayout).catch(() => {});
+      }
+      refresh();
+    };
     const handler = () => refresh();
     window.addEventListener("gl:balanceRefresh", handler);
     window.addEventListener("gl:goal", handler);
-    window.addEventListener("gl:settled", handler);
+    window.addEventListener("gl:settled", settledHandler);
     return () => {
       window.removeEventListener("gl:balanceRefresh", handler);
       window.removeEventListener("gl:goal", handler);
-      window.removeEventListener("gl:settled", handler);
+      window.removeEventListener("gl:settled", settledHandler);
     };
   }, [wallet, refresh]);
 
@@ -49,9 +68,22 @@ export function useBetting(wallet: string | null) {
       matchId: string;
     }) => {
       if (!wallet) throw new Error("Wallet not connected");
+      // Validate against real wallet balance
+      const realBalance = services.wallet.getState()?.balance ?? 0;
+      if (params.amount > realBalance) {
+        return {
+          success: false,
+          bet: null as never,
+          error: "Insufficient balance",
+        };
+      }
       setLoading(true);
       try {
         const result = await services.betting.placeBet({ ...params, wallet });
+        if (result.success) {
+          // Optimistically deduct from real wallet state so balance updates immediately
+          await services.wallet.deductBalance(params.amount);
+        }
         await refresh();
         return result;
       } finally {

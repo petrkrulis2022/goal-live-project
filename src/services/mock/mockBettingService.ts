@@ -22,8 +22,6 @@ import type {
 import { calcPenalty } from "../../utils/penaltyCalculator";
 
 const BETS_KEY = "gl_mock_bets";
-const BAL_KEY = "gl_mock_balance";
-const INITIAL_WALLET = 500;
 
 // ── Persistence helpers ────────────────────────
 function loadBets(): Bet[] {
@@ -33,27 +31,13 @@ function loadBets(): Bet[] {
     return [];
   }
 }
-function loadBalance(): BalanceState {
-  try {
-    const raw = localStorage.getItem(BAL_KEY);
-    return raw
-      ? JSON.parse(raw)
-      : { wallet: INITIAL_WALLET, locked: 0, provisional: 0 };
-  } catch {
-    return { wallet: INITIAL_WALLET, locked: 0, provisional: 0 };
-  }
-}
 function saveBets(bets: Bet[]) {
   localStorage.setItem(BETS_KEY, JSON.stringify(bets));
-}
-function saveBalance(bal: BalanceState) {
-  localStorage.setItem(BAL_KEY, JSON.stringify(bal));
 }
 
 // ── Service ────────────────────────────────────
 class MockBettingService implements IBettingService {
   private bets: Bet[] = loadBets();
-  private balance: BalanceState = loadBalance();
 
   // ── Read ──────────────────────────────────────
 
@@ -61,8 +45,19 @@ class MockBettingService implements IBettingService {
     return this.bets.filter((b) => b.bettorWallet === wallet);
   }
 
-  async getBalance(_wallet: string): Promise<BalanceState> {
-    return { ...this.balance };
+  async getBalance(wallet: string): Promise<BalanceState> {
+    // Compute locked/provisional dynamically from active bets for this wallet.
+    // wallet amount is sourced from the real wallet service in useBetting.
+    const active = this.bets.filter(
+      (b) => b.bettorWallet === wallet && b.status === "active",
+    );
+    const provisional = this.bets
+      .filter(
+        (b) => b.bettorWallet === wallet && b.status === "provisional_win",
+      )
+      .reduce((sum, b) => sum + b.current_amount * b.odds, 0);
+    const locked = active.reduce((sum, b) => sum + b.current_amount, 0);
+    return { wallet: 0, locked, provisional };
   }
 
   previewPenalty(betId: string, currentMinute: number): PenaltyPreview {
@@ -98,12 +93,7 @@ class MockBettingService implements IBettingService {
         bet: null as unknown as Bet,
         error: "Amount must be > 0",
       };
-    if (this.balance.wallet < amount)
-      return {
-        success: false,
-        bet: null as unknown as Bet,
-        error: "Insufficient balance",
-      };
+    // Balance validation is handled by useBetting against the real wallet service.
     if (betType === "NEXT_GOAL_SCORER" && !playerId)
       return {
         success: false,
@@ -155,8 +145,6 @@ class MockBettingService implements IBettingService {
       goalWindowAtPlacement: goalWindow,
     };
 
-    this.balance.wallet -= amount;
-    this.balance.locked += amount;
     this.bets.push(bet);
     this.persist();
 
@@ -188,9 +176,6 @@ class MockBettingService implements IBettingService {
       changed_at: new Date().toISOString(),
       match_minute: currentMinute,
     };
-
-    // Deduct penalty from locked (the stake shrinks, but wallet isn't touched again)
-    this.balance.locked -= penalty.penaltyAmount;
 
     // Update bet
     bet.current_player_id = newPlayerId ?? newOutcome ?? bet.current_player_id;
@@ -227,14 +212,11 @@ class MockBettingService implements IBettingService {
       if (bet.current_player_id === scoringPlayerId) {
         bet.status = "provisional_win";
         const payout = bet.current_amount * bet.odds;
-        this.balance.provisional += payout;
         console.info(
           `[goal.live] Provisional WIN: +$${payout.toFixed(2)} (bet ${bet.id})`,
         );
       } else {
         bet.status = "provisional_loss";
-        // Release locked stake back — bet is lost but not final until settlement
-        this.balance.locked -= bet.current_amount;
         console.info(`[goal.live] Provisional LOSS (bet ${bet.id})`);
       }
     }
@@ -254,6 +236,7 @@ class MockBettingService implements IBettingService {
   ): Promise<void> {
     const matchBets = this.bets.filter((b) => b.matchId === matchId);
 
+    let totalPayout = 0;
     for (const bet of matchBets) {
       if (bet.status === "settled_won" || bet.status === "settled_lost")
         continue;
@@ -261,48 +244,30 @@ class MockBettingService implements IBettingService {
       if (bet.betType === "NEXT_GOAL_SCORER") {
         if (bet.status === "provisional_win") {
           const payout = bet.current_amount * bet.odds;
-          this.balance.provisional -= payout;
-          this.balance.locked -= bet.current_amount;
-          this.balance.wallet += payout;
+          totalPayout += payout;
           bet.status = "settled_won";
           console.info(`[goal.live] Settled WON +$${payout.toFixed(2)}`);
         } else {
-          // active (never matched) or provisional_loss
-          if (bet.status === "active") {
-            this.balance.locked -= bet.current_amount;
-          }
           bet.status = "settled_lost";
         }
       } else if (bet.betType === "MATCH_WINNER") {
         const won = bet.outcome === winner;
         if (won) {
           const payout = bet.current_amount * bet.odds;
-          this.balance.locked -= bet.current_amount;
-          this.balance.wallet += payout;
+          totalPayout += payout;
           bet.status = "settled_won";
           console.info(`[goal.live] MW Settled WON +$${payout.toFixed(2)}`);
         } else {
-          this.balance.locked -= bet.current_amount;
           bet.status = "settled_lost";
         }
       }
     }
 
-    // Clamp rounding errors
-    this.balance.provisional = Math.max(
-      0,
-      Math.round(this.balance.provisional * 100) / 100,
-    );
-    this.balance.locked = Math.max(
-      0,
-      Math.round(this.balance.locked * 100) / 100,
-    );
-    this.balance.wallet = Math.round(this.balance.wallet * 100) / 100;
-
     this.persist();
+    // Emit payout so useBetting can credit the real wallet via wallet service
     window.dispatchEvent(
       new CustomEvent("gl:settled", {
-        detail: { matchId, winner, finalScore },
+        detail: { matchId, winner, finalScore, totalPayout },
       }),
     );
   }
@@ -311,7 +276,6 @@ class MockBettingService implements IBettingService {
 
   reset(): void {
     this.bets = [];
-    this.balance = { wallet: INITIAL_WALLET, locked: 0, provisional: 0 };
     this.persist();
     console.info("[goal.live] Betting service reset");
   }
@@ -320,7 +284,6 @@ class MockBettingService implements IBettingService {
 
   private persist() {
     saveBets(this.bets);
-    saveBalance(this.balance);
   }
 
   private changeError(msg: string): ChangeBetResult {
