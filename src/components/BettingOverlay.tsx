@@ -306,13 +306,9 @@ export const BettingOverlay: React.FC = () => {
                   }
                   className="gl-interactive"
                   style={{
-                    background: mwBet
-                      ? "rgba(6,78,59,0.7)"
-                      : "rgba(0,0,0,0.6)",
+                    background: mwBet ? "rgba(6,78,59,0.7)" : "rgba(0,0,0,0.6)",
                     border: `1px solid ${
-                      mwBet
-                        ? "rgba(52,211,153,0.5)"
-                        : "rgba(255,255,255,0.12)"
+                      mwBet ? "rgba(52,211,153,0.5)" : "rgba(255,255,255,0.12)"
                     }`,
                     borderRadius: "4px",
                     cursor: "pointer",
