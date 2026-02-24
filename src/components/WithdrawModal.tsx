@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 
 interface WithdrawModalProps {
-  /** Total in-app balance (includes locked funds) */
+  /** Free in-app balance (already excludes funds locked in active bets) */
   inAppBalance: number;
-  /** Amount currently locked in active bets — cannot be withdrawn */
+  /** Amount locked in active bets — shown for context only, already excluded from inAppBalance */
   lockedAmount: number;
   walletAddress: string;
   onWithdraw: (amount: number) => Promise<string>;
@@ -24,10 +24,8 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const available = Math.max(
-    0,
-    Math.round((inAppBalance - lockedAmount) * 100) / 100,
-  );
+  // inAppBalance is already the free amount — locked was deducted when bets were placed
+  const available = Math.max(0, Math.round(inAppBalance * 100) / 100);
   const parsed = parseFloat(amount);
   const isValid = !isNaN(parsed) && parsed > 0 && parsed <= available;
 
@@ -75,22 +73,6 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
             {/* Balance breakdown */}
             <div className="bg-gray-900/60 rounded-lg px-3 py-2.5 mb-4 border border-white/8 space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-gray-400 text-xs">In-App Balance</span>
-                <span className="text-white font-bold text-sm">
-                  ${inAppBalance.toFixed(2)}
-                </span>
-              </div>
-              {lockedAmount > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-yellow-500/80 text-xs">
-                    🔒 Locked in bets
-                  </span>
-                  <span className="text-yellow-400 text-xs font-bold">
-                    −${lockedAmount.toFixed(2)}
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center justify-between pt-1 border-t border-white/8">
                 <span className="text-emerald-400 text-xs font-semibold">
                   Available to withdraw
                 </span>
@@ -98,13 +80,21 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                   ${available.toFixed(2)}
                 </span>
               </div>
+              {lockedAmount > 0 && (
+                <div className="flex items-center justify-between pt-1 border-t border-white/8">
+                  <span className="text-yellow-500/80 text-xs">
+                    🔒 Also locked in active bets
+                  </span>
+                  <span className="text-yellow-400 text-xs font-bold">
+                    ${lockedAmount.toFixed(2)}
+                  </span>
+                </div>
+              )}
             </div>
 
             {available === 0 ? (
               <p className="text-amber-400 text-xs bg-amber-950/30 border border-amber-900/50 rounded-lg px-3 py-2 mb-4">
-                {inAppBalance > 0
-                  ? "All funds are currently locked in active bets."
-                  : "No funds available to withdraw."}
+                No free in-app funds available. Top up or wait for bets to settle.
               </p>
             ) : (
               <>
