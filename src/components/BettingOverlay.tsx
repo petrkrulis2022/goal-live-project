@@ -260,94 +260,37 @@ export const BettingOverlay: React.FC = () => {
           )}
         </div>
 
-        {/* Centre: match + MW odds + current NGS bet — all one line */}
+        {/* Centre: Extra Bets button + match scoreboard */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "6px",
+            gap: "8px",
             pointerEvents: "auto",
           }}
         >
+          {/* Extra Bets — placeholder for corners / cards / goals count */}
+          <button
+            className="gl-interactive"
+            disabled
+            title="Extra bets — coming soon"
+            style={{
+              background: "rgba(109,40,217,0.25)",
+              border: "1px solid rgba(167,139,250,0.4)",
+              borderRadius: "6px",
+              color: "#a78bfa",
+              fontSize: "11px",
+              fontWeight: 700,
+              padding: "4px 10px",
+              cursor: "default",
+              opacity: 0.75,
+            }}
+          >
+            Extra Bets
+          </button>
+
           {/* match scoreboard */}
           <MatchInfo match={match} />
-
-          {/* MW buttons */}
-          {!isFinished &&
-            MW_OUTCOMES.map(({ outcome, label }) => {
-              const mwBet = getMwBet(outcome);
-              return (
-                <button
-                  key={outcome}
-                  onClick={() =>
-                    wallet ? setModal({ type: "mw", outcome }) : connect()
-                  }
-                  className="gl-interactive"
-                  style={{
-                    background: mwBet ? "rgba(6,78,59,0.7)" : "rgba(0,0,0,0.6)",
-                    border: `1px solid ${mwBet ? "rgba(52,211,153,0.5)" : "rgba(255,255,255,0.12)"}`,
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    padding: "2px 5px",
-                  }}
-                >
-                  <span
-                    style={{
-                      color: "#9ca3af",
-                      fontSize: "8px",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {label}
-                  </span>
-                  <span
-                    style={{
-                      color: "#fde047",
-                      fontSize: "10px",
-                      fontWeight: 700,
-                    }}
-                  >
-                    {mwOdds[outcome].toFixed(2)}×
-                  </span>
-                </button>
-              );
-            })}
-
-          {/* Current NGS bet chip */}
-          {activeNgsBet && currentBetPlayer && (
-            <button
-              onClick={() => setModal({ type: "change", bet: activeNgsBet })}
-              className="gl-interactive"
-              style={{
-                background: "rgba(6,78,59,0.75)",
-                border: "1px solid rgba(52,211,153,0.5)",
-                borderRadius: "4px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                padding: "2px 6px",
-              }}
-            >
-              <span
-                style={{ color: "#d1fae5", fontSize: "10px", fontWeight: 700 }}
-              >
-                {currentBetPlayer.name.split(" ")[0]}
-              </span>
-              <span style={{ color: "#6ee7b7", fontSize: "9px" }}>
-                ${activeNgsBet.current_amount.toFixed(0)} @{" "}
-                {currentBetPlayer.odds.toFixed(2)}×
-              </span>
-              <span
-                style={{ color: "#fde047", fontSize: "9px", fontWeight: 600 }}
-              >
-                → change
-              </span>
-            </button>
-          )}
         </div>
 
         {/* Right: balance only — one clean line */}
