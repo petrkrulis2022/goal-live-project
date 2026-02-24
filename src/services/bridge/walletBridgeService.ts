@@ -22,7 +22,10 @@ function loadLastChainBalance(): number {
   }
 }
 function saveLastChainBalance(v: number) {
-  localStorage.setItem(LAST_CHAIN_BAL_KEY, String(Math.max(0, Math.round(v * 100) / 100)));
+  localStorage.setItem(
+    LAST_CHAIN_BAL_KEY,
+    String(Math.max(0, Math.round(v * 100) / 100)),
+  );
 }
 
 function loadInAppBalance(): number {
@@ -123,13 +126,17 @@ class WalletBridgeService implements IWalletService {
   private listeners: Array<(s: WalletState | null) => void> = [];
 
   /** Credit any on-chain deposit that arrived since last known chain balance.
-   *  On first run (lastChainBalance === 0) uses inAppBalance as the baseline so
-   *  any USDC that arrived externally without being polled gets credited. */
+   *  On first run (lastChainBalance === 0) just establishes the baseline —
+   *  no credit, because we don't know how much was already tracked. */
   private reconcileDeposit(onChainBalance: number): void {
-    const baseline = this.lastChainBalance > 0
-      ? this.lastChainBalance
-      : this.inAppBalance; // first run: credit anything above what's already tracked
-    const delta = Math.round((onChainBalance - baseline) * 1_000_000) / 1_000_000;
+    if (this.lastChainBalance === 0) {
+      // First run: set baseline only, do not credit anything
+      this.lastChainBalance = onChainBalance;
+      saveLastChainBalance(onChainBalance);
+      return;
+    }
+    const delta =
+      Math.round((onChainBalance - this.lastChainBalance) * 1_000_000) / 1_000_000;
     if (delta > 0.000001) {
       this.inAppBalance = Math.round((this.inAppBalance + delta) * 100) / 100;
       saveInAppBalance(this.inAppBalance);
