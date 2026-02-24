@@ -10,6 +10,8 @@ export function useWallet() {
   const [error, setError] = useState<string | null>(null);
   const [topUpPending, setTopUpPending] = useState(false);
   const [topUpError, setTopUpError] = useState<string | null>(null);
+  const [withdrawPending, setWithdrawPending] = useState(false);
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = services.wallet.onStateChange(setWallet);
@@ -46,6 +48,20 @@ export function useWallet() {
     }
   }, []);
 
+  const withdraw = useCallback(async (amount: number): Promise<string> => {
+    setWithdrawPending(true);
+    setWithdrawError(null);
+    try {
+      return await services.wallet.withdraw(amount);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Withdrawal failed";
+      setWithdrawError(msg);
+      throw e;
+    } finally {
+      setWithdrawPending(false);
+    }
+  }, []);
+
   return {
     wallet,
     connect,
@@ -55,5 +71,8 @@ export function useWallet() {
     topUp,
     topUpPending,
     topUpError,
+    withdraw,
+    withdrawPending,
+    withdrawError,
   };
 }

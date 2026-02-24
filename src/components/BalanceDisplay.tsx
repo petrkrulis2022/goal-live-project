@@ -7,6 +7,7 @@ interface BalanceDisplayProps {
   walletAddress: string | null;
   onConnect: () => void;
   onTopUp?: () => void;
+  onWithdraw?: () => void;
 }
 
 export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
@@ -15,6 +16,7 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   walletAddress,
   onConnect,
   onTopUp,
+  onWithdraw,
 }) => {
   const short = walletAddress
     ? `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`
@@ -108,6 +110,26 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         ${balance.wallet.toFixed(2)}
       </span>
       <span style={{ color: "#9ca3af", fontSize: "11px" }}>USDC</span>
+
+      {/* Withdraw button */}
+      {onWithdraw && balance.wallet > 0 && (
+        <button
+          onClick={onWithdraw}
+          className="gl-interactive"
+          style={{
+            background: "rgba(30,58,138,0.5)",
+            border: "1px solid rgba(96,165,250,0.45)",
+            borderRadius: "4px",
+            color: "#60a5fa",
+            fontSize: "11px",
+            fontWeight: 700,
+            padding: "3px 9px",
+            cursor: "pointer",
+          }}
+        >
+          ↓ Withdraw
+        </button>
+      )}
 
       {/* Locked amount — only when non-zero */}
       {balance.locked > 0 && (

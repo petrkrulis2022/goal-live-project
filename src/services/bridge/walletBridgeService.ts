@@ -243,6 +243,62 @@ class WalletBridgeService implements IWalletService {
     return txHash;
   }
 
+  async withdraw(amount: number): Promise<string> {
+    if (!this.state) throw new Error("Wallet not connected");
+    if (!PLATFORM_WALLET) throw new Error("PLATFORM_WALLET not configured");
+    if (amount <= 0) throw new Error("Amount must be greater than 0");
+    if (amount > this.inAppBalance)
+      throw new Error(
+        `Insufficient in-app balance ($${this.inAppBalance.toFixed(2)})`,
+      );
+
+    const playerAddress = this.state.address;
+    await this.ensureSepolia();
+
+    // Encode USDC transfer: from PLATFORM_WALLET → player's address
+    const rawAmount = BigInt(Math.round(amount * 10 ** USDC_DECIMALS));
+    const data = transferData(playerAddress, rawAmount);
+
+    // MetaMask will prompt user to sign from PLATFORM_WALLET account
+    const txHash = (await ethRequest("eth_sendTransaction", [
+      { from: PLATFORM_WALLET, to: USDC_CONTRACT, data },
+    ])) as string;
+
+    // Optimistically credit in-app → MetaMask display
+    this.inAppBalance = Math.max(
+      0,
+      Math.round((this.inAppBalance - amount) * 100) / 100,
+    );
+    saveInAppBalance(this.inAppBalance);
+    const optimisticBalance =
+      Math.round((this.state.balance + amount) * 100) / 100;
+    this.emit({
+      ...this.state,
+      balance: optimisticBalance,
+      inAppBalance: this.inAppBalance,
+    });
+
+    // Poll for on-chain confirmation (balance should increase on player address)
+    const snapBalance = this.state.balance;
+    let attempts = 0;
+    const poll = async () => {
+      attempts++;
+      const confirmed = await this.fetchUsdc(playerAddress);
+      if (confirmed > snapBalance || attempts >= 10) {
+        this.emit({
+          ...this.state!,
+          balance: confirmed,
+          inAppBalance: this.inAppBalance,
+        });
+      } else {
+        setTimeout(poll, 3_000);
+      }
+    };
+    setTimeout(poll, 3_000);
+
+    return txHash;
+  }
+
   onStateChange(cb: (state: WalletState | null) => void): () => void {
     this.listeners.push(cb);
     return () => {

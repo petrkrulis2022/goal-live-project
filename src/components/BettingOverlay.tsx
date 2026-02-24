@@ -9,6 +9,7 @@ import { BetModal } from "./BetModal";
 import { BetChangeModal } from "./BetChangeModal";
 import { SettlementDisplay } from "./SettlementDisplay";
 import { TopUpModal } from "./TopUpModal";
+import { WithdrawModal } from "./WithdrawModal";
 import type { Player, Bet } from "../types";
 import type { MatchWinnerOutcome } from "../types";
 import { tryUnmuteVideo } from "../utils/videoUtils";
@@ -18,6 +19,7 @@ type ModalState =
   | { type: "mw"; outcome: MatchWinnerOutcome }
   | { type: "change"; bet: Bet; toPlayer?: Player }
   | { type: "topup" }
+  | { type: "withdraw" }
   | null;
 
 const MW_OUTCOMES: Array<{ outcome: MatchWinnerOutcome; label: string }> = [
@@ -27,7 +29,7 @@ const MW_OUTCOMES: Array<{ outcome: MatchWinnerOutcome; label: string }> = [
 ];
 
 export const BettingOverlay: React.FC = () => {
-  const { wallet, connect, topUp } = useWallet();
+  const { wallet, connect, topUp, withdraw } = useWallet();
   const {
     match,
     players,
@@ -362,6 +364,9 @@ export const BettingOverlay: React.FC = () => {
             walletAddress={wallet?.address ?? null}
             onConnect={connect}
             onTopUp={wallet ? () => setModal({ type: "topup" }) : undefined}
+            onWithdraw={
+              wallet ? () => setModal({ type: "withdraw" }) : undefined
+            }
           />
         </div>
       </div>
@@ -662,6 +667,15 @@ export const BettingOverlay: React.FC = () => {
           walletBalance={wallet.balance}
           walletAddress={wallet.address}
           onTopUp={topUp}
+          onClose={() => setModal(null)}
+        />
+      )}
+      {modal?.type === "withdraw" && wallet && (
+        <WithdrawModal
+          inAppBalance={wallet.inAppBalance}
+          lockedAmount={balance.locked}
+          walletAddress={wallet.address}
+          onWithdraw={withdraw}
           onClose={() => setModal(null)}
         />
       )}

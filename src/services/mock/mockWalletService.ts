@@ -60,24 +60,57 @@ class MockWalletService implements IWalletService {
 
   async deductBalance(amount: number): Promise<void> {
     if (!this.state) throw new Error("Wallet not connected");
-    this.state = { ...this.state, balance: this.state.balance - amount };
+    this.state = {
+      ...this.state,
+      inAppBalance: Math.max(
+        0,
+        Math.round((this.state.inAppBalance - amount) * 100) / 100,
+      ),
+    };
     save(this.state);
     this.notify();
   }
 
   async addBalance(amount: number): Promise<void> {
     if (!this.state) throw new Error("Wallet not connected");
-    this.state = { ...this.state, balance: this.state.balance + amount };
+    this.state = {
+      ...this.state,
+      inAppBalance: Math.round((this.state.inAppBalance + amount) * 100) / 100,
+    };
     save(this.state);
     this.notify();
   }
 
   async topUp(amount: number): Promise<string> {
     if (!this.state) throw new Error("Wallet not connected");
-    this.state = { ...this.state, balance: this.state.balance + amount };
+    this.state = {
+      ...this.state,
+      balance: Math.max(0, this.state.balance - amount),
+      inAppBalance: Math.round((this.state.inAppBalance + amount) * 100) / 100,
+    };
     save(this.state);
     this.notify();
     return "0xmock_topup_" + Date.now();
+  }
+
+  async withdraw(amount: number): Promise<string> {
+    if (!this.state) throw new Error("Wallet not connected");
+    if (amount <= 0) throw new Error("Amount must be greater than 0");
+    if (amount > this.state.inAppBalance)
+      throw new Error(
+        `Insufficient in-app balance ($${this.state.inAppBalance.toFixed(2)})`,
+      );
+    this.state = {
+      ...this.state,
+      balance: Math.round((this.state.balance + amount) * 100) / 100,
+      inAppBalance: Math.max(
+        0,
+        Math.round((this.state.inAppBalance - amount) * 100) / 100,
+      ),
+    };
+    save(this.state);
+    this.notify();
+    return "0xmock_withdraw_" + Date.now();
   }
 
   onStateChange(cb: (state: WalletState | null) => void): () => void {

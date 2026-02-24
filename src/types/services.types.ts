@@ -127,5 +127,11 @@ export interface IWalletService {
    * Returns a tx hash (or mock id).
    */
   topUp(amount: number): Promise<string>;
+  /**
+   * Withdraw in-app balance back to the player's MetaMask wallet.
+   * Mock: instant in-app state transfer. Real: on-chain USDC from escrow → player.
+   * Returns a tx hash (or mock id).
+   */
+  withdraw(amount: number): Promise<string>;
   onStateChange(cb: (state: WalletState | null) => void): () => void;
 }

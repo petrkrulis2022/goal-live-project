@@ -195,6 +195,44 @@ class RealWalletService implements IWalletService {
     return txHash;
   }
 
+  /**
+   * Withdraw: transfer `amount` USDC on Sepolia from platform escrow → player wallet.
+   * MetaMask will prompt to sign from the PLATFORM_WALLET (escrow) account.
+   * Returns the transaction hash.
+   */
+  async withdraw(amount: number): Promise<string> {
+    if (!this.state) throw new Error("Wallet not connected");
+    if (!window.ethereum) throw new Error("MetaMask not available");
+    if (!PLATFORM_WALLET)
+      throw new Error("VITE_PLATFORM_WALLET is not set in .env");
+    if (amount <= 0) throw new Error("Amount must be greater than 0");
+    const currentInApp = this.state.inAppBalance ?? 0;
+    if (amount > currentInApp)
+      throw new Error(
+        `Insufficient in-app balance ($${currentInApp.toFixed(2)})`,
+      );
+
+    await this.ensureSepolia();
+    const rawAmount = BigInt(Math.round(amount * 10 ** USDC_DECIMALS));
+    const data = transferData(this.state.address, rawAmount);
+
+    // MetaMask will prompt to sign from PLATFORM_WALLET (escrow account)
+    const txHash = (await window.ethereum.request({
+      method: "eth_sendTransaction",
+      params: [{ from: PLATFORM_WALLET, to: USDC_CONTRACT, data }],
+    })) as string;
+
+    // Optimistically update state
+    const newInApp = Math.max(
+      0,
+      Math.round((currentInApp - amount) * 100) / 100,
+    );
+    const newBalance = Math.round((this.state.balance + amount) * 100) / 100;
+    this.emit({ ...this.state, balance: newBalance, inAppBalance: newInApp });
+
+    return txHash;
+  }
+
   onStateChange(cb: (state: WalletState | null) => void): () => void {
     this.listeners.push(cb);
     return () => {
