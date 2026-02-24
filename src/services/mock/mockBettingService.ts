@@ -75,7 +75,12 @@ class MockBettingService implements IBettingService {
       )
       .reduce((sum, b) => sum + b.current_amount * b.odds, 0);
     const locked = active.reduce((sum, b) => sum + b.current_amount, 0);
-    return { wallet: 0, locked, provisional };
+    // Potential payout = sum of (stake × odds) for all currently active bets
+    const potentialPayout = active.reduce(
+      (sum, b) => sum + b.current_amount * b.odds,
+      0,
+    );
+    return { wallet: 0, locked, provisional, potentialPayout };
   }
 
   previewPenalty(betId: string, currentMinute: number): PenaltyPreview {

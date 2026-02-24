@@ -102,6 +102,8 @@ export interface BalanceState {
   locked: number;
   /** Provisional winnings (not withdrawable until settlement) */
   provisional: number;
+  /** Potential payout if all active bets win (stake × odds) */
+  potentialPayout: number;
 }
 
 // ── Penalty preview ───────────────────────────

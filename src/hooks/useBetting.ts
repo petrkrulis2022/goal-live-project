@@ -8,13 +8,20 @@ export function useBetting(wallet: string | null) {
     wallet: services.wallet.getState()?.balance ?? 0,
     locked: 0,
     provisional: 0,
+    potentialPayout: 0,
   }));
   const [loading, setLoading] = useState(false);
 
-  // Keep balance.wallet in sync with in-app balance from wallet service
+  // Keep balance.wallet in sync with in-app balance from wallet service.
+  // Also re-run refresh so locked/potentialPayout stay current after any state change.
+  const refreshRef = useRef(refresh);
+  useEffect(() => { refreshRef.current = refresh; }, [refresh]);
+
   useEffect(() => {
     return services.wallet.onStateChange((ws) => {
       setBalance((prev) => ({ ...prev, wallet: ws?.inAppBalance ?? 0 }));
+      // Re-sync locked / potentialPayout whenever wallet state changes
+      if (ws) refreshRef.current();
     });
   }, []);
 
@@ -30,6 +37,7 @@ export function useBetting(wallet: string | null) {
       wallet: services.wallet.getState()?.inAppBalance ?? 0,
       locked: bal.locked,
       provisional: bal.provisional,
+      potentialPayout: bal.potentialPayout,
     });
   }, [wallet]);
 
