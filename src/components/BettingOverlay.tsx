@@ -113,7 +113,7 @@ export const BettingOverlay: React.FC = () => {
   );
 
   const handleConfirmChange = useCallback(
-    async (newPlayerId: string, newOdds: number) => {
+    async (newPlayerId: string, newOdds: number, newAmount: number) => {
       if (modal?.type !== "change") return;
       await changeBet(
         modal.bet.id,
@@ -121,6 +121,7 @@ export const BettingOverlay: React.FC = () => {
         undefined,
         newOdds,
         match?.currentMinute ?? 0,
+        newAmount,
       );
     },
     [modal, changeBet, match],
@@ -765,6 +766,7 @@ export const BettingOverlay: React.FC = () => {
           players={players}
           currentMinute={match?.currentMinute ?? 0}
           initialSelectedId={modal.toPlayer?.id}
+          availableBalance={balance.wallet}
           onConfirm={handleConfirmChange}
           onClose={() => setModal(null)}
         />

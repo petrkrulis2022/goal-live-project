@@ -177,7 +177,14 @@ class MockBettingService implements IBettingService {
   // ── Change bet ────────────────────────────────
 
   async changeBet(params: ChangeBetParams): Promise<ChangeBetResult> {
-    const { betId, newPlayerId, newOutcome, newOdds, currentMinute } = params;
+    const {
+      betId,
+      newPlayerId,
+      newOutcome,
+      newOdds,
+      currentMinute,
+      newAmount,
+    } = params;
     const bet = this.bets.find((b) => b.id === betId);
     if (!bet) return this.changeError("Bet not found");
     if (bet.status !== "active")
@@ -203,7 +210,11 @@ class MockBettingService implements IBettingService {
     // Update bet
     bet.current_player_id = newPlayerId ?? newOutcome ?? bet.current_player_id;
     if (newOutcome) bet.outcome = newOutcome as MatchWinnerOutcome;
-    bet.current_amount = penalty.newEffectiveAmount;
+    // Use caller-supplied amount if provided (they may top up or reduce after penalty)
+    bet.current_amount =
+      newAmount !== undefined && newAmount > 0
+        ? newAmount
+        : penalty.newEffectiveAmount;
     bet.total_penalties += penalty.penaltyAmount;
     bet.change_count = changeNumber;
     bet.odds = newOdds;

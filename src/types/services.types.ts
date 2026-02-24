@@ -68,6 +68,8 @@ export interface ChangeBetParams {
   newOutcome?: MatchWinnerOutcome;
   newOdds: number;
   currentMinute: number;
+  /** Optional final stake after the change; if omitted, post-penalty amount is used */
+  newAmount?: number;
 }
 
 export interface ChangeBetResult {

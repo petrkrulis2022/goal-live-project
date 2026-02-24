@@ -110,6 +110,7 @@ export function useBetting(wallet: string | null) {
       newOutcome: "home" | "away" | "draw" | undefined,
       newOdds: number,
       currentMinute: number,
+      newAmount?: number,
     ) => {
       setLoading(true);
       try {
@@ -119,7 +120,17 @@ export function useBetting(wallet: string | null) {
           newOutcome,
           newOdds,
           currentMinute,
+          newAmount,
         });
+        if (result.success && newAmount !== undefined) {
+          // Adjust wallet: positive diff = top-up (deduct extra), negative = refund
+          const diff = newAmount - result.penalty.newEffectiveAmount;
+          if (diff > 0) {
+            await services.wallet.deductBalance(diff);
+          } else if (diff < 0) {
+            await services.wallet.addBalance(-diff);
+          }
+        }
         await refresh();
         return result;
       } finally {

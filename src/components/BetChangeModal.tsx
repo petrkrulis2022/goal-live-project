@@ -8,7 +8,13 @@ interface BetChangeModalProps {
   currentMinute: number;
   /** Pre-select a player when opening (e.g. tapped directly from overlay) */
   initialSelectedId?: string;
-  onConfirm: (newPlayerId: string, newOdds: number) => Promise<void>;
+  /** In-app wallet balance available for topping up */
+  availableBalance?: number;
+  onConfirm: (
+    newPlayerId: string,
+    newOdds: number,
+    newAmount: number,
+  ) => Promise<void>;
   onClose: () => void;
 }
 
@@ -17,6 +23,7 @@ export const BetChangeModal: React.FC<BetChangeModalProps> = ({
   players,
   currentMinute,
   initialSelectedId,
+  availableBalance = 0,
   onConfirm,
   onClose,
 }) => {
@@ -33,16 +40,41 @@ export const BetChangeModal: React.FC<BetChangeModalProps> = ({
     [bet.current_amount, bet.change_count, currentMinute],
   );
 
+  // Amount the user wants to end up with after the change
+  const [amountStr, setAmountStr] = useState<string>(() =>
+    calcPenalty(
+      bet.current_amount,
+      bet.change_count + 1,
+      currentMinute,
+    ).newEffectiveAmount.toFixed(2),
+  );
+
+  const parsedAmount = parseFloat(amountStr);
+  const amountIsValid = !isNaN(parsedAmount) && parsedAmount > 0;
+  const finalAmount = amountIsValid ? parsedAmount : preview.newEffectiveAmount;
+
+  // Extra deducted/refunded vs the post-penalty baseline
+  const amountDiff = finalAmount - preview.newEffectiveAmount;
+  const topUpNeeded = amountDiff > 0.005 ? amountDiff : 0;
+  const refundAmount = amountDiff < -0.005 ? -amountDiff : 0;
+  const insufficientTopUp = topUpNeeded > availableBalance + 0.005;
+
   const potentialPayout = selectedPlayer
-    ? preview.newEffectiveAmount * selectedPlayer.odds
+    ? finalAmount * selectedPlayer.odds
     : 0;
 
   const handleConfirm = async () => {
     if (!selectedPlayer) return;
+    if (insufficientTopUp) {
+      setError(
+        `Need $${topUpNeeded.toFixed(2)} more — only $${availableBalance.toFixed(2)} available`,
+      );
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      await onConfirm(selectedPlayer.id, selectedPlayer.odds);
+      await onConfirm(selectedPlayer.id, selectedPlayer.odds, finalAmount);
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to change bet");
@@ -127,6 +159,53 @@ export const BetChangeModal: React.FC<BetChangeModalProps> = ({
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Amount adjustment */}
+        <div className="bg-gray-800/60 border border-white/10 rounded-xl px-4 py-3 mb-4">
+          <p className="text-gray-400 text-xs font-semibold mb-2">
+            Adjust amount
+          </p>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400 text-sm">$</span>
+            <input
+              type="number"
+              min="1"
+              step="0.01"
+              value={amountStr}
+              onChange={(e) => setAmountStr(e.target.value)}
+              className="flex-1 bg-black/50 border border-white/20 rounded-lg px-3 py-1.5 text-white text-sm font-bold focus:outline-none focus:border-emerald-500"
+              style={{ minWidth: 0 }}
+            />
+          </div>
+          <div className="flex justify-between items-center mt-1.5 text-xs">
+            <span className="text-gray-500">
+              After penalty:{" "}
+              <span className="text-yellow-300">
+                ${preview.newEffectiveAmount.toFixed(2)}
+              </span>
+            </span>
+            <span className="text-gray-500">
+              Wallet:{" "}
+              <span className="text-emerald-400">
+                ${availableBalance.toFixed(2)}
+              </span>
+            </span>
+          </div>
+          {topUpNeeded > 0 && (
+            <p
+              className={`text-xs mt-1 font-semibold ${insufficientTopUp ? "text-red-400" : "text-emerald-400"}`}
+            >
+              {insufficientTopUp
+                ? `⚠ Need $${topUpNeeded.toFixed(2)} extra — insufficient balance`
+                : `+$${topUpNeeded.toFixed(2)} will be deducted from wallet`}
+            </p>
+          )}
+          {refundAmount > 0 && (
+            <p className="text-xs mt-1 text-blue-400 font-semibold">
+              ↩ $${refundAmount.toFixed(2)} will be refunded to wallet
+            </p>
+          )}
         </div>
 
         {/* Player picker */}
