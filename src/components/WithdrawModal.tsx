@@ -48,14 +48,15 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   const available = Math.max(0, Math.round(inAppBalance * 100) / 100);
   const parsed = parseFloat(amount);
   const isValid =
-    !isNaN(parsed) &&
-    parsed > 0 &&
-    parsed <= available &&
-    addrValid &&
-    !editingAddr;
+    !isNaN(parsed) && parsed > 0 && parsed <= available && addrValid;
 
   const handleConfirm = async () => {
     if (!isValid) return;
+    // Auto-save address if user typed it but didn't click Save
+    if (editingAddr && addrValid) {
+      onSavePlayerAddress(effectivePlayerAddr);
+      setEditingAddr(false);
+    }
     setPending(true);
     setError(null);
     try {
