@@ -282,12 +282,13 @@ export const BettingOverlay: React.FC = () => {
               }
               title="CubePay — powered by goal.live"
               style={{
-                marginLeft: "auto",
-                background: "linear-gradient(180deg, #1a2e1a 0%, #0f1f0f 60%, #071207 100%)",
+                background:
+                  "linear-gradient(180deg, #1a2e1a 0%, #0f1f0f 60%, #071207 100%)",
                 border: "1px solid rgba(52,211,153,0.55)",
                 borderBottom: "3px solid #021005",
                 borderRadius: "7px",
-                boxShadow: "0 4px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)",
+                boxShadow:
+                  "0 4px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)",
                 padding: "3px 8px 3px 4px",
                 cursor: "pointer",
                 display: "flex",
@@ -299,9 +300,25 @@ export const BettingOverlay: React.FC = () => {
               <img
                 src={AD_CUBEPAY_URL}
                 alt="CubePay"
-                style={{ height: "28px", width: "28px", borderRadius: "4px", display: "block", objectFit: "cover" }}
+                style={{
+                  height: "28px",
+                  width: "28px",
+                  borderRadius: "4px",
+                  display: "block",
+                  objectFit: "cover",
+                }}
               />
-              <span style={{ color: "#34d399", fontSize: "11px", fontWeight: 800, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>Visit</span>
+              <span
+                style={{
+                  color: "#34d399",
+                  fontSize: "11px",
+                  fontWeight: 800,
+                  letterSpacing: "0.04em",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Visit
+              </span>
             </button>
           )}
         </div>
@@ -422,12 +439,13 @@ export const BettingOverlay: React.FC = () => {
               }
               title="Vibe.live — powered by goal.live"
               style={{
-                marginRight: "auto",
-                background: "linear-gradient(180deg, #1e1030 0%, #120a22 60%, #080412 100%)",
+                background:
+                  "linear-gradient(180deg, #1e1030 0%, #120a22 60%, #080412 100%)",
                 border: "1px solid rgba(167,139,250,0.55)",
                 borderBottom: "3px solid #040108",
                 borderRadius: "7px",
-                boxShadow: "0 4px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)",
+                boxShadow:
+                  "0 4px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)",
                 padding: "3px 4px",
                 cursor: "pointer",
                 display: "flex",
@@ -438,7 +456,12 @@ export const BettingOverlay: React.FC = () => {
               <img
                 src={AD_VIBE_URL}
                 alt="Vibe.live"
-                style={{ height: "30px", width: "auto", borderRadius: "4px", display: "block" }}
+                style={{
+                  height: "30px",
+                  width: "auto",
+                  borderRadius: "4px",
+                  display: "block",
+                }}
               />
             </button>
           )}
