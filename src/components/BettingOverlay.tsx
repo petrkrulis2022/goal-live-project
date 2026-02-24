@@ -3,7 +3,7 @@ import { useWallet } from "../hooks/useWallet";
 
 const LOGO_URL =
   typeof chrome !== "undefined" && chrome.runtime?.getURL
-    ? chrome.runtime.getURL("goal-live-logo-dark.png")
+    ? chrome.runtime.getURL("goal-live-logo.png")
     : "";
 import { useMatchData } from "../hooks/useMatchData";
 import { useBetting } from "../hooks/useBetting";
