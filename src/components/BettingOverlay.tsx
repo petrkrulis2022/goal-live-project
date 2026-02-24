@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
+import goalLiveLogoDark from "../assets/goal-live-logo-dark.png";
 import { useWallet } from "../hooks/useWallet";
 import { useMatchData } from "../hooks/useMatchData";
 import { useBetting } from "../hooks/useBetting";
@@ -271,25 +272,18 @@ export const BettingOverlay: React.FC = () => {
             pointerEvents: "auto",
           }}
         >
-          {/* Extra Bets button */}
-          <button
-            className="gl-interactive"
-            onClick={() => {}}
-            title="Extra bets — corners, cards, goals (coming soon)"
+          {/* Logo — same height as score box, left of it */}
+          <img
+            src={goalLiveLogoDark}
+            alt="goal.live"
             style={{
-              background: "rgba(109,40,217,0.30)",
-              border: "1px solid rgba(167,139,250,0.5)",
-              borderRadius: "6px",
-              color: "#a78bfa",
-              fontSize: "11px",
-              fontWeight: 700,
-              padding: "4px 10px",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
+              height: "52px",
+              width: "auto",
+              display: "block",
+              borderRadius: "8px",
+              flexShrink: 0,
             }}
-          >
-            Extra Bets
-          </button>
+          />
 
           {/* match scoreboard */}
           <MatchInfo match={match} />
@@ -339,6 +333,28 @@ export const BettingOverlay: React.FC = () => {
                 </button>
               );
             })}
+
+          {/* Extra Bets — right of Away */}
+          {!isFinished && (
+            <button
+              className="gl-interactive"
+              onClick={() => {}}
+              title="Extra bets — corners, cards, goals (coming soon)"
+              style={{
+                background: "rgba(109,40,217,0.30)",
+                border: "1px solid rgba(167,139,250,0.5)",
+                borderRadius: "6px",
+                color: "#a78bfa",
+                fontSize: "11px",
+                fontWeight: 700,
+                padding: "4px 10px",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Extra Bets
+            </button>
+          )}
         </div>
 
         {/* Right: balance */}
