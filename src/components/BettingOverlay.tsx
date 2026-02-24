@@ -176,6 +176,7 @@ export const BettingOverlay: React.FC = () => {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "3px 4px",
+          // position:relative so the absolute-centred child is anchored here
           background:
             "linear-gradient(to bottom, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0) 100%)",
         }}
@@ -260,30 +261,33 @@ export const BettingOverlay: React.FC = () => {
           )}
         </div>
 
-        {/* Centre: Extra Bets button + match scoreboard */}
+        {/* Centre: truly X-axis centred via absolute positioning */}
         <div
           style={{
+            position: "absolute",
+            left: "50%",
+            transform: "translateX(-50%)",
             display: "flex",
             alignItems: "center",
-            gap: "8px",
+            gap: "6px",
             pointerEvents: "auto",
           }}
         >
-          {/* Extra Bets — placeholder for corners / cards / goals count */}
+          {/* Extra Bets button — placeholder for corners / cards / goals */}
           <button
             className="gl-interactive"
-            disabled
-            title="Extra bets — coming soon"
+            onClick={() => {}}
+            title="Extra bets — corners, cards, goals (coming soon)"
             style={{
-              background: "rgba(109,40,217,0.25)",
-              border: "1px solid rgba(167,139,250,0.4)",
+              background: "rgba(109,40,217,0.30)",
+              border: "1px solid rgba(167,139,250,0.5)",
               borderRadius: "6px",
               color: "#a78bfa",
               fontSize: "11px",
               fontWeight: 700,
               padding: "4px 10px",
-              cursor: "default",
-              opacity: 0.75,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
             }}
           >
             Extra Bets
@@ -291,6 +295,56 @@ export const BettingOverlay: React.FC = () => {
 
           {/* match scoreboard */}
           <MatchInfo match={match} />
+
+          {/* MW bet buttons — Home / Draw / Away */}
+          {!isFinished &&
+            MW_OUTCOMES.map(({ outcome, label }) => {
+              const mwBet = getMwBet(outcome);
+              return (
+                <button
+                  key={outcome}
+                  onClick={() =>
+                    wallet ? setModal({ type: "mw", outcome }) : connect()
+                  }
+                  className="gl-interactive"
+                  style={{
+                    background: mwBet
+                      ? "rgba(6,78,59,0.7)"
+                      : "rgba(0,0,0,0.6)",
+                    border: `1px solid ${
+                      mwBet
+                        ? "rgba(52,211,153,0.5)"
+                        : "rgba(255,255,255,0.12)"
+                    }`,
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    padding: "2px 5px",
+                  }}
+                >
+                  <span
+                    style={{
+                      color: "#9ca3af",
+                      fontSize: "8px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {label}
+                  </span>
+                  <span
+                    style={{
+                      color: "#fde047",
+                      fontSize: "10px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {mwOdds[outcome].toFixed(2)}×
+                  </span>
+                </button>
+              );
+            })}
         </div>
 
         {/* Right: balance only — one clean line */}
