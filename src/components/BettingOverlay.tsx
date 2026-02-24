@@ -273,23 +273,35 @@ export const BettingOverlay: React.FC = () => {
             </button>
           )}
 
-          {/* Ad button 1: CubePay — between Start/↺ and logo */}
+          {/* Ad button 1: CubePay — 3D, rectangular, pushed toward centre */}
           {AD_CUBEPAY_URL && (
             <button
               className="gl-interactive"
-              onClick={() => window.open("https://vision-pay.netlify.app/", "_blank")}
+              onClick={() =>
+                window.open("https://vision-pay.netlify.app/", "_blank")
+              }
               title="CubePay — powered by goal.live"
               style={{
-                background: "transparent",
-                border: "none",
-                padding: "0",
+                marginLeft: "auto",
+                background: "linear-gradient(180deg, #1a2e1a 0%, #0f1f0f 60%, #071207 100%)",
+                border: "1px solid rgba(52,211,153,0.55)",
+                borderBottom: "3px solid #021005",
+                borderRadius: "7px",
+                boxShadow: "0 4px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)",
+                padding: "3px 8px 3px 4px",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
+                gap: "5px",
                 flexShrink: 0,
               }}
             >
-              <img src={AD_CUBEPAY_URL} alt="CubePay" style={{ height: "36px", width: "auto", borderRadius: "6px", display: "block" }} />
+              <img
+                src={AD_CUBEPAY_URL}
+                alt="CubePay"
+                style={{ height: "28px", width: "28px", borderRadius: "4px", display: "block", objectFit: "cover" }}
+              />
+              <span style={{ color: "#34d399", fontSize: "11px", fontWeight: 800, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>Visit</span>
             </button>
           )}
         </div>
@@ -401,23 +413,33 @@ export const BettingOverlay: React.FC = () => {
             pointerEvents: "auto",
           }}
         >
-          {/* Ad button 2: Vibe.live — between Extra Bets and wallet */}
+          {/* Ad button 2: Vibe.live — 3D, pushed toward centre */}
           {AD_VIBE_URL && (
             <button
               className="gl-interactive"
-              onClick={() => window.open("https://cube-pay-web.netlify.app/", "_blank")}
+              onClick={() =>
+                window.open("https://cube-pay-web.netlify.app/", "_blank")
+              }
               title="Vibe.live — powered by goal.live"
               style={{
-                background: "transparent",
-                border: "none",
-                padding: "0",
+                marginRight: "auto",
+                background: "linear-gradient(180deg, #1e1030 0%, #120a22 60%, #080412 100%)",
+                border: "1px solid rgba(167,139,250,0.55)",
+                borderBottom: "3px solid #040108",
+                borderRadius: "7px",
+                boxShadow: "0 4px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)",
+                padding: "3px 4px",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 flexShrink: 0,
               }}
             >
-              <img src={AD_VIBE_URL} alt="Vibe.live" style={{ height: "36px", width: "auto", borderRadius: "6px", display: "block" }} />
+              <img
+                src={AD_VIBE_URL}
+                alt="Vibe.live"
+                style={{ height: "30px", width: "auto", borderRadius: "4px", display: "block" }}
+              />
             </button>
           )}
 
