@@ -66,6 +66,10 @@ export function useWallet() {
     services.wallet.setPlayerAddress(address);
   }, []);
 
+  const refreshBalance = useCallback(async () => {
+    await services.wallet.getBalance();
+  }, []);
+
   return {
     wallet,
     connect,
@@ -79,5 +83,6 @@ export function useWallet() {
     withdrawPending,
     withdrawError,
     setPlayerAddress,
+    refreshBalance,
   };
 }

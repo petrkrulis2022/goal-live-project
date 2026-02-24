@@ -12,6 +12,18 @@ const PLATFORM_WALLET: string =
   (import.meta.env.VITE_PLATFORM_WALLET as string) ?? "";
 const INAPP_BAL_KEY = "gl_inapp_balance";
 const PLAYER_ADDR_KEY = "gl_player_address";
+const LAST_CHAIN_BAL_KEY = "gl_last_chain_balance";
+
+function loadLastChainBalance(): number {
+  try {
+    return parseFloat(localStorage.getItem(LAST_CHAIN_BAL_KEY) ?? "0") || 0;
+  } catch {
+    return 0;
+  }
+}
+function saveLastChainBalance(v: number) {
+  localStorage.setItem(LAST_CHAIN_BAL_KEY, String(Math.max(0, Math.round(v * 100) / 100)));
+}
 
 function loadInAppBalance(): number {
   try {
@@ -107,7 +119,19 @@ class WalletBridgeService implements IWalletService {
   private state: WalletState | null = null;
   private inAppBalance: number = loadInAppBalance();
   private playerAddress: string = loadPlayerAddress();
+  private lastChainBalance: number = loadLastChainBalance();
   private listeners: Array<(s: WalletState | null) => void> = [];
+
+  /** Credit any on-chain deposit that arrived since last known chain balance */
+  private reconcileDeposit(onChainBalance: number): void {
+    const delta = Math.round((onChainBalance - this.lastChainBalance) * 1_000_000) / 1_000_000;
+    if (delta > 0.000001) {
+      this.inAppBalance = Math.round((this.inAppBalance + delta) * 100) / 100;
+      saveInAppBalance(this.inAppBalance);
+    }
+    this.lastChainBalance = onChainBalance;
+    saveLastChainBalance(onChainBalance);
+  }
 
   private emit(s: WalletState | null) {
     this.state = s;
@@ -120,6 +144,7 @@ class WalletBridgeService implements IWalletService {
       this.emit(null);
     } else {
       const balance = await this.fetchUsdc(accounts[0]);
+      this.reconcileDeposit(balance);
       this.emit({
         address: accounts[0],
         balance,
@@ -176,6 +201,7 @@ class WalletBridgeService implements IWalletService {
     if (!accounts.length) throw new Error("No accounts returned from MetaMask");
     const address = accounts[0];
     const balance = await this.fetchUsdc(address);
+    this.reconcileDeposit(balance);
     const ws: WalletState = {
       address,
       balance,
@@ -198,7 +224,8 @@ class WalletBridgeService implements IWalletService {
   async getBalance(): Promise<number> {
     if (!this.state) return 0;
     const balance = await this.fetchUsdc(this.state.address);
-    this.emit({ ...this.state, balance });
+    this.reconcileDeposit(balance);
+    this.emit({ ...this.state, balance, inAppBalance: this.inAppBalance });
     return balance;
   }
 
