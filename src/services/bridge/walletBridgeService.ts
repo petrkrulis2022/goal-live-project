@@ -136,7 +136,8 @@ class WalletBridgeService implements IWalletService {
       return;
     }
     const delta =
-      Math.round((onChainBalance - this.lastChainBalance) * 1_000_000) / 1_000_000;
+      Math.round((onChainBalance - this.lastChainBalance) * 1_000_000) /
+      1_000_000;
     if (delta > 0.000001) {
       this.inAppBalance = Math.round((this.inAppBalance + delta) * 100) / 100;
       saveInAppBalance(this.inAppBalance);

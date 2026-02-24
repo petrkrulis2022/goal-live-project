@@ -22,6 +22,8 @@ import type {
 import { calcPenalty } from "../../utils/penaltyCalculator";
 
 const BETS_KEY = "gl_mock_bets";
+// The in-app wallet address that all bets must be stamped with
+const IN_APP_WALLET = (import.meta.env.VITE_PLATFORM_WALLET as string) ?? "";
 // Remove old balance key from pre-refactor sessions
 localStorage.removeItem("gl_mock_balance");
 
@@ -30,8 +32,16 @@ function loadBets(): Bet[] {
   try {
     const raw = JSON.parse(localStorage.getItem(BETS_KEY) ?? "[]") as Bet[];
     // Purge any bets placed with the old mock wallet address (pre-refactor)
-    const clean = raw.filter((b) => !b.bettorWallet.startsWith("0xMock"));
-    if (clean.length !== raw.length) {
+    let clean = raw.filter((b) => !b.bettorWallet.startsWith("0xMock"));
+    // Migrate bets placed under the player wallet before the architecture switch
+    if (IN_APP_WALLET) {
+      clean = clean.map((b) =>
+        b.bettorWallet.toLowerCase() !== IN_APP_WALLET.toLowerCase()
+          ? { ...b, bettorWallet: IN_APP_WALLET }
+          : b,
+      );
+    }
+    if (JSON.stringify(clean) !== JSON.stringify(raw)) {
       localStorage.setItem(BETS_KEY, JSON.stringify(clean));
     }
     return clean;
