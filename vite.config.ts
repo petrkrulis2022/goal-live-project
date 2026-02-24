@@ -13,6 +13,8 @@ export default defineConfig({
         { src: "extension/icons", dest: "." },
         // injected.js runs in page world — must NOT be bundled by Vite
         { src: "extension/injected.js", dest: "." },
+        // Logo as a static asset accessible via chrome.runtime.getURL()
+        { src: "extension/goal-live-logo-dark.png", dest: "." },
       ],
     }),
   ],

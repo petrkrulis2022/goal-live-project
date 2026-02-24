@@ -1,6 +1,10 @@
 import React, { useState, useCallback, useEffect } from "react";
-import goalLiveLogoDark from "../assets/goal-live-logo-dark.png";
 import { useWallet } from "../hooks/useWallet";
+
+const LOGO_URL =
+  typeof chrome !== "undefined" && chrome.runtime?.getURL
+    ? chrome.runtime.getURL("goal-live-logo-dark.png")
+    : "";
 import { useMatchData } from "../hooks/useMatchData";
 import { useBetting } from "../hooks/useBetting";
 import { MatchInfo } from "./MatchInfo";
@@ -273,17 +277,19 @@ export const BettingOverlay: React.FC = () => {
           }}
         >
           {/* Logo — same height as score box, left of it */}
-          <img
-            src={goalLiveLogoDark}
-            alt="goal.live"
-            style={{
-              height: "52px",
-              width: "auto",
-              display: "block",
-              borderRadius: "8px",
-              flexShrink: 0,
-            }}
-          />
+          {LOGO_URL && (
+            <img
+              src={LOGO_URL}
+              alt="goal.live"
+              style={{
+                height: "52px",
+                width: "auto",
+                display: "block",
+                borderRadius: "8px",
+                flexShrink: 0,
+              }}
+            />
+          )}
 
           {/* match scoreboard */}
           <MatchInfo match={match} />
