@@ -31,7 +31,9 @@ export function useBetting(wallet: string | null) {
   // Keep balance.wallet in sync with in-app balance from wallet service.
   // Also re-run refresh so locked/potentialPayout stay current after any state change.
   const refreshRef = useRef(refresh);
-  useEffect(() => { refreshRef.current = refresh; }, [refresh]);
+  useEffect(() => {
+    refreshRef.current = refresh;
+  }, [refresh]);
 
   useEffect(() => {
     return services.wallet.onStateChange((ws) => {

@@ -15,6 +15,9 @@ export default defineConfig({
         { src: "extension/injected.js", dest: "." },
         // Logo as a static asset accessible via chrome.runtime.getURL()
         { src: "extension/goal-live-logo.png", dest: "." },
+        // Advertisement buttons
+        { src: "extension/ad-cubepay.png", dest: "." },
+        { src: "extension/ad-vibe.png", dest: "." },
       ],
     }),
   ],

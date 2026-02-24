@@ -5,6 +5,14 @@ const LOGO_URL =
   typeof chrome !== "undefined" && chrome.runtime?.getURL
     ? chrome.runtime.getURL("goal-live-logo.png")
     : "";
+const AD_CUBEPAY_URL =
+  typeof chrome !== "undefined" && chrome.runtime?.getURL
+    ? chrome.runtime.getURL("ad-cubepay.png")
+    : "";
+const AD_VIBE_URL =
+  typeof chrome !== "undefined" && chrome.runtime?.getURL
+    ? chrome.runtime.getURL("ad-vibe.png")
+    : "";
 import { useMatchData } from "../hooks/useMatchData";
 import { useBetting } from "../hooks/useBetting";
 import { MatchInfo } from "./MatchInfo";
@@ -264,6 +272,26 @@ export const BettingOverlay: React.FC = () => {
               ↺
             </button>
           )}
+
+          {/* Ad button 1: CubePay — between Start/↺ and logo */}
+          {AD_CUBEPAY_URL && (
+            <button
+              className="gl-interactive"
+              onClick={() => window.open("https://vision-pay.netlify.app/", "_blank")}
+              title="CubePay — powered by goal.live"
+              style={{
+                background: "transparent",
+                border: "none",
+                padding: "0",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                flexShrink: 0,
+              }}
+            >
+              <img src={AD_CUBEPAY_URL} alt="CubePay" style={{ height: "36px", width: "auto", borderRadius: "6px", display: "block" }} />
+            </button>
+          )}
         </div>
 
         {/* Centre column: always truly centred by CSS grid */}
@@ -373,6 +401,26 @@ export const BettingOverlay: React.FC = () => {
             pointerEvents: "auto",
           }}
         >
+          {/* Ad button 2: Vibe.live — between Extra Bets and wallet */}
+          {AD_VIBE_URL && (
+            <button
+              className="gl-interactive"
+              onClick={() => window.open("https://cube-pay-web.netlify.app/", "_blank")}
+              title="Vibe.live — powered by goal.live"
+              style={{
+                background: "transparent",
+                border: "none",
+                padding: "0",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                flexShrink: 0,
+              }}
+            >
+              <img src={AD_VIBE_URL} alt="Vibe.live" style={{ height: "36px", width: "auto", borderRadius: "6px", display: "block" }} />
+            </button>
+          )}
+
           <BalanceDisplay
             balance={balance}
             walletAddress={wallet?.address ?? null}

@@ -123,12 +123,18 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       {/* Locked amount + possible winning — only when there are active bets */}
       {balance.locked > 0 && (
         <>
-          <span style={{ color: "rgba(255,255,255,0.15)", fontSize: "10px" }}>│</span>
+          <span style={{ color: "rgba(255,255,255,0.15)", fontSize: "10px" }}>
+            │
+          </span>
           <span style={{ color: "#fbbf24", fontSize: "11px", fontWeight: 600 }}>
             🔒 ${balance.locked.toFixed(2)}
           </span>
-          <span style={{ color: "rgba(255,255,255,0.15)", fontSize: "10px" }}>│</span>
-          <span style={{ color: "#a78bfa", fontSize: "10px", fontWeight: 600 }}>Win</span>
+          <span style={{ color: "rgba(255,255,255,0.15)", fontSize: "10px" }}>
+            │
+          </span>
+          <span style={{ color: "#a78bfa", fontSize: "10px", fontWeight: 600 }}>
+            Win
+          </span>
           <span style={{ color: "#c4b5fd", fontSize: "13px", fontWeight: 700 }}>
             ${balance.potentialPayout.toFixed(2)}
           </span>
@@ -138,7 +144,9 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       {/* Pending win — only when non-zero */}
       {balance.provisional > 0 && (
         <>
-          <span style={{ color: "rgba(255,255,255,0.15)", fontSize: "10px" }}>│</span>
+          <span style={{ color: "rgba(255,255,255,0.15)", fontSize: "10px" }}>
+            │
+          </span>
           <span style={{ color: "#34d399", fontSize: "11px", fontWeight: 600 }}>
             ⏳ +${balance.provisional.toFixed(2)}
           </span>
