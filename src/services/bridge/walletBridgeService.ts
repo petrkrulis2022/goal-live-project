@@ -122,9 +122,14 @@ class WalletBridgeService implements IWalletService {
   private lastChainBalance: number = loadLastChainBalance();
   private listeners: Array<(s: WalletState | null) => void> = [];
 
-  /** Credit any on-chain deposit that arrived since last known chain balance */
+  /** Credit any on-chain deposit that arrived since last known chain balance.
+   *  On first run (lastChainBalance === 0) uses inAppBalance as the baseline so
+   *  any USDC that arrived externally without being polled gets credited. */
   private reconcileDeposit(onChainBalance: number): void {
-    const delta = Math.round((onChainBalance - this.lastChainBalance) * 1_000_000) / 1_000_000;
+    const baseline = this.lastChainBalance > 0
+      ? this.lastChainBalance
+      : this.inAppBalance; // first run: credit anything above what's already tracked
+    const delta = Math.round((onChainBalance - baseline) * 1_000_000) / 1_000_000;
     if (delta > 0.000001) {
       this.inAppBalance = Math.round((this.inAppBalance + delta) * 100) / 100;
       saveInAppBalance(this.inAppBalance);
