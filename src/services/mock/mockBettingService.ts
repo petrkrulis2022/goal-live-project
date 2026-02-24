@@ -22,11 +22,19 @@ import type {
 import { calcPenalty } from "../../utils/penaltyCalculator";
 
 const BETS_KEY = "gl_mock_bets";
+// Remove old balance key from pre-refactor sessions
+localStorage.removeItem("gl_mock_balance");
 
 // ── Persistence helpers ────────────────────────
 function loadBets(): Bet[] {
   try {
-    return JSON.parse(localStorage.getItem(BETS_KEY) ?? "[]");
+    const raw = JSON.parse(localStorage.getItem(BETS_KEY) ?? "[]") as Bet[];
+    // Purge any bets placed with the old mock wallet address (pre-refactor)
+    const clean = raw.filter((b) => !b.bettorWallet.startsWith("0xMock"));
+    if (clean.length !== raw.length) {
+      localStorage.setItem(BETS_KEY, JSON.stringify(clean));
+    }
+    return clean;
   } catch {
     return [];
   }

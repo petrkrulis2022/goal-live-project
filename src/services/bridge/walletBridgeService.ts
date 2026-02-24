@@ -211,15 +211,35 @@ class WalletBridgeService implements IWalletService {
     const txHash = (await ethRequest("eth_sendTransaction", [
       { from: this.state.address, to: USDC_CONTRACT, data },
     ])) as string;
-    // Credit in-app balance and refresh on-chain USDC
+
+    // Optimistically deduct from MetaMask balance and credit in-app immediately
     this.inAppBalance = Math.round((this.inAppBalance + amount) * 100) / 100;
     saveInAppBalance(this.inAppBalance);
-    const newOnChain = await this.fetchUsdc(this.state.address);
+    const optimisticBalance = Math.max(0, this.state.balance - amount);
     this.emit({
       ...this.state,
-      balance: newOnChain,
+      balance: optimisticBalance,
       inAppBalance: this.inAppBalance,
     });
+
+    // Poll every 3 s (up to 10 attempts) until the on-chain balance confirms
+    const address = this.state.address;
+    let attempts = 0;
+    const poll = async () => {
+      attempts++;
+      const confirmed = await this.fetchUsdc(address);
+      if (confirmed < this.state!.balance || attempts >= 10) {
+        this.emit({
+          ...this.state!,
+          balance: confirmed,
+          inAppBalance: this.inAppBalance,
+        });
+      } else {
+        setTimeout(poll, 3_000);
+      }
+    };
+    setTimeout(poll, 3_000);
+
     return txHash;
   }
 
