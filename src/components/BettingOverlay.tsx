@@ -172,11 +172,10 @@ export const BettingOverlay: React.FC = () => {
           right: 0,
           zIndex: 2147483641,
           pointerEvents: "none",
-          display: "flex",
+          display: "grid",
+          gridTemplateColumns: "1fr auto 1fr",
           alignItems: "center",
-          justifyContent: "space-between",
           padding: "3px 4px",
-          // position:relative so the absolute-centred child is anchored here
           background:
             "linear-gradient(to bottom, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0) 100%)",
         }}
@@ -188,6 +187,7 @@ export const BettingOverlay: React.FC = () => {
             alignItems: "center",
             gap: "4px",
             pointerEvents: "auto",
+            justifyContent: "flex-start",
           }}
         >
           <button
@@ -261,19 +261,17 @@ export const BettingOverlay: React.FC = () => {
           )}
         </div>
 
-        {/* Centre: truly X-axis centred via absolute positioning */}
+        {/* Centre column: always truly centred by CSS grid */}
         <div
           style={{
-            position: "absolute",
-            left: "50%",
-            transform: "translateX(-50%)",
             display: "flex",
             alignItems: "center",
+            justifyContent: "center",
             gap: "6px",
             pointerEvents: "auto",
           }}
         >
-          {/* Extra Bets button — placeholder for corners / cards / goals */}
+          {/* Extra Bets button */}
           <button
             className="gl-interactive"
             onClick={() => {}}
@@ -347,11 +345,12 @@ export const BettingOverlay: React.FC = () => {
             })}
         </div>
 
-        {/* Right: balance only — one clean line */}
+        {/* Right: balance */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
+            justifyContent: "flex-end",
             gap: "4px",
             pointerEvents: "auto",
           }}
