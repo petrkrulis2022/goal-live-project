@@ -12,19 +12,6 @@ export function useBetting(wallet: string | null) {
   }));
   const [loading, setLoading] = useState(false);
 
-  // Keep balance.wallet in sync with in-app balance from wallet service.
-  // Also re-run refresh so locked/potentialPayout stay current after any state change.
-  const refreshRef = useRef(refresh);
-  useEffect(() => { refreshRef.current = refresh; }, [refresh]);
-
-  useEffect(() => {
-    return services.wallet.onStateChange((ws) => {
-      setBalance((prev) => ({ ...prev, wallet: ws?.inAppBalance ?? 0 }));
-      // Re-sync locked / potentialPayout whenever wallet state changes
-      if (ws) refreshRef.current();
-    });
-  }, []);
-
   const refresh = useCallback(async () => {
     if (!wallet) return;
     const [b, bal] = await Promise.all([
@@ -40,6 +27,19 @@ export function useBetting(wallet: string | null) {
       potentialPayout: bal.potentialPayout,
     });
   }, [wallet]);
+
+  // Keep balance.wallet in sync with in-app balance from wallet service.
+  // Also re-run refresh so locked/potentialPayout stay current after any state change.
+  const refreshRef = useRef(refresh);
+  useEffect(() => { refreshRef.current = refresh; }, [refresh]);
+
+  useEffect(() => {
+    return services.wallet.onStateChange((ws) => {
+      setBalance((prev) => ({ ...prev, wallet: ws?.inAppBalance ?? 0 }));
+      // Re-sync locked / potentialPayout whenever wallet state changes
+      if (ws) refreshRef.current();
+    });
+  }, []);
 
   // Initial load + listen for balance refresh events
   useEffect(() => {
