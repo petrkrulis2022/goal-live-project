@@ -62,6 +62,10 @@ export function useWallet() {
     }
   }, []);
 
+  const setPlayerAddress = useCallback((address: string) => {
+    services.wallet.setPlayerAddress(address);
+  }, []);
+
   return {
     wallet,
     connect,
@@ -74,5 +78,6 @@ export function useWallet() {
     withdraw,
     withdrawPending,
     withdrawError,
+    setPlayerAddress,
   };
 }

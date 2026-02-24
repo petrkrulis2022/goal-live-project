@@ -11,6 +11,7 @@ const USDC_DECIMALS = 6;
 const PLATFORM_WALLET: string =
   (import.meta.env.VITE_PLATFORM_WALLET as string) ?? "";
 const INAPP_BAL_KEY = "gl_inapp_balance";
+const PLAYER_ADDR_KEY = "gl_player_address";
 
 function loadInAppBalance(): number {
   try {
@@ -24,6 +25,16 @@ function saveInAppBalance(v: number) {
     INAPP_BAL_KEY,
     String(Math.max(0, Math.round(v * 100) / 100)),
   );
+}
+function loadPlayerAddress(): string {
+  try {
+    return localStorage.getItem(PLAYER_ADDR_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+function savePlayerAddress(addr: string) {
+  localStorage.setItem(PLAYER_ADDR_KEY, addr);
 }
 
 let reqCounter = 0;
@@ -95,6 +106,7 @@ function transferData(to: string, rawAmount: bigint) {
 class WalletBridgeService implements IWalletService {
   private state: WalletState | null = null;
   private inAppBalance: number = loadInAppBalance();
+  private playerAddress: string = loadPlayerAddress();
   private listeners: Array<(s: WalletState | null) => void> = [];
 
   private emit(s: WalletState | null) {
@@ -112,6 +124,7 @@ class WalletBridgeService implements IWalletService {
         address: accounts[0],
         balance,
         inAppBalance: this.inAppBalance,
+        playerAddress: this.playerAddress || undefined,
         connected: true,
       });
     }
@@ -167,6 +180,7 @@ class WalletBridgeService implements IWalletService {
       address,
       balance,
       inAppBalance: this.inAppBalance,
+      playerAddress: this.playerAddress || undefined,
       connected: true,
     };
     this.emit(ws);
@@ -202,33 +216,82 @@ class WalletBridgeService implements IWalletService {
     this.emit({ ...this.state, inAppBalance: this.inAppBalance });
   }
 
-  async topUp(amount: number): Promise<string> {
+  async topUp(_amount: number): Promise<string> {
     if (!this.state) throw new Error("Wallet not connected");
-    const recipient = PLATFORM_WALLET || this.state.address;
+    // Polymarket-style: just return the deposit address.
+    // The user sends USDC to this address from their external wallet.
+    // Poll every 5 s for up to 30 attempts to detect the incoming deposit.
+    const address = this.state.address;
+    const snapshotBalance = this.state.balance;
+    let attempts = 0;
+    const poll = async () => {
+      attempts++;
+      const confirmed = await this.fetchUsdc(address);
+      if (confirmed !== snapshotBalance) {
+        // Balance changed — credit the difference as in-app funds
+        const delta = Math.max(0, confirmed - snapshotBalance);
+        if (delta > 0) {
+          this.inAppBalance =
+            Math.round((this.inAppBalance + delta) * 100) / 100;
+          saveInAppBalance(this.inAppBalance);
+        }
+        this.emit({
+          ...this.state!,
+          balance: confirmed,
+          inAppBalance: this.inAppBalance,
+        });
+      } else if (attempts < 30) {
+        setTimeout(poll, 5_000);
+      }
+    };
+    setTimeout(poll, 5_000);
+    return address; // deposit address shown in TopUpModal
+  }
+
+  async withdraw(amount: number): Promise<string> {
+    if (!this.state) throw new Error("Wallet not connected");
+    if (amount <= 0) throw new Error("Amount must be greater than 0");
+    if (amount > this.inAppBalance)
+      throw new Error(
+        `Insufficient in-app balance ($${this.inAppBalance.toFixed(2)})`,
+      );
+    if (!this.playerAddress)
+      throw new Error(
+        "Player wallet address not set — enter it in the Withdraw modal",
+      );
+
     await this.ensureSepolia();
+
+    // App is connected as the in-app wallet; sign USDC transfer → player address
     const rawAmount = BigInt(Math.round(amount * 10 ** USDC_DECIMALS));
-    const data = transferData(recipient, rawAmount);
+    const data = transferData(this.playerAddress, rawAmount);
     const txHash = (await ethRequest("eth_sendTransaction", [
       { from: this.state.address, to: USDC_CONTRACT, data },
     ])) as string;
 
-    // Optimistically deduct from MetaMask balance and credit in-app immediately
-    this.inAppBalance = Math.round((this.inAppBalance + amount) * 100) / 100;
+    // Optimistically deduct from in-app balance + on-chain display
+    this.inAppBalance = Math.max(
+      0,
+      Math.round((this.inAppBalance - amount) * 100) / 100,
+    );
     saveInAppBalance(this.inAppBalance);
-    const optimisticBalance = Math.max(0, this.state.balance - amount);
+    const optimisticBalance = Math.max(
+      0,
+      Math.round((this.state.balance - amount) * 100) / 100,
+    );
     this.emit({
       ...this.state,
       balance: optimisticBalance,
       inAppBalance: this.inAppBalance,
     });
 
-    // Poll every 3 s (up to 10 attempts) until the on-chain balance confirms
-    const address = this.state.address;
+    // Poll for on-chain confirmation (balance should decrease on in-app address)
+    const snapBalance = this.state.balance;
     let attempts = 0;
     const poll = async () => {
       attempts++;
-      const confirmed = await this.fetchUsdc(address);
-      if (confirmed < this.state!.balance || attempts >= 10) {
+      const confirmed = await this.fetchUsdc(this.state!.address);
+      if (confirmed < snapBalance || attempts >= 10) {
         this.emit({
           ...this.state!,
           balance: confirmed,
@@ -243,60 +306,12 @@ class WalletBridgeService implements IWalletService {
     return txHash;
   }
 
-  async withdraw(amount: number): Promise<string> {
-    if (!this.state) throw new Error("Wallet not connected");
-    if (!PLATFORM_WALLET) throw new Error("PLATFORM_WALLET not configured");
-    if (amount <= 0) throw new Error("Amount must be greater than 0");
-    if (amount > this.inAppBalance)
-      throw new Error(
-        `Insufficient in-app balance ($${this.inAppBalance.toFixed(2)})`,
-      );
-
-    const playerAddress = this.state.address;
-    await this.ensureSepolia();
-
-    // Encode USDC transfer: from PLATFORM_WALLET → player's address
-    const rawAmount = BigInt(Math.round(amount * 10 ** USDC_DECIMALS));
-    const data = transferData(playerAddress, rawAmount);
-
-    // MetaMask will prompt user to sign from PLATFORM_WALLET account
-    const txHash = (await ethRequest("eth_sendTransaction", [
-      { from: PLATFORM_WALLET, to: USDC_CONTRACT, data },
-    ])) as string;
-
-    // Optimistically credit in-app → MetaMask display
-    this.inAppBalance = Math.max(
-      0,
-      Math.round((this.inAppBalance - amount) * 100) / 100,
-    );
-    saveInAppBalance(this.inAppBalance);
-    const optimisticBalance =
-      Math.round((this.state.balance + amount) * 100) / 100;
-    this.emit({
-      ...this.state,
-      balance: optimisticBalance,
-      inAppBalance: this.inAppBalance,
-    });
-
-    // Poll for on-chain confirmation (balance should increase on player address)
-    const snapBalance = this.state.balance;
-    let attempts = 0;
-    const poll = async () => {
-      attempts++;
-      const confirmed = await this.fetchUsdc(playerAddress);
-      if (confirmed > snapBalance || attempts >= 10) {
-        this.emit({
-          ...this.state!,
-          balance: confirmed,
-          inAppBalance: this.inAppBalance,
-        });
-      } else {
-        setTimeout(poll, 3_000);
-      }
-    };
-    setTimeout(poll, 3_000);
-
-    return txHash;
+  setPlayerAddress(address: string): void {
+    this.playerAddress = address;
+    savePlayerAddress(address);
+    if (this.state) {
+      this.emit({ ...this.state, playerAddress: address });
+    }
   }
 
   onStateChange(cb: (state: WalletState | null) => void): () => void {

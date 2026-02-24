@@ -3,10 +3,14 @@ import React, { useState } from "react";
 interface WithdrawModalProps {
   /** Free in-app balance (already excludes funds locked in active bets) */
   inAppBalance: number;
-  /** Amount locked in active bets — shown for context only, already excluded from inAppBalance */
+  /** Amount locked in active bets — shown for context only */
   lockedAmount: number;
+  /** In-app wallet address (signing from) */
   walletAddress: string;
+  /** Player's external wallet address (destination) — ask if not set */
+  playerAddress?: string;
   onWithdraw: (amount: number) => Promise<string>;
+  onSavePlayerAddress: (addr: string) => void;
   onClose: () => void;
 }
 
@@ -16,18 +20,32 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   inAppBalance,
   lockedAmount,
   walletAddress,
+  playerAddress,
   onWithdraw,
+  onSavePlayerAddress,
   onClose,
 }) => {
   const [amount, setAmount] = useState<string>("10");
   const [pending, setPending] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [addrInput, setAddrInput] = useState(playerAddress ?? "");
+  const [editingAddr, setEditingAddr] = useState(!playerAddress);
+
+  const effectivePlayerAddr = editingAddr ? addrInput : (playerAddress ?? addrInput);
+  const addrValid = /^0x[0-9a-fA-F]{40}$/.test(effectivePlayerAddr);
+
+  const saveAddr = () => {
+    if (addrValid) {
+      onSavePlayerAddress(effectivePlayerAddr);
+      setEditingAddr(false);
+    }
+  };
 
   // inAppBalance is already the free amount — locked was deducted when bets were placed
   const available = Math.max(0, Math.round(inAppBalance * 100) / 100);
   const parsed = parseFloat(amount);
-  const isValid = !isNaN(parsed) && parsed > 0 && parsed <= available;
+  const isValid = !isNaN(parsed) && parsed > 0 && parsed <= available && addrValid && !editingAddr;
 
   const handleConfirm = async () => {
     if (!isValid) return;
@@ -57,15 +75,54 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
           <div>
             <p className="text-white font-bold text-base">Withdraw to Wallet</p>
             <p className="text-gray-400 text-[11px] font-mono mt-0.5">
-              {short} · Sepolia
+              From {short} (in-app) · Sepolia
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-white text-xl px-1"
-          >
-            ×
-          </button>
+          <button onClick={onClose} className="text-gray-500 hover:text-white text-xl px-1">×</button>
+        </div>
+
+        {/* Player address — ask once, allow editing */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-gray-400 text-xs font-semibold uppercase tracking-wide">
+              Destination (player wallet)
+            </span>
+            {!editingAddr && playerAddress && (
+              <button
+                onClick={() => setEditingAddr(true)}
+                className="text-blue-400 text-[10px] hover:text-blue-300"
+              >
+                Change
+              </button>
+            )}
+          </div>
+          {editingAddr ? (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={addrInput}
+                onChange={(e) => setAddrInput(e.target.value)}
+                placeholder="0x... your MetaMask player address"
+                className="flex-1 bg-gray-800 border border-white/15 rounded-lg px-3 py-2 text-white text-xs font-mono outline-none focus:border-blue-500"
+              />
+              <button
+                onClick={saveAddr}
+                disabled={!addrValid}
+                className={`px-3 py-2 rounded-lg text-xs font-bold ${
+                  addrValid ? "bg-blue-500 text-black" : "bg-gray-700 text-gray-500 cursor-not-allowed"
+                }`}
+              >
+                Save
+              </button>
+            </div>
+          ) : (
+            <p className="text-white text-xs font-mono bg-gray-900 border border-white/10 rounded-lg px-3 py-2 break-all">
+              {effectivePlayerAddr || <span className="text-gray-500">Not set</span>}
+            </p>
+          )}
+          {editingAddr && !addrValid && addrInput !== "" && (
+            <p className="text-red-400 text-[10px] mt-1">Enter a valid 0x Ethereum address</p>
+          )}
         </div>
 
         {!txHash ? (
@@ -165,9 +222,8 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
 
             {/* Info */}
             <p className="text-gray-500 text-[11px] mb-4 leading-relaxed">
-              Transfers USDC from your goal.live in-app balance to your MetaMask
-              wallet via Sepolia. MetaMask will prompt you to sign from the
-              escrow account.
+              Transfers USDC from your in-app wallet to the destination address via Sepolia.
+              MetaMask will prompt you to sign from your in-app account ({short}).
             </p>
 
             {error && (

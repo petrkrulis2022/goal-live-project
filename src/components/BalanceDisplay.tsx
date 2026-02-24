@@ -3,7 +3,6 @@ import type { BalanceState } from "../types";
 
 interface BalanceDisplayProps {
   balance: BalanceState;
-  walletUsdcBalance: number;
   walletAddress: string | null;
   onConnect: () => void;
   onTopUp?: () => void;
@@ -12,7 +11,6 @@ interface BalanceDisplayProps {
 
 export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   balance,
-  walletUsdcBalance,
   walletAddress,
   onConnect,
   onTopUp,
@@ -69,16 +67,7 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         │
       </span>
 
-      {/* MetaMask on-chain USDC — source */}
-      <span style={{ color: "#6b7280", fontSize: "10px", fontWeight: 600 }}>
-        MetaMask
-      </span>
-      <span style={{ color: "#d1d5db", fontSize: "13px", fontWeight: 700 }}>
-        ${walletUsdcBalance.toFixed(2)}
-      </span>
-      <span style={{ color: "#6b7280", fontSize: "10px" }}>USDC</span>
-
-      {/* Top Up button */}
+      {/* Fund button (opens deposit address modal) */}
       {onTopUp && (
         <button
           onClick={onTopUp}
@@ -94,7 +83,7 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
             cursor: "pointer",
           }}
         >
-          + Top Up
+          + Fund
         </button>
       )}
 

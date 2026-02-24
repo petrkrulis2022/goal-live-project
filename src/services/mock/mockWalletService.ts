@@ -113,6 +113,13 @@ class MockWalletService implements IWalletService {
     return "0xmock_withdraw_" + Date.now();
   }
 
+  setPlayerAddress(address: string): void {
+    if (!this.state) return;
+    this.state = { ...this.state, playerAddress: address };
+    save(this.state);
+    this.notify();
+  }
+
   onStateChange(cb: (state: WalletState | null) => void): () => void {
     this.listeners.push(cb);
     return () => {

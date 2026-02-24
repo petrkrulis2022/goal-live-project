@@ -169,68 +169,84 @@ class RealWalletService implements IWalletService {
   }
 
   /**
-   * Top-up: transfer `amount` USDC on Sepolia from user → platform escrow.
-   * Returns the transaction hash.
+   * Polymarket-style top-up: returns the in-app wallet address for the user to
+   * send USDC to. Polls for incoming balance automatically.
    */
-  async topUp(amount: number): Promise<string> {
+  async topUp(_amount: number): Promise<string> {
     if (!this.state) throw new Error("Wallet not connected");
     if (!window.ethereum) throw new Error("MetaMask not available");
-    if (!PLATFORM_WALLET) {
-      throw new Error(
-        "VITE_PLATFORM_WALLET is not set — add it to your .env file.",
-      );
-    }
-    await this.ensureSepolia();
-    const rawAmount = BigInt(Math.round(amount * 10 ** USDC_DECIMALS));
-    const data = transferData(PLATFORM_WALLET, rawAmount);
-    const txHash = (await window.ethereum.request({
-      method: "eth_sendTransaction",
-      params: [{ from: this.state.address, to: USDC_CONTRACT, data }],
-    })) as string;
-    // Optimistically credit in-app balance after user signs
-    const newOnChain = await this.fetchUsdc(this.state.address);
-    const newInApp =
-      Math.round(((this.state.inAppBalance ?? 0) + amount) * 100) / 100;
-    this.emit({ ...this.state, balance: newOnChain, inAppBalance: newInApp });
-    return txHash;
+    const address = this.state.address;
+    const snapshotBalance = this.state.balance;
+    let attempts = 0;
+    const poll = async () => {
+      attempts++;
+      const confirmed = await this.fetchUsdc(address);
+      if (confirmed !== snapshotBalance) {
+        const delta = Math.max(0, confirmed - snapshotBalance);
+        const newInApp =
+          Math.round(((this.state?.inAppBalance ?? 0) + delta) * 100) / 100;
+        this.emit({
+          ...this.state!,
+          balance: confirmed,
+          inAppBalance: newInApp,
+        });
+      } else if (attempts < 30) {
+        setTimeout(poll, 5_000);
+      }
+    };
+    setTimeout(poll, 5_000);
+    return address; // deposit address shown in TopUpModal
   }
 
   /**
-   * Withdraw: transfer `amount` USDC on Sepolia from platform escrow → player wallet.
-   * MetaMask will prompt to sign from the PLATFORM_WALLET (escrow) account.
-   * Returns the transaction hash.
+   * Withdraw: sign from in-app wallet (connected) → player's external wallet.
    */
   async withdraw(amount: number): Promise<string> {
     if (!this.state) throw new Error("Wallet not connected");
     if (!window.ethereum) throw new Error("MetaMask not available");
-    if (!PLATFORM_WALLET)
-      throw new Error("VITE_PLATFORM_WALLET is not set in .env");
     if (amount <= 0) throw new Error("Amount must be greater than 0");
     const currentInApp = this.state.inAppBalance ?? 0;
     if (amount > currentInApp)
       throw new Error(
         `Insufficient in-app balance ($${currentInApp.toFixed(2)})`,
       );
+    const playerAddress =
+      this.state.playerAddress ??
+      localStorage.getItem("gl_player_address") ??
+      "";
+    if (!playerAddress)
+      throw new Error(
+        "Player wallet address not set — enter it in the Withdraw modal",
+      );
 
     await this.ensureSepolia();
     const rawAmount = BigInt(Math.round(amount * 10 ** USDC_DECIMALS));
-    const data = transferData(this.state.address, rawAmount);
+    const data = transferData(playerAddress, rawAmount);
 
-    // MetaMask will prompt to sign from PLATFORM_WALLET (escrow account)
+    // MetaMask signs from in-app wallet (currently connected account)
     const txHash = (await window.ethereum.request({
       method: "eth_sendTransaction",
-      params: [{ from: PLATFORM_WALLET, to: USDC_CONTRACT, data }],
+      params: [{ from: this.state.address, to: USDC_CONTRACT, data }],
     })) as string;
 
-    // Optimistically update state
+    // Optimistically deduct
     const newInApp = Math.max(
       0,
       Math.round((currentInApp - amount) * 100) / 100,
     );
-    const newBalance = Math.round((this.state.balance + amount) * 100) / 100;
+    const newBalance = Math.max(
+      0,
+      Math.round((this.state.balance - amount) * 100) / 100,
+    );
     this.emit({ ...this.state, balance: newBalance, inAppBalance: newInApp });
-
     return txHash;
+  }
+
+  setPlayerAddress(address: string): void {
+    localStorage.setItem("gl_player_address", address);
+    if (this.state) {
+      this.emit({ ...this.state, playerAddress: address });
+    }
   }
 
   onStateChange(cb: (state: WalletState | null) => void): () => void {

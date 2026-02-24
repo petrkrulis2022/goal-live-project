@@ -103,12 +103,15 @@ export interface IBettingService {
 
 // ── WalletState ────────────────────────────────
 export interface WalletState {
+  /** In-app/escrow wallet address — this is what the app connects to */
   address: string;
-  /** On-chain USDC in MetaMask (the source wallet) */
+  /** On-chain USDC of the in-app wallet */
   balance: number;
-  /** In-app balance funded by top-ups — used for placing bets */
+  /** Free in-app balance (balance minus locked bets) — used for placing bets */
   inAppBalance: number;
   connected: boolean;
+  /** Player's external wallet address — where withdrawals are sent */
+  playerAddress?: string;
 }
 
 // ── IWalletService ─────────────────────────────
@@ -122,16 +125,18 @@ export interface IWalletService {
   /** Add amount to wallet balance (mock: immediate; real: settlement) */
   addBalance(amount: number): Promise<void>;
   /**
-   * Top-up in-app balance by transferring USDC from the user's wallet.
-   * Mock: instant credit. Real: on-chain USDC transfer on Sepolia.
-   * Returns a tx hash (or mock id).
+   * Deposit-address style top-up.
+   * Real: returns the in-app wallet address for the user to send USDC to.
+   * Mock: instantly credits inAppBalance and returns a mock id.
    */
   topUp(amount: number): Promise<string>;
   /**
-   * Withdraw in-app balance back to the player's MetaMask wallet.
-   * Mock: instant in-app state transfer. Real: on-chain USDC from escrow → player.
+   * Withdraw in-app balance → player's external wallet.
+   * App must be connected as the in-app/escrow wallet.
    * Returns a tx hash (or mock id).
    */
   withdraw(amount: number): Promise<string>;
+  /** Store the player's external wallet address for future withdrawals. */
+  setPlayerAddress(address: string): void;
   onStateChange(cb: (state: WalletState | null) => void): () => void;
 }

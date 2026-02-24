@@ -29,7 +29,7 @@ const MW_OUTCOMES: Array<{ outcome: MatchWinnerOutcome; label: string }> = [
 ];
 
 export const BettingOverlay: React.FC = () => {
-  const { wallet, connect, topUp, withdraw } = useWallet();
+  const { wallet, connect, topUp, withdraw, setPlayerAddress } = useWallet();
   const {
     match,
     players,
@@ -360,7 +360,6 @@ export const BettingOverlay: React.FC = () => {
         >
           <BalanceDisplay
             balance={balance}
-            walletUsdcBalance={wallet?.balance ?? 0}
             walletAddress={wallet?.address ?? null}
             onConnect={connect}
             onTopUp={wallet ? () => setModal({ type: "topup" }) : undefined}
@@ -664,9 +663,9 @@ export const BettingOverlay: React.FC = () => {
       )}
       {modal?.type === "topup" && wallet && (
         <TopUpModal
-          walletBalance={wallet.balance}
-          walletAddress={wallet.address}
-          onTopUp={topUp}
+          depositAddress={wallet.address}
+          currentBalance={wallet.inAppBalance}
+          onRefresh={refresh}
           onClose={() => setModal(null)}
         />
       )}
@@ -675,7 +674,9 @@ export const BettingOverlay: React.FC = () => {
           inAppBalance={wallet.inAppBalance}
           lockedAmount={balance.locked}
           walletAddress={wallet.address}
+          playerAddress={wallet.playerAddress}
           onWithdraw={withdraw}
+          onSavePlayerAddress={setPlayerAddress}
           onClose={() => setModal(null)}
         />
       )}
