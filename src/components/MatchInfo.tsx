@@ -105,24 +105,19 @@ export const MatchInfo: React.FC<MatchInfoProps> = ({ match }) => {
       </p>
 
       {/* Logo — centre of score row */}
-      <div
+      {/* Score separator */}
+      <p
         style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
+          color: "rgba(255,255,255,0.3)",
+          fontWeight: 700,
+          fontSize: "22px",
+          textAlign: "center",
+          margin: 0,
+          lineHeight: 1,
         }}
       >
-        <img
-          src={goalLiveLogo}
-          alt="goal.live"
-          style={{
-            height: "20px",
-            width: "auto",
-            opacity: 0.9,
-            display: "block",
-          }}
-        />
-      </div>
+        —
+      </p>
 
       {/* Away score */}
       <p
