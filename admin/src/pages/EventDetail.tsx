@@ -341,10 +341,10 @@ export default function EventDetail() {
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     "pre-match": "bg-yellow-500/10 text-yellow-400",
-    halftime:   "bg-blue-500/10 text-blue-400",
-    live:       "bg-green-500/10 text-green-400",
-    finished:   "bg-gray-700 text-gray-400",
-    cancelled:  "bg-red-500/10 text-red-400",
+    halftime: "bg-blue-500/10 text-blue-400",
+    live: "bg-green-500/10 text-green-400",
+    finished: "bg-gray-700 text-gray-400",
+    cancelled: "bg-red-500/10 text-red-400",
   };
   return (
     <span

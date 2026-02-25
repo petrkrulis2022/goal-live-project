@@ -1,906 +1,383 @@
-# goal.live Development Roadmap
+# goal.live — Master Development Plan
 
-**Last Updated:** February 20, 2026  
-**Status:** MVP Planning Phase  
-**Strategy:** Phased Build with Progressive Integration
-
----
-
-## 🎯 Read This FIRST
-
-**For Copilot Sessions:**
-
-1. ✅ Understand the **FULL PRODUCT VISION** (Sections 1-3 below)
-2. ✅ Build in **PHASES** (Section 4 below)
-3. ✅ Phase 1 = Frontend ONLY with ALL mocks (no backend, no contracts, no CRE)
-4. ✅ Phases 2-4 = Gradually add real integrations
-5. ✅ Stay flexible on mock vs real CRE data (depends on availability)
-
-**This document shows:**
-
-- ✨ What we're building (complete architecture)
-- 🔧 How we're building it (phased approach)
-- 🎭 What's mocked vs real in each phase
+**Last Updated:** February 25, 2026
+**Status:** Phase 1 ✅ Complete · Phase 2 🔄 In Progress (admin scaffold done, Supabase pending)
+**Repo:** `petrkrulis2022/goal-live-project` · branch `main` · last commit `e0e818a`
 
 ---
 
-# Part 1: FULL PRODUCT VISION
+## Supporting Docs
 
-> This is what the complete MVP looks like when finished. We build this incrementally in phases.
-
-## 1.1 Complete Architecture Diagram
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         FRONTEND (React + Vite)                      │
-│  ┌────────────────┐  ┌──────────────┐  ┌─────────────────────────┐ │
-│  │  Livestream    │  │  Bet Panel   │  │  Static Player List     │ │
-│  │  (OBS/force    │  │  (Sepolia    │  │  (11 left, 11 right)    │ │
-│  │   unmute)      │  │   USDC)      │  │  Click to bet/change    │ │
-│  └────────────────┘  └──────────────┘  └─────────────────────────┘ │
-│                                                                       │
-│  Services Layer (Mock in Phase 1 → Real in Later Phases):           │
-│  - IWalletService (MetaMask)                                         │
-│  - IBettingService (Smart Contract or Mock)                          │
-│  - IMatchService (CRE or Mock)                                       │
-│  - IAudioService (ACR game sync)                                     │
-│  - IWorldIDService (Authentication)                                  │
-└───────────────────────────────┬─────────────────────────────────────┘
-                                │
-        ┌───────────────────────┼───────────────────────┐
-        │                       │                       │
-        ▼                       ▼                       ▼
-┌───────────────┐    ┌──────────────────┐    ┌────────────────────┐
-│  BLOCKCHAIN   │    │     BACKEND      │    │   CHAINLINK CRE    │
-│  (Sepolia)    │    │   (Supabase)     │    │  (Sports Oracle)   │
-├───────────────┤    ├──────────────────┤    ├────────────────────┤
-│ • USDC        │    │ • Bet tracking   │    │ • Match data       │
-│ • Bonding     │    │ • Match history  │    │ • Player lineups   │
-│   Curve       │    │ • Realtime sync  │    │ • Live events      │
-│ • Betting     │    │ • AI dashboard   │    │ • Goal confirmations│
-│   Contract    │    │ • World ID logs  │    │ • Official results │
-│ • Penalty     │    │ • Bookies polls  │    │                    │
-│   Logic       │    │                  │    │ (May be mocked)    │
-└───────────────┘    └──────────────────┘    └────────────────────┘
-```
-
-## 1.2 Complete Tech Stack
-
-| Layer               | Technology            | Purpose                            | Phase Introduced                  |
-| ------------------- | --------------------- | ---------------------------------- | --------------------------------- |
-| **Frontend**        | React 18 + TypeScript | UI framework                       | Phase 1                           |
-|                     | Vite                  | Build tool                         | Phase 1                           |
-|                     | ethers.js v6          | Blockchain interactions            | Phase 1 (mocked) / Phase 2 (real) |
-|                     | Radix UI / shadcn/ui  | Component library                  | Phase 1                           |
-|                     | TailwindCSS           | Styling                            | Phase 1                           |
-|                     | ACR Cloud             | Audio fingerprinting for game sync | Phase 1 (mocked) / Phase 3 (real) |
-|                     | @worldcoin/idkit      | World ID authentication SDK        | Phase 4                           |
-| **Smart Contracts** | Solidity 0.8.x        | Contract language                  | Phase 2                           |
-|                     | Hardhat               | Development framework              | Phase 2                           |
-|                     | OpenZeppelin          | Security libraries                 | Phase 2                           |
-|                     | Sepolia Testnet       | Ethereum test network              | Phase 2                           |
-|                     | USDC (testnet)        | Betting currency                   | Phase 2                           |
-| **Backend**         | Supabase              | Database + realtime + auth         | Phase 2                           |
-|                     | PostgreSQL            | Database engine                    | Phase 2                           |
-|                     | Edge Functions        | Serverless API endpoints           | Phase 3                           |
-|                     | Row Level Security    | Data access control                | Phase 2                           |
-| **Oracle**          | Chainlink CRE         | Sports data oracle                 | Phase 3                           |
-|                     | Custom Feed           | Match events delivery              | Phase 3 (mock or real)            |
-| **AI/ML**           | PostgreSQL            | Observation data store             | Phase 4                           |
-|                     | (Future) Python/TF    | Predictive model training          | Post-MVP                          |
-| **DevOps**          | Git                   | Version control                    | All phases                        |
-|                     | Vercel / Netlify      | Frontend hosting                   | Phase 1+                          |
-|                     | GitHub Actions        | CI/CD                              | Phase 2+                          |
-
-## 1.3 Complete Feature List
-
-### Core Features (MVP)
-
-- ✅ **Live betting on next goal scorer** (USDC on Sepolia)
-- ✅ **Unlimited bet changes** with hybrid penalty
-- ✅ **Static player list UI** (11 left side, 11 right side)
-- ✅ **Force unmute** for ACR audio sync
-- ✅ **Provisional balance** during match
-- ✅ **Final settlement** post-match
-- ✅ **World ID authentication** (3 checkpoints: start, finish, withdrawal)
-- ✅ **Historical demo mode** (replay finished match at 10x speed)
-- ✅ **AI observational dashboard** (bookies behavior tracking)
-- ✅ **Zero balance alerts** (force top-up)
-
-### Penalty System
-
-**Hybrid Formula:** `penalty = base[change_count] × time_decay_multiplier`
-
-| Change # | Base Rate | Example (20' into match) |
-| -------- | --------- | ------------------------ |
-| 1st      | 3%        | 3% × 0.78 = 2.34%        |
-| 2nd      | 5%        | 5% × 0.78 = 3.90%        |
-| 3rd      | 8%        | 8% × 0.78 = 6.24%        |
-| 4th      | 12%       | 12% × 0.78 = 9.36%       |
-| 5th+     | 15%       | 15% × 0.78 = 11.70%      |
-
-**Time Decay:** `1 - (current_minute / 90)`
-
-### Removed Features (Not in MVP)
-
-- ❌ Memecoins (air.fun tokens)
-- ❌ Solana blockchain
-- ❌ Base L2
-- ❌ Match Winner bets
-- ❌ Cards/Corners bets
-- ❌ Tracking overlay UI
-- ❌ Bookies-style odds changes
+| File | Purpose |
+|---|---|
+| **This file** | The only plan file to follow |
+| `MVP_FINAL_SPEC.md` | All design decisions (penalty formula, bet types, UI layout) |
+| `ARCHITECTURE.md` | Technical deep-dive (system diagram, data flow) |
+| `CONTRACTS_BUILD_PROMPT.md` | Smart contract spec for Phase 3 |
+| `CRE_CHAINLINK_INTEGRATION_GUIDE.md` | CRE oracle technical reference (Phase 4) |
+| `LIVE_ODDS_CAPTURE_AND_MOCK_CRE_API.md` | Live odds capture pipeline + mock CRE API strategy |
+| `CRE_INTEGRATION_FOR_MVP_PROMPTS.md` | OddsAPI capture service code + Google Sheets pipeline |
+| `CRE_API_ARCHITECTURE.md` (root) | ML model architecture for in-play odds prediction |
 
 ---
 
-# Part 2: PHASED BUILD STRATEGY
+## Product in One Paragraph
 
-> We build incrementally, starting with mocked frontend to test gameplay.
-
-## Overview Table
-
-| Phase | Duration | Focus           | Backend   | Contracts | CRE             | Output           |
-| ----- | -------- | --------------- | --------- | --------- | --------------- | ---------------- |
-| **1** | Week 1-2 | Frontend only   | ❌ Mocked | ❌ Mocked | ❌ Mocked       | Playable UI demo |
-| **2** | Week 3   | Smart contracts | ✅ Basic  | ✅ Real   | ❌ Mocked       | On-chain betting |
-| **3** | Week 4   | Backend + CRE   | ✅ Full   | ✅ Real   | 🎭 Mock or Real | Historical demo  |
-| **4** | Week 5   | AI + World ID   | ✅ Full   | ✅ Real   | 🎭 Mock or Real | Full MVP         |
-
-**Legend:**
-
-- ❌ Mocked = Entirely simulated in frontend
-- ✅ Real = Fully integrated
-- 🎭 Mock or Real = Depends on CRE data availability
+**goal.live** is a Chrome extension that overlays interactive player buttons on YouTube/Twitch football streams. Users connect a MetaMask wallet, pick a player to score the next goal, and lock in a USDC bet on Ethereum Sepolia. Bets can be changed unlimited times during the match (each change incurs a hybrid penalty: `base[n] × (1 − minute/90)`). Provisional credits are shown instantly when goals occur; final USDC payouts are settled post-match via Chainlink CRE oracle data. An Admin web app lets the platform operator create events, manage the USDC pool, and trigger settlement.
 
 ---
 
-## Phase 1: Frontend Only (ALL MOCKED)
+## What Is Built (Feb 25, 2026)
 
-**Goal:** Build playable frontend to test game experience
+### Phase 1 — Chrome Extension ✅
 
-**Build Prompt:** [FRONTEND_BUILD_PROMPT.md](./FRONTEND_BUILD_PROMPT.md)
+| Component | Status |
+|---|---|
+| Chrome MV3 extension (Vite + React 18 + TS + Tailwind) | ✅ |
+| BettingOverlay, PlayerButton, BetModal, BetChangeModal | ✅ |
+| BalanceDisplay, MyBets, SettlementDisplay, TopUpModal, WithdrawModal | ✅ |
+| Mock / Real service switcher (`VITE_USE_MOCK`) in `src/services/index.ts` | ✅ |
+| `src/data/pre_match_odds.json` — all 22 real Feb 21 players, full markets | ✅ |
+| `src/data/live_snapshots.json` — 11 snapshots min 0–90, live odds drift, goal events | ✅ |
+| Supabase SQL schema written (4 migration files in `supabase/migrations/`) | ✅ |
 
-### What to Build
+### Phase 2 — Admin Web App + Supabase 🔄
 
-```
-✅ React app with all UI components
-✅ Static player list (11 left, 11 right)
-✅ Bet placement flow
-✅ Bet change flow with penalty preview
-✅ Mock wallet connection (hardcoded address)
-✅ Mock match data (fake players, odds)
-✅ Mock bet submission (console.log only)
-✅ Mock penalty calculation (frontend-only)
-✅ Mock livestream (static video or iframe)
-✅ Mock audio sync (simulated game minute)
-```
-
-### Mock Service Implementations
-
-**All services return fake data:**
-
-```typescript
-// Mock Wallet Service
-export class MockWalletService implements IWalletService {
-  async connect() {
-    return { address: "0xMOCK123...", balance: 1000000000n }; // 1000 USDC
-  }
-  async getBalance() {
-    return 1000000000n;
-  }
-}
-
-// Mock Betting Service
-export class MockBettingService implements IBettingService {
-  async placeBet(playerId: string, amount: bigint) {
-    console.log("Mock bet placed:", { playerId, amount });
-    return { success: true, txHash: "0xMOCK_TX" };
-  }
-  async getBets(wallet: string) {
-    return [
-      {
-        id: 1,
-        playerId: "p1",
-        amount: 100000000n,
-        odds: 45000,
-        changeCount: 0,
-      },
-    ];
-  }
-}
-
-// Mock Match Service
-export class MockMatchService implements IMatchService {
-  async getMatch(id: string) {
-    return {
-      id,
-      homeTeam: "Real Madrid",
-      awayTeam: "Barcelona",
-      status: "live",
-      minute: 23,
-      score: { home: 0, away: 0 },
-      players: MOCK_PLAYERS, // Hardcoded array
-    };
-  }
-}
-```
-
-**No Backend Calls:** Everything runs in browser memory.
-
-**Deliverable:** Playable demo where you can:
-
-- See match and players
-- Place bet
-- Change bet and see penalty preview
-- See balance update (in-memory only)
+| Component | Status |
+|---|---|
+| `vite.admin.config.ts` — root `admin/`, port 5174, dist `dist-admin/` | ✅ |
+| `admin/src/App.tsx` + react-router-dom v7 routing | ✅ |
+| `admin/src/components/Layout.tsx` — dark sidebar, green active nav | ✅ |
+| `admin/src/pages/Dashboard.tsx` — all matches from Supabase | ✅ |
+| `admin/src/pages/CreateEvent.tsx` — inserts match to Supabase | ✅ |
+| `admin/src/pages/EventDetail.tsx` — 4-tab view: overview / players / bets / goals | ✅ |
+| `admin/src/pages/FundPool.tsx` — contract deploy stub + USDC fund input | ✅ |
+| `admin/src/services/contractService.ts` — ethers.js stubs (Phase 3 wires real contract) | ✅ |
+| `package.json` scripts: `dev:admin`, `build:admin` | ✅ |
+| **Supabase migrations applied to live DB** | ❌ User must restore paused project |
 
 ---
 
-## Phase 2: Smart Contracts + Basic Backend
+## Phase 2 Remaining — Supabase
 
-**Goal:** Real on-chain betting with Sepolia USDC
+> User action required — project is paused on free tier
 
-**Build Prompts:**
-
-- [CONTRACTS_BUILD_PROMPT.md](./CONTRACTS_BUILD_PROMPT.md)
-- [BACKEND_BUILD_PROMPT.md](./BACKEND_BUILD_PROMPT.md) (Supabase setup only)
-
-### What to Build
-
-```
-✅ GoalLiveBetting.sol smart contract
-✅ Hybrid penalty calculation in Solidity
-✅ Deploy to Sepolia testnet
-✅ Hardhat scripts and tests
-✅ Supabase database setup
-✅ Basic bet tracking tables
-✅ Frontend integration (replace MockBettingService)
-```
-
-### Mock vs Real
-
-| Component        | Status    | Details                   |
-| ---------------- | --------- | ------------------------- |
-| Wallet           | ✅ Real   | MetaMask on Sepolia       |
-| USDC             | ✅ Real   | Sepolia testnet USDC      |
-| Betting Contract | ✅ Real   | Deployed on Sepolia       |
-| Penalty Calc     | ✅ Real   | On-chain calculation      |
-| Match Data       | ❌ Mocked | Still hardcoded players   |
-| Goal Events      | ❌ Mocked | Manual trigger in UI      |
-| CRE Oracle       | ❌ Mocked | Frontend simulates events |
-
-### Supabase Tables Created
-
-- `matches`
-- `players`
-- `bets`
-- `bet_changes`
-- `goal_events` (manually inserted for now)
-
-**Deliverable:** Real bets on Sepolia with penalty enforcement
+1. Go to https://supabase.com/dashboard/project/weryswulejhjkrmervnf → restore project
+2. SQL Editor → run in order:
+   - `supabase/migrations/001_matches_players.sql`
+   - `supabase/migrations/002_bets.sql`
+   - `supabase/migrations/003_events_odds_ai.sql`
+   - `supabase/migrations/004_seed_demo_match.sql`
+3. Set `.env` with `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`
+4. Run `npm run dev:admin` → test Dashboard loads matches
 
 ---
 
-## Phase 3: CRE Integration (Mock or Real)
+## Phase 3 — Smart Contracts (Next Up)
 
-**Goal:** Automated match data and events via custom bookies API + MockCREService
+**Goal:** Real on-chain betting with Sepolia USDC.
+**Full spec:** `docs/CONTRACTS_BUILD_PROMPT.md`
 
-**Build Prompt:** [BACKEND_BUILD_PROMPT.md](./BACKEND_BUILD_PROMPT.md) (CRE sections)
-
-### What to Build
-
-```
-✅ Custom internal "Bookies API Service" (our own data layer)
-✅ MockCREService that calls our Bookies API
-✅ Webhook endpoint (Supabase Edge Function)
-✅ Historical demo playback system (10x speed replay)
-✅ Realtime event broadcasting to frontend
-✅ Provisional balance + dynamic odds calculation on goal
-```
-
-### Recommended MVP Approach: Custom Bookies API Service
-
-Instead of waiting for external CRE or real-time API access, **build a lightweight internal API that serves one complete match** with all known stats. This becomes your MVP's data engine.
-
-**Architecture:**
+### Hardhat project structure
 
 ```
-┌────────────────────────────────────────────────────┐
-│    Our Custom Bookies API Service                  │
-│    (Simple Node.js/Express server)                 │
-├────────────────────────────────────────────────────┤
-│                                                    │
-│  POST /api/matches/setup                           │
-│  ├─ Upload match data:                             │
-│  │  - PreMatch odds (from The Odds API)            │
-│  │  - Lineups (player names, positions)            │
-│  │  - Match events (goals, cards, subs - KNOWN)    │
-│  │  - Final result (KNOWN)                         │
-│  │                                                 │
-│  GET /api/matches/:matchId/state                   │
-│  ├─ Returns current game state at requested time   │
-│  │                                                 │
-│  GET /api/matches/:matchId/odds?minute=23          │
-│  ├─ Returns odds adjusted for events at min 23:    │
-│  │  - Base odds: from pre-match (The Odds API)     │
-│  │  - Dynamic adjustment: if Benzema scores @ 23', │
-│  │    then his odds DROP (he's less likely now)    │
-│  │  - Substitutes: if player subbed off, odds LOCK │
-│  │                                                 │
-│  POST /api/matches/:matchId/reset                  │
-│  ├─ Reset match state to kickoff                   │
-│  ├─ Allows infinite replays for demo/testing       │
-│  │                                                 │
-└────────────────────────────────────────────────────┘
-         ↑                                ↓
-         │                                │
-   MockCREService                   Frontend + Smart Contracts
-   (calls this API)                  (call this API for odds/state)
+contracts/
+  GoalLiveBetting.sol        ← main escrow + bet logic
+  interfaces/
+    IGoalLiveBetting.sol
+  mocks/
+    MockUSDC.sol
+hardhat.config.ts
+scripts/
+  deploy.ts
+test/
+  GoalLiveBetting.test.ts
 ```
 
-### Data Source Strategy
+### `GoalLiveBetting.sol` function surface
 
-**For MVP Demo, choose ONE of these approaches:**
+```solidity
+// Admin / operator
+function createMatch(string matchId, uint256 kickoffTime) external onlyOwner;
+function setOracle(address oracle) external onlyOwner;
+function fundPool(uint256 amount) external onlyOwner;         // USDC approve + transfer in
+function withdrawPlatformFees() external onlyOwner;
 
-#### Option A: Recent Completed Match (RECOMMENDED)
+// User flow (called by extension or Supabase Edge Function)
+function lockBet(bytes32 betId, address bettor, string playerId, uint256 amount, uint256 odds) external;
+function changeBet(bytes32 betId, string newPlayerId, uint256 penaltyAmount) external;
 
-Use a match that was **played recently** (last 2-7 days) where all stats are known:
+// Oracle settlement (called by Chainlink CRE oracle)
+function settleMatch(string matchId, string[] scorerIds) external onlyOracle;
+
+// Views
+function getPoolStats() external view returns (uint256 totalBalance, uint256 totalLocked, uint256 available, uint256 fees);
+function getBet(bytes32 betId) external view returns (Bet memory);
+```
+
+### Penalty formula (must match frontend)
+
+```
+penalty = base[changeCount] × (1 − minute / 90)
+base = { 1st: 3%, 2nd: 5%, 3rd: 8%, 4th: 12%, 5th+: 15% }
+```
+
+### Wire-up after deploy
+
+1. Copy ABI to `admin/src/services/contractService.ts` — replace stub bodies with ethers.js calls
+2. Set `VITE_CONTRACT_ADDRESS` in `.env`
+3. Update `src/services/real/bettingService.ts` → call `lockBet()` / `changeBet()`
+4. Add `useAdminWallet.ts` hook (MetaMask connect, compare address to `contract.owner()`, redirect `/unauthorized` if mismatch)
+
+### Admin app — Phase 3 completions
+
+These pages are scaffolded but need real contract wiring:
+
+**Dashboard (`/dashboard`)**
+- Platform wallet balance + pool USDC balance from `getPoolStats()`
+- Quick stats: total locked USDC, total paid out, platform fees
+
+**Create Event (`/events/new`)**
+- On submit → call `createMatch()` on contract via MetaMask → insert row in Supabase
+- Oracle address pre-filled with deployed oracle address, editable
+- Odds API provider selection + API key (stored in Supabase only, never in contract)
+
+**Event Detail (`/events/:matchId`) — 4 panels**
+
+| Panel | Contents |
+|---|---|
+| Oracle | Current oracle address, `setOracle(newAddress)` MetaMask button, oracle status (ping) |
+| Odds API | Configured provider, test connection, manual odds override, "Sync odds → players table" Edge Fn |
+| Pool Status | `usdc.balanceOf(contractAddress)`, totalLocked, available, fees, Fund Pool button (approve + `fundPool()`), "Collect fees" (`withdrawPlatformFees()`) |
+| Settlement | CRE result payload preview, winning player list, "Settle Match" → `settleMatch()`, post-settle stats |
+
+**Fund Pool (`/events/:matchId/fund`)**
+- Current escrow balance
+- Deposit USDC (MetaMask approve + `fundPool()`)
+- Historical funding log
+- Liquidity health: "Pool can cover X max simultaneous payouts"
+
+### Supabase Edge Functions (Phase 3)
+
+```
+supabase/functions/
+  lock-bet/        ← bet placed → write bets table + call lockBet() on contract
+  settle-match/    ← post-match → read goal_events → call settleMatch() on contract
+  sync-odds/       ← admin trigger → fetch odds from provider → update players table
+```
+
+---
+
+## Phase 4 — Chainlink CRE Integration
+
+**Goal:** Replace mock match data with verified on-chain sports data.
+**Full reference:** `docs/CRE_CHAINLINK_INTEGRATION_GUIDE.md`
+
+### Five data pillars
+
+| Pillar | Data | Timing | Now (mock) | Phase 4 (real) |
+|---|---|---|---|---|
+| Pre-game odds | Player goalscorer odds | Hours before kickoff | `pre_match_odds.json` | CRE HTTP + cron |
+| Player lineups | Starting 11 | 15 min pre-kick | Seeded in Supabase | CRE HTTP |
+| Live goal events | Player, minute | Real-time | Manual insert to `goal_events` | CRE webhook |
+| Live odds updates | Volatile, 1-2s freq | Very high | Static JSON snapshots | Chainlink Data Streams (pull) |
+| Official result | Final scorers | Post-match | Hardcoded in seed | CRE HTTP |
+
+### CRE workflow structure (Phase 4)
 
 ```yaml
-Example: Manchester City vs Newcastle (if already played)
-└─ ✅ All stats publicly available (go to ESPN, FBRef)
-└─ ✅ Pre-match odds retrievable from The Odds API
-└─ ✅ Can replay unlimited times
-└─ ✅ No dependency on live broadcast timing
-└─ ✅ Demo works anytime, anywhere
+name: goal-live-match-oracle
+triggers:
+  - type: Cron
+    schedule: "*/1 * * * *"     # every minute during live match
+  - type: Webhook
+    path: /goal-event             # fired by Opta/Sportmonks on goal
+capabilities:
+  - http                          # fetch from data provider
+  - threshold-encryption          # protect API key in workflow
+  - evm-write                     # write result to GoalLiveBetting contract
 ```
 
-**Workflow:**
+### Mock vs Real CRE decision
 
-1. Find match (ESPN/FBRef)
-2. Get lineups, final score, all goals + times
-3. Fetch pre-match odds from The Odds API (they archive this)
-4. Build your Bookies API with this data
-5. Replay anytime during hackathon
+| Scenario | Approach |
+|---|---|
+| Demo / current | Mock oracle — manual insert to `goal_events` table in Supabase |
+| Testnet with live match | CRE HTTP + webhook from Opta/Sportmonks |
+| Production | Full CRE workflow, Chainlink-verified settlement |
 
-#### Option B: Today's Game (If It Fits Timeline)
+For demo, swap mock oracle by just inserting rows into `goal_events` via admin SQL or admin panel. The contract's `settleMatch()` reads from this table via the Supabase Edge Function.
 
-Use a match happening **today/tomorrow**:
-
-```yaml
-Example: Manchester City vs Newcastle (if playing today)
-└─ ✅ Real odds from The Odds API
-└─ ✅ Real lineups when published (T-15 min pre-game)
-└─ └─ Get from The Odds API or ESPN
-└─ ✅ Watch live, record all events
-└─ ✅ After match: compile full stats
-└─ After: Can replay demo using compiled data
-```
-
-**Workflow:**
-
-1. Watch game live
-2. Record: minute of each goal, player name, substitutions, cards
-3. After final whistle: compile official stats
-4. Build Bookies API with recorded data
-5. Demo MVP with this data
-
-**Risk:** Depends on timing. If game is late, you might finish after hackathon ends.
-
-#### Option C: Hybrid (Best for Hackathon)
-
-- Use a **recent past match** (completed, all stats known)
-- Get pre-match odds from The Odds API (they archive odds for past matches)
-- Build stable Bookies API immediately
-- If external CRE becomes available later → integrate real data
-
-**Recommended for goal.live MVP: OPTION A (recent past match)**
-
-### Implementation: Your Bookies API Service
+### Service abstraction (already in place)
 
 ```typescript
-// backend/src/services/bookiesApi.ts
+// src/services/index.ts
+import { VITE_USE_MOCK } from '../utils/env'
+export const services = {
+  data: VITE_USE_MOCK ? new MockDataService() : new RealDataService(),
+  betting: VITE_USE_MOCK ? new MockBettingService() : new RealBettingService(),
+  wallet: VITE_USE_MOCK ? new MockWalletService() : new RealWalletService(),
+}
+// Phase 4: RealDataService calls CRE instead of Supabase static
+```
 
-export interface MatchSetupData {
-  matchId: string;
-  homeTeam: string;
-  awayTeam: string;
-  kickoffTime: Date;
+---
 
-  // Pre-match odds from The Odds API (or archive)
-  preMatchOdds: {
-    [playerId: string]: {
-      name: string;
-      odds: number; // Decimal odds (e.g., 4.5)
-      position: string;
-    };
-  };
+## Phase 5 — Live Odds ML / CRE API
 
-  // All events that will happen (in chronological order)
-  events: Array<{
-    minute: number;
-    type: "GOAL" | "RED_CARD" | "YELLOW_CARD" | "SUBSTITUTION";
-    playerId: string;
-    playerName: string;
-    team: "home" | "away";
-  }>;
+**Goal:** Real in-play odds modelling from captured bookmaker data → serve as CRE prediction feed.
+**References:** `docs/LIVE_ODDS_CAPTURE_AND_MOCK_CRE_API.md` · `CRE_API_ARCHITECTURE.md` (root)
 
-  // Final result
-  finalResult: {
-    scoreHome: number;
-    scoreAway: number;
+### Pipeline
+
+```
+The Odds API (polled every 30s during live match)
+  └─ OddsCapture TypeScript service
+       └─ Google Sheets (180+ rows per 90-min match)
+            └─ Post-match: Sheets → MatchProfile JSON
+                 └─ Python model training (Random Forest regressor)
+                      └─ CRE API: POST /api/v1/predict-odds
+```
+
+### Match data already captured (Feb 21 City vs Newcastle)
+
+- `src/data/pre_match_odds.json` — all 22 real players, full markets (`will_score`, `wont_score`, `score_2plus`, `score_3plus`)
+- `src/data/live_snapshots.json` — 11 snapshots (min 0, 17, 30, 38, 45, 54, 65, 71, 80, 84, 90), live odds drift, cumulative stats, goal events
+
+### Predict endpoint contract
+
+```typescript
+// POST /api/v1/predict-odds
+interface PredictRequest {
+  player: string;
+  pre_match_odds: number;           // e.g. 1.52
+  current_stats: {
+    minute: number;                 // 0–90
+    score: { home: number; away: number };
+    shots_on_target: { home: number; away: number };
+    xg: { home: number; away: number };
+    possession: { home: number };   // 0–100
+    player_shots: number;
+    player_xg: number;
+    player_touches_in_box: number;
   };
 }
-
-export class BookiesApiService {
-  private matchData: MatchSetupData;
-  private currentMinute: number = 0;
-  private playersOnPitch: Set<string> = new Set();
-
-  async setupMatch(data: MatchSetupData) {
-    this.matchData = data;
-    // Initialize players on pitch
-    Object.keys(data.preMatchOdds).forEach((pId) => {
-      this.playersOnPitch.add(pId);
-    });
-  }
-
-  async getMatchState(atMinute: number) {
-    // Return match state AT THAT MINUTE
-    // E.g., if Benzema scored at minute 23, and we query minute 30,
-    // return state with goal already counted
-
-    const events = this.matchData.events.filter((e) => e.minute <= atMinute);
-    const scorersAtMinute = events
-      .filter((e) => e.type === "GOAL")
-      .map((e) => e.playerName);
-
-    return {
-      matchId: this.matchData.matchId,
-      currentMinute: atMinute,
-      score: {
-        home: scorersAtMinute.filter(
-          (s) => this.matchData.preMatchOdds[s]?.position === "home",
-        ).length,
-        away: scorersAtMinute.length,
-      },
-      goalScorers: scorersAtMinute,
-    };
-  }
-
-  async getOddsAtMinute(atMinute: number): Promise<Record<string, number>> {
-    // Return odds ADJUSTED for events that have occurred
-    const odds: Record<string, number> = {};
-
-    for (const [playerId, playerData] of Object.entries(
-      this.matchData.preMatchOdds,
-    )) {
-      let baseOdds = playerData.odds;
-
-      // Check if player has already scored
-      const hasScored = this.matchData.events
-        .filter((e) => e.minute <= atMinute && e.type === "GOAL")
-        .some((e) => e.playerId === playerId);
-
-      if (hasScored) {
-        // Player already scored - odds DROP significantly
-        baseOdds = baseOdds * 0.15; // 85% reduction (can't score again same match)
-      }
-
-      // Check if player was subbed off
-      const wasSubbed = this.matchData.events
-        .filter((e) => e.minute <= atMinute && e.type === "SUBSTITUTION")
-        .some((e) => e.playerId === playerId);
-
-      if (wasSubbed) {
-        // Player off the field - odds are 0 (can't score)
-        baseOdds = 0;
-      }
-
-      // Check if player is on pitch
-      if (this.playersOnPitch.has(playerId)) {
-        odds[playerId] = baseOdds;
-      }
-    }
-
-    return odds;
-  }
-
-  async progressTime(toMinute: number) {
-    // Simulate time progression
-    this.currentMinute = toMinute;
-  }
-
-  async reset() {
-    // Reset to kickoff - allows infinite replays
-    this.currentMinute = 0;
-    this.playersOnPitch.clear();
-    Object.keys(this.matchData.preMatchOdds).forEach((pId) => {
-      this.playersOnPitch.add(pId);
-    });
-  }
+interface PredictResponse {
+  predicted_odds: number;
+  confidence: number;               // 0–1
+  factors: {
+    time_decay: number;
+    shots_effect: number;
+    xg_effect: number;
+    score_effect: number;
+  };
 }
 ```
 
-**Express Server:**
+---
 
-```typescript
-// backend/src/routes/bookies-api.ts
+## Full Checklist by Phase
 
-import express from "express";
-import { BookiesApiService } from "../services/bookiesApi";
+### Phase 2 — Admin + Supabase
+- [x] Supabase SQL schema (4 migration files)
+- [x] Admin Vite config + entry
+- [x] Admin routing + layout
+- [x] Dashboard, CreateEvent, EventDetail, FundPool pages
+- [x] contractService.ts stub
+- [x] package.json dev:admin / build:admin
+- [ ] Apply migrations to live Supabase DB ← **user action**
+- [ ] `useAdminWallet.ts` — MetaMask admin guard (compare to `contract.owner()`)
+- [ ] Supabase Edge Functions: `lock-bet`, `settle-match`, `sync-odds`
+- [ ] Deploy admin to Netlify / Vercel (admin.goal.live)
 
-const router = express.Router();
-const bookiesApi = new BookiesApiService();
+### Phase 3 — Smart Contracts
+- [ ] Hardhat project init (`contracts/`)
+- [ ] `GoalLiveBetting.sol` full implementation
+- [ ] `MockUSDC.sol` for tests
+- [ ] Hardhat tests (penalty formula, payout logic, settlement)
+- [ ] Deploy to Sepolia
+- [ ] Wire `contractService.ts` with real ABI + address
+- [ ] Wire `bettingService.ts` → `lockBet()` / `changeBet()`
+- [ ] Extension: real MetaMask flow end-to-end
+- [ ] Admin: real `createMatch`, `fundPool`, `settleMatch` buttons work
+- [ ] `npm run build:all` script
 
-// Setup match with known data
-router.post("/api/matches/setup", async (req, res) => {
-  await bookiesApi.setupMatch(req.body);
-  res.json({ success: true, message: "Match data loaded" });
-});
+### Phase 4 — Chainlink CRE
+- [ ] CRE workflow YAML
+- [ ] CRE cron for pre-game odds
+- [ ] CRE webhook for live goal events
+- [ ] CRE settlement trigger → calls `settleMatch()`
+- [ ] Swap MockOracle for real CRE address on contract
+- [ ] World ID integration (3 checkpoints: bet / complete / withdraw)
 
-// Get current match state
-router.get("/api/matches/:matchId/state", async (req, res) => {
-  const { minute } = req.query;
-  const state = await bookiesApi.getMatchState(parseInt(minute as string));
-  res.json(state);
-});
-
-// Get odds at specific minute
-router.get("/api/matches/:matchId/odds", async (req, res) => {
-  const { minute } = req.query;
-  const odds = await bookiesApi.getOddsAtMinute(parseInt(minute as string));
-  res.json({
-    minute: parseInt(minute as string),
-    odds,
-    disclaimer: "Odds adjusted for events that have occurred",
-  });
-});
-
-// Reset match (for replays)
-router.post("/api/matches/:matchId/reset", async (req, res) => {
-  await bookiesApi.reset();
-  res.json({ success: true, message: "Match reset to kickoff" });
-});
-
-export default router;
-```
-
-### MockCREService Implementation
-
-Once your Bookies API is running, MockCREService becomes simple:
-
-```typescript
-// services/cre/MockCREService.ts
-
-export class MockCREService implements ICREService {
-  constructor(
-    private bookiesApiUrl: string,
-    private speedMultiplier: number = 10,
-  ) {}
-
-  subscribeToGoalEvents(
-    matchId: string,
-    callback: (goal: GoalEvent) => void,
-  ): () => void {
-    // Get match data from OUR Bookies API
-    const events = this.fetchMatchEvents(matchId);
-
-    // Simulate time progression and call callback when goals occur
-    let currentIndex = 0;
-
-    const interval = setInterval(async () => {
-      if (currentIndex >= events.length) {
-        clearInterval(interval);
-        return;
-      }
-
-      const event = events[currentIndex];
-
-      // Calculate delay based on speed multiplier
-      const delayMs = (event.minute * 60 * 1000) / this.speedMultiplier;
-
-      // Call callback with goal event
-      callback({
-        matchId,
-        playerId: event.playerId,
-        playerName: event.playerName,
-        minute: event.minute,
-        timestamp: Date.now(),
-        source: "mock_cre_bookies_api",
-        verified: true,
-      });
-
-      currentIndex++;
-    }, 500);
-
-    return () => clearInterval(interval);
-  }
-
-  async getOddsAtMinute(matchId: string, minute: number) {
-    // Call OUR Bookies API to get adjusted odds
-    const response = await fetch(
-      `${this.bookiesApiUrl}/api/matches/${matchId}/odds?minute=${minute}`,
-    );
-    return response.json();
-  }
-
-  private fetchMatchEvents(matchId: string) {
-    // Call OUR Bookies API to get all match events
-    return fetch(`${this.bookiesApiUrl}/api/matches/${matchId}/events`).then(
-      (r) => r.json(),
-    );
-  }
-}
-```
-
-### MVP Flow with Bookies API
-
-```
-1. Setup Phase:
-   ├─ Get match data from ESPN (lineups, final score, goals)
-   ├─ Get pre-match odds from The Odds API
-   ├─ POST to /api/matches/setup with all data
-   └─ Bookies API is now ready
-
-2. Demo Phase (Repeatable):
-   ├─ Frontend asks: "Which match?"
-   ├─ Bookies API returns: Match state at minute 0
-   ├─ User places bet on Benzema (4.5x odds)
-   ├─ MockCREService progresses time (10x speed)
-   ├─ At minute 23: Goal! Callback fires
-   ├─ Frontend queries: GET /odds?minute=23
-   ├─ Bookies API returns: Benzema odds now 0.5x (already scored)
-   ├─ User sees provisional balance update
-   ├─ Continue to final whistle
-   └─ Final settlement triggered
-
-3. Replay Phase:
-   ├─ POST /reset
-   ├─ Bookies API state returns to minute 0
-   ├─ Repeat demo as many times as needed
-   └─ Perfect for hackathon demos (no timing dependencies)
-```
-
-### Deliverable
-
-- ✅ Lightweight Bookies API service (can be Express or even Next.js API routes)
-- ✅ One complete match with all stats pre-loaded
-- ✅ MockCREService calling Bookies API
-- ✅ Frontend receiving events via realtime (Supabase or WebSocket)
-- ✅ Dynamic odds adjustments based on game events
-- ✅ Repeatable, reliable MVP demo
-
-**Decision Point:** If Chainlink CRE becomes available later, replace Bookies API calls with real CRE calls. Service interface remains the same.
+### Phase 5 — Live Odds ML API
+- [ ] `OddsCapture` TS service (poll The Odds API → Google Sheets)
+- [ ] Google Sheets → MatchProfile JSON export script
+- [ ] Python RF model training (`model_training.py`)
+- [ ] Express CRE API server (`/api/v1/predict-odds`)
+- [ ] Wire extension to use predicted odds
+- [ ] Deploy CRE API (Vercel serverless or Railway)
 
 ---
 
-## Phase 3 Option B (If Real CRE Available)
+## Tech Stack Reference
 
-If during Phase 3 you gain access to **real Chainlink CRE**:
+| Layer | Tech | Notes |
+|---|---|---|
+| Extension UI | React 18 + Vite + TS + Tailwind | Chrome MV3, `src/` |
+| Admin UI | React 18 + Vite + TS + Tailwind | Standalone SPA, `admin/`, port 5174 |
+| Database | Supabase (PostgreSQL) | Project ID: `weryswulejhjkrmervnf` |
+| Realtime | Supabase Realtime / WebSocket | Match state updates |
+| Blockchain | Ethereum Sepolia | USDC testnet |
+| Contracts | Solidity 0.8.x + Hardhat + OpenZeppelin | Phase 3 |
+| Oracle | Chainlink CRE (Opta / Sportmonks node) | Phase 4 (mocked now) |
+| Wallet | ethers.js v6 + MetaMask | Extension + admin |
+| Auth | World ID (@worldcoin/idkit) | Phase 4+ |
+| ML / CRE API | Python scikit-learn RF + Node Express | Phase 5 |
+| Hosting | Netlify / Vercel | admin.goal.live |
 
-```
-✅ Subscribe to live match via CRE webhooks
-✅ Receive goal events directly from Chainlink
-✅ Populate players from CRE lineup data
-✅ Get official result from CRE
-✅ **Service abstraction means zero code changes** - just swap the service
-```
+## Npm Scripts
 
-**Implementation:**
-
-```typescript
-// Simply swap the service factory
-const creService =
-  process.env.USE_REAL_CRE === "true"
-    ? new RealCREService(creApiKey)
-    : {
-        bookiesApiUrl: process.env.BOOKIES_API_URL,
-        speedMultiplier: 10,
-        // ... new MockCREService(bookiesApiUrl, speedMultiplier)
-      };
-```
-
----
-
-## Phase 4: AI Dashboard + World ID
-
-**Goal:** Complete MVP with anti-bot and ML foundation
-
-**Build Prompt:** [BACKEND_BUILD_PROMPT.md](./BACKEND_BUILD_PROMPT.md) (AI sections)
-
-### What to Build
-
-```
-✅ World ID integration (@worldcoin/idkit)
-✅ World ID verification at 3 checkpoints
-✅ AI observational dashboard
-✅ Bookies API polling service (or mock)
-✅ ai_event_observations table
-✅ Admin UI for ML insights
-✅ CSV export for training data
+```bash
+npm run dev            # Extension dev (port 5173)
+npm run build          # Build extension + content script
+npm run build:ext      # Content script only
+npm run dev:admin      # Admin SPA dev (port 5174)
+npm run build:admin    # Build admin to dist-admin/
+# TODO Phase 3:
+npm run build:all      # extension + admin combined
 ```
 
-### Mock vs Real
+## Environment Variables
 
-| Component       | Status          | Details                             |
-| --------------- | --------------- | ----------------------------------- |
-| World ID        | 🎭 Real or Mock | Depends on Sepolia support          |
-| Bookies Polling | 🎭 Mock likely  | Most bookies don't have public APIs |
-| AI Dashboard    | ✅ Real         | PostgreSQL + basic analytics        |
+```env
+# Supabase
+VITE_SUPABASE_URL=https://weryswulejhjkrmervnf.supabase.co
+VITE_SUPABASE_ANON_KEY=...
 
-**Deliverable:** Full MVP with authentication and ML data collection
+# Feature flags
+VITE_USE_MOCK=true              # false = real Supabase + contract
 
----
+# Phase 3+
+VITE_CONTRACT_ADDRESS=...
+VITE_ORACLE_ADDRESS=...
+VITE_USDC_ADDRESS=...           # Sepolia USDC
 
-# Part 3: MOCK VS REAL DECISION MATRIX
-
-## 3.1 Always Real (No Mocking)
-
-- ✅ Wallet connection (MetaMask)
-- ✅ Blockchain transactions (Sepolia)
-- ✅ USDC transfers
-- ✅ Penalty calculations (smart contract)
-- ✅ Supabase database
-- ✅ Realtime subscriptions
-
-## 3.2 Real if Available, Mock Otherwise
-
-- 🎭 **Chainlink CRE** → Depends on API access and data availability
-  - Real: Live match subscriptions, official results
-  - Mock: Historical JSON replay, simulated events
-- 🎭 **World ID** → Depends on Sepolia testnet support
-  - Real: Full verification flow
-  - Mock: Skip verification, log attempts
-- 🎭 **Bookies APIs** → Most don't have public access
-  - Real: Poll live odds if API available
-  - Mock: Generate random odds fluctuations
-
-## 3.3 Mocked in Phase 1, Real Later
-
-- ⏳ Match data (Phase 1: hardcoded → Phase 3: CRE or mock)
-- ⏳ Goal events (Phase 1: manual → Phase 3: CRE webhook)
-- ⏳ Betting contract (Phase 1: console.log → Phase 2: Sepolia)
-- ⏳ Audio sync (Phase 1: fake minute → Phase 3: ACR integration)
-
----
-
-# Part 4: INTEGRATION STRATEGY
-
-## 4.1 Service Abstraction Pattern
-
-**All external integrations use interfaces:**
-
-```typescript
-// Define interface
-export interface IMatchService {
-  getMatch(id: string): Promise<Match>;
-  subscribeToEvents(id: string, callback: (event: any) => void): () => void;
-}
-
-// Mock implementation (Phase 1)
-export class MockMatchService implements IMatchService {
-  async getMatch(id: string) {
-    return HARDCODED_MATCH_DATA;
-  }
-}
-
-// Real implementation (Phase 3)
-export class ChainlinkMatchService implements IMatchService {
-  async getMatch(id: string) {
-    const response = await fetch(`${CRE_API}/matches/${id}`);
-    return response.json();
-  }
-}
-
-// Switch via environment variable
-const matchService: IMatchService =
-  import.meta.env.VITE_USE_MOCK_MATCH === "true"
-    ? new MockMatchService()
-    : new ChainlinkMatchService(apiKey);
+# Phase 5 – Live Odds Capture
+ODDS_API_KEY=284c2661be564a872e91d8a4bb885ac9
 ```
 
-**Benefits:**
+## Key Design Decisions
 
-- ✅ Build frontend with mocks immediately
-- ✅ Swap implementations without code changes
-- ✅ Test both mock and real in parallel
-- ✅ Easy rollback if real integration fails
-
-## 4.2 CRE Data Flexibility
-
-**As we build, we discover what CRE data is available:**
-
-### Scenario A: Full CRE Access
-
-```
-✅ Use real match subscriptions
-✅ Get live player lineups
-✅ Receive goal events via webhook
-✅ Get official results
-```
-
-### Scenario B: Limited CRE Data
-
-```
-🎭 Use historical JSON files
-🎭 Manually populate player lists
-🎭 Replay events from archived data
-🎭 Simulate webhook calls
-```
-
-### Scenario C: Hybrid
-
-```
-✅ Use CRE for pre-match data (lineups, odds)
-🎭 Mock live events with historical data
-✅ Use CRE for final result verification
-```
-
-**Decision made during Phase 3 based on actual availability.**
-
----
-
-# Part 5: PHASE COMPLETION CRITERIA
-
-## Phase 1 Complete When:
-
-- [ ] UI renders all components
-- [ ] Can click player to place mock bet
-- [ ] Can change bet and see penalty preview
-- [ ] Mock balance updates in UI
-- [ ] Livestream iframe displays
-- [ ] No console errors
-
-## Phase 2 Complete When:
-
-- [ ] Smart contract deployed on Sepolia
-- [ ] MetaMask connects and shows real balance
-- [ ] Real USDC bet transaction succeeds
-- [ ] On-chain penalty calculated correctly
-- [ ] Supabase stores bet records
-- [ ] Can query bets via Supabase API
-
-## Phase 3 Complete When:
-
-- [ ] Match data loads (CRE or mock)
-- [ ] Goal event triggers (webhook or simulation)
-- [ ] Provisional balance updates on goal
-- [ ] Historical demo plays at 10x speed
-- [ ] Frontend receives realtime events
-- [ ] Final settlement processes correctly
-
-## Phase 4 Complete When:
-
-- [ ] World ID prompts at 3 checkpoints (or mocked)
-- [ ] AI observations logged to database
-- [ ] Admin dashboard displays insights
-- [ ] Bookies data collected (real or mock)
-- [ ] CSV export works
-- [ ] Full user flow tested end-to-end
-
----
-
-# Part 6: QUICK START FOR COPILOT
-
-**New session? Read in this order:**
-
-1. **This file** → Understand vision + phased approach
-2. [MVP_FINAL_SPEC.md](./MVP_FINAL_SPEC.md) → All design decisions
-3. **Phase-specific prompt:**
-   - Phase 1: [FRONTEND_BUILD_PROMPT.md](./FRONTEND_BUILD_PROMPT.md)
-   - Phase 2: [CONTRACTS_BUILD_PROMPT.md](./CONTRACTS_BUILD_PROMPT.md) + [BACKEND_BUILD_PROMPT.md](./BACKEND_BUILD_PROMPT.md)
-   - Phase 3: [BACKEND_BUILD_PROMPT.md](./BACKEND_BUILD_PROMPT.md) (CRE sections)
-   - Phase 4: [BACKEND_BUILD_PROMPT.md](./BACKEND_BUILD_PROMPT.md) (AI sections)
-
-**Key Principles:**
-
-- 🎯 Build for **complete MVP** (see Part 1)
-- 🔧 But **start with Phase 1** (frontend mocks only)
-- 🎭 Stay **flexible on mock vs real** (especially CRE)
-- 📦 Use **service abstraction** pattern everywhere
-- ✅ Complete **one phase fully** before moving to next
-
----
-
-**Questions?** See [ARCHITECTURE.md](./ARCHITECTURE.md) for technical deep dives.
+| Decision | Choice | Reason |
+|---|---|---|
+| Bet type | Next Goal Scorer only | Single market simplifies MVP |
+| Blockchain | Ethereum Sepolia | Testnet USDC available |
+| Currency | USDC | Stable, no memecoin complexity |
+| Penalty | `base[n] × (1 − min/90)` | Time-decay + progressive |
+| Settlement | Two-phase (provisional → final post-match) | Handles VAR / goal corrections |
+| Admin auth | MetaMask address vs `contract.owner()` | No separate login, crypto-native |
+| CRE strategy | Mock oracle now, real CRE in Phase 4 | Flexible on data availability |
+| Admin build | Separate Vite config | Zero risk to extension build |
+| Wallet lib | ethers.js v6 (not wagmi) | Consistent across extension + admin |
+| Odds pipeline | OddsAPI → Sheets → JSON → RF model | Replayable, no live timing dependency |

@@ -22,10 +22,10 @@ export default function Dashboard() {
 
   const statusColor: Record<string, string> = {
     "pre-match": "text-yellow-400 bg-yellow-400/10",
-    live:        "text-green-400 bg-green-400/10",
-    halftime:    "text-blue-400 bg-blue-400/10",
-    finished:    "text-gray-400 bg-gray-400/10",
-    cancelled:   "text-red-400 bg-red-400/10",
+    live: "text-green-400 bg-green-400/10",
+    halftime: "text-blue-400 bg-blue-400/10",
+    finished: "text-gray-400 bg-gray-400/10",
+    cancelled: "text-red-400 bg-red-400/10",
   };
 
   return (
