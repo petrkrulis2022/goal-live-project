@@ -1,23 +1,36 @@
 # goal.live — Master Development Plan
 
 **Last Updated:** February 25, 2026
-**Status:** Phase 1 ✅ Complete · Phase 2 🔄 In Progress (admin scaffold done, Supabase live ✅)
-**Repo:** `petrkrulis2022/goal-live-project` · branch `main` · last commit `e0e818a`
+**Status:** Phase 1 ✅ Complete · Phase 2 🔄 In Progress — admin UI + wallet gate done, **Edge Functions + deploy remain**
+**Repo:** `petrkrulis2022/goal-live-project` · branch `main` · last commit `3826c83`
+**Uncommitted local:** full admin restyle, admin.css, tailwind content fix, contractService simulation mode, CreateEvent 3-step flow
+
+---
+
+> ## ▶ RESUME HERE — Phase 2 Finish Line
+>
+> **Last completed:** CreateEvent 3-step flow (DB insert → deploy contract → fund pool) with MetaMask simulation mode. All admin pages restyled. Local changes not yet pushed.
+>
+> **Immediate next tasks (in order):**
+>
+> 1. **Push local changes** → `git add -A && git commit -m "feat(admin): restyle, CSS fix, CreateEvent 3-step flow" && git push`
+> 2. **Supabase Edge Functions** — `lock-bet`, `settle-match`, `sync-odds`
+> 3. **Phase 3** — Write `GoalLiveBetting.sol`, then set `SIMULATION_MODE = false` in `contractService.ts`
 
 ---
 
 ## Supporting Docs
 
-| File | Purpose |
-|---|---|
-| **This file** | The only plan file to follow |
-| `MVP_FINAL_SPEC.md` | All design decisions (penalty formula, bet types, UI layout) |
-| `ARCHITECTURE.md` | Technical deep-dive (system diagram, data flow) |
-| `CONTRACTS_BUILD_PROMPT.md` | Smart contract spec for Phase 3 |
-| `CRE_CHAINLINK_INTEGRATION_GUIDE.md` | CRE oracle technical reference (Phase 4) |
-| `LIVE_ODDS_CAPTURE_AND_MOCK_CRE_API.md` | Live odds capture pipeline + mock CRE API strategy |
-| `CRE_INTEGRATION_FOR_MVP_PROMPTS.md` | OddsAPI capture service code + Google Sheets pipeline |
-| `CRE_API_ARCHITECTURE.md` (root) | ML model architecture for in-play odds prediction |
+| File                                    | Purpose                                                      |
+| --------------------------------------- | ------------------------------------------------------------ |
+| **This file**                           | The only plan file to follow                                 |
+| `MVP_FINAL_SPEC.md`                     | All design decisions (penalty formula, bet types, UI layout) |
+| `ARCHITECTURE.md`                       | Technical deep-dive (system diagram, data flow)              |
+| `CONTRACTS_BUILD_PROMPT.md`             | Smart contract spec for Phase 3                              |
+| `CRE_CHAINLINK_INTEGRATION_GUIDE.md`    | CRE oracle technical reference (Phase 4)                     |
+| `LIVE_ODDS_CAPTURE_AND_MOCK_CRE_API.md` | Live odds capture pipeline + mock CRE API strategy           |
+| `CRE_INTEGRATION_FOR_MVP_PROMPTS.md`    | OddsAPI capture service code + Google Sheets pipeline        |
+| `CRE_API_ARCHITECTURE.md` (root)        | ML model architecture for in-play odds prediction            |
 
 ---
 
@@ -29,49 +42,59 @@
 
 ## What Is Built (Feb 25, 2026)
 
-### Phase 1 — Chrome Extension ✅
+### ~~Phase 1 — Chrome Extension~~ ✅ DONE
 
-| Component | Status |
-|---|---|
-| Chrome MV3 extension (Vite + React 18 + TS + Tailwind) | ✅ |
-| BettingOverlay, PlayerButton, BetModal, BetChangeModal | ✅ |
-| BalanceDisplay, MyBets, SettlementDisplay, TopUpModal, WithdrawModal | ✅ |
-| Mock / Real service switcher (`VITE_USE_MOCK`) in `src/services/index.ts` | ✅ |
-| `src/data/pre_match_odds.json` — all 22 real Feb 21 players, full markets | ✅ |
-| `src/data/live_snapshots.json` — 11 snapshots min 0–90, live odds drift, goal events | ✅ |
-| Supabase SQL schema written (4 migration files in `supabase/migrations/`) | ✅ |
+| Component                                                                                | Status |
+| ---------------------------------------------------------------------------------------- | ------ |
+| ~~Chrome MV3 extension (Vite + React 18 + TS + Tailwind)~~                               | ✅     |
+| ~~BettingOverlay, PlayerButton, BetModal, BetChangeModal~~                               | ✅     |
+| ~~BalanceDisplay, MyBets, SettlementDisplay, TopUpModal, WithdrawModal~~                 | ✅     |
+| ~~Mock / Real service switcher (`VITE_USE_MOCK`) in `src/services/index.ts`~~            | ✅     |
+| ~~`src/data/pre_match_odds.json` — all 22 real Feb 21 players, full markets~~            | ✅     |
+| ~~`src/data/live_snapshots.json` — 11 snapshots min 0–90, live odds drift, goal events~~ | ✅     |
+| ~~Supabase SQL schema written (4 migration files in `supabase/migrations/`)~~            | ✅     |
 
 ### Phase 2 — Admin Web App + Supabase 🔄
 
-| Component | Status |
-|---|---|
-| `vite.admin.config.ts` — root `admin/`, port 5174, dist `dist-admin/` | ✅ |
-| `admin/src/App.tsx` + react-router-dom v7 routing | ✅ |
-| `admin/src/components/Layout.tsx` — dark sidebar, green active nav | ✅ |
-| `admin/src/pages/Dashboard.tsx` — all matches from Supabase | ✅ |
-| `admin/src/pages/CreateEvent.tsx` — inserts match to Supabase | ✅ |
-| `admin/src/pages/EventDetail.tsx` — 4-tab view: overview / players / bets / goals | ✅ |
-| `admin/src/pages/FundPool.tsx` — contract deploy stub + USDC fund input | ✅ |
-| `admin/src/services/contractService.ts` — ethers.js stubs (Phase 3 wires real contract) | ✅ |
-| `package.json` scripts: `dev:admin`, `build:admin` | ✅ |
-| **Supabase migrations applied to live DB** | ✅ All 4 migrations run, project active |
+| Component                                                                                        | Status                                                    |
+| ------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| ~~`vite.admin.config.ts` — root `admin/`, port 5174, dist `dist-admin/`~~                        | ✅ done                                                   |
+| ~~`admin/src/App.tsx` + react-router-dom v7 routing~~                                            | ✅ done                                                   |
+| ~~`admin/src/components/Layout.tsx` — dark sidebar, wallet chip, animated ping~~                 | ✅ done (restyled)                                        |
+| ~~`admin/src/pages/Dashboard.tsx` — all matches from Supabase, skeleton loading~~                | ✅ done (restyled)                                        |
+| ~~`admin/src/pages/CreateEvent.tsx` — 3-step: DB insert → deploy contract → fund pool~~          | ✅ done (3-step flow)                                     |
+| ~~`admin/src/pages/EventDetail.tsx` — 4-tab view: overview / players / bets / goals~~            | ✅ done (restyled)                                        |
+| ~~`admin/src/pages/FundPool.tsx` — contract deploy stub + USDC fund input~~                      | ✅ done (restyled)                                        |
+| ~~`admin/src/services/contractService.ts` — `SIMULATION_MODE=true`, MetaMask opens for auth~~    | ✅ done (real ethers.js commented in for Phase 3 drop-in) |
+| ~~`admin/src/hooks/useAdminWallet.ts` — MetaMask connect, admin address guard~~                  | ✅ done                                                   |
+| ~~`admin/tsconfig.json` — vite/client types + `@`/`@shared` aliases~~                            | ✅ committed `3826c83`                                    |
+| ~~`admin/styles/admin.css` — body reset, Inter font, scrollbar, focus rings~~                    | ✅ done (local, not pushed)                               |
+| ~~`tailwind.config.js` — `admin/**` added to content (was missing → no Tailwind classes gen'd)~~ | ✅ done (local)                                           |
+| ~~`admin/index.html` — Google Fonts: Inter 400–800 + JetBrains Mono~~                            | ✅ done (local)                                           |
+| ~~`package.json` scripts: `dev:admin`, `build:admin`~~                                           | ✅ done                                                   |
+| ~~Supabase migrations applied to live DB~~                                                       | ✅ All 4 migrations run, project active                   |
+| Supabase Edge Functions: `lock-bet`, `settle-match`, `sync-odds`                                 | ❌ not started                                            |
+| Deploy admin to Netlify / Vercel (admin.goal.live)                                               | ❌ not started                                            |
 
 ---
 
-## Phase 2 Remaining — Admin Completion
+## Phase 2 Remaining
 
-> Supabase is live ✅ — all 4 migrations applied
+> Supabase is live ✅ — all 4 migrations applied. Admin UI fully working locally.
 
-Next steps:
-1. Set `.env` with `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` if not done
-2. Run `npm run dev:admin` → verify Dashboard loads the seeded Man City vs Newcastle match
-3. Build `useAdminWallet.ts` — MetaMask connect + admin guard
-4. Build Supabase Edge Functions: `lock-bet`, `settle-match`, `sync-odds`
-5. Deploy admin to Netlify/Vercel (admin.goal.live)
+~~1. Set `.env` with `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`~~ ✅
+~~2. Run `npm run dev:admin` → verified, Dashboard loads~~ ✅
+~~3. Build `useAdminWallet.ts` — MetaMask connect + admin guard~~ ✅
+
+**Still outstanding:**
+
+1. **Push local uncommitted changes** → `git add -A && git commit -m "feat(admin): restyle, CSS fix, CreateEvent 3-step flow" && git push`
+2. Build Supabase Edge Functions: `lock-bet`, `settle-match`, `sync-odds`
+3. Deploy admin to Netlify/Vercel (admin.goal.live)
 
 ---
 
-## Phase 3 — Smart Contracts (Next Up)
+## Phase 3 — Smart Contracts ❌ NOT STARTED
 
 **Goal:** Real on-chain betting with Sepolia USDC.
 **Full spec:** `docs/CONTRACTS_BUILD_PROMPT.md`
@@ -132,24 +155,27 @@ base = { 1st: 3%, 2nd: 5%, 3rd: 8%, 4th: 12%, 5th+: 15% }
 These pages are scaffolded but need real contract wiring:
 
 **Dashboard (`/dashboard`)**
+
 - Platform wallet balance + pool USDC balance from `getPoolStats()`
 - Quick stats: total locked USDC, total paid out, platform fees
 
 **Create Event (`/events/new`)**
+
 - On submit → call `createMatch()` on contract via MetaMask → insert row in Supabase
 - Oracle address pre-filled with deployed oracle address, editable
 - Odds API provider selection + API key (stored in Supabase only, never in contract)
 
 **Event Detail (`/events/:matchId`) — 4 panels**
 
-| Panel | Contents |
-|---|---|
-| Oracle | Current oracle address, `setOracle(newAddress)` MetaMask button, oracle status (ping) |
-| Odds API | Configured provider, test connection, manual odds override, "Sync odds → players table" Edge Fn |
+| Panel       | Contents                                                                                                                                              |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Oracle      | Current oracle address, `setOracle(newAddress)` MetaMask button, oracle status (ping)                                                                 |
+| Odds API    | Configured provider, test connection, manual odds override, "Sync odds → players table" Edge Fn                                                       |
 | Pool Status | `usdc.balanceOf(contractAddress)`, totalLocked, available, fees, Fund Pool button (approve + `fundPool()`), "Collect fees" (`withdrawPlatformFees()`) |
-| Settlement | CRE result payload preview, winning player list, "Settle Match" → `settleMatch()`, post-settle stats |
+| Settlement  | CRE result payload preview, winning player list, "Settle Match" → `settleMatch()`, post-settle stats                                                  |
 
 **Fund Pool (`/events/:matchId/fund`)**
+
 - Current escrow balance
 - Deposit USDC (MetaMask approve + `fundPool()`)
 - Historical funding log
@@ -166,20 +192,20 @@ supabase/functions/
 
 ---
 
-## Phase 4 — Chainlink CRE Integration
+## Phase 4 — Chainlink CRE Integration ❌ NOT STARTED
 
 **Goal:** Replace mock match data with verified on-chain sports data.
 **Full reference:** `docs/CRE_CHAINLINK_INTEGRATION_GUIDE.md`
 
 ### Five data pillars
 
-| Pillar | Data | Timing | Now (mock) | Phase 4 (real) |
-|---|---|---|---|---|
-| Pre-game odds | Player goalscorer odds | Hours before kickoff | `pre_match_odds.json` | CRE HTTP + cron |
-| Player lineups | Starting 11 | 15 min pre-kick | Seeded in Supabase | CRE HTTP |
-| Live goal events | Player, minute | Real-time | Manual insert to `goal_events` | CRE webhook |
-| Live odds updates | Volatile, 1-2s freq | Very high | Static JSON snapshots | Chainlink Data Streams (pull) |
-| Official result | Final scorers | Post-match | Hardcoded in seed | CRE HTTP |
+| Pillar            | Data                   | Timing               | Now (mock)                     | Phase 4 (real)                |
+| ----------------- | ---------------------- | -------------------- | ------------------------------ | ----------------------------- |
+| Pre-game odds     | Player goalscorer odds | Hours before kickoff | `pre_match_odds.json`          | CRE HTTP + cron               |
+| Player lineups    | Starting 11            | 15 min pre-kick      | Seeded in Supabase             | CRE HTTP                      |
+| Live goal events  | Player, minute         | Real-time            | Manual insert to `goal_events` | CRE webhook                   |
+| Live odds updates | Volatile, 1-2s freq    | Very high            | Static JSON snapshots          | Chainlink Data Streams (pull) |
+| Official result   | Final scorers          | Post-match           | Hardcoded in seed              | CRE HTTP                      |
 
 ### CRE workflow structure (Phase 4)
 
@@ -187,22 +213,22 @@ supabase/functions/
 name: goal-live-match-oracle
 triggers:
   - type: Cron
-    schedule: "*/1 * * * *"     # every minute during live match
+    schedule: "*/1 * * * *" # every minute during live match
   - type: Webhook
-    path: /goal-event             # fired by Opta/Sportmonks on goal
+    path: /goal-event # fired by Opta/Sportmonks on goal
 capabilities:
-  - http                          # fetch from data provider
-  - threshold-encryption          # protect API key in workflow
-  - evm-write                     # write result to GoalLiveBetting contract
+  - http # fetch from data provider
+  - threshold-encryption # protect API key in workflow
+  - evm-write # write result to GoalLiveBetting contract
 ```
 
 ### Mock vs Real CRE decision
 
-| Scenario | Approach |
-|---|---|
-| Demo / current | Mock oracle — manual insert to `goal_events` table in Supabase |
-| Testnet with live match | CRE HTTP + webhook from Opta/Sportmonks |
-| Production | Full CRE workflow, Chainlink-verified settlement |
+| Scenario                | Approach                                                       |
+| ----------------------- | -------------------------------------------------------------- |
+| Demo / current          | Mock oracle — manual insert to `goal_events` table in Supabase |
+| Testnet with live match | CRE HTTP + webhook from Opta/Sportmonks                        |
+| Production              | Full CRE workflow, Chainlink-verified settlement               |
 
 For demo, swap mock oracle by just inserting rows into `goal_events` via admin SQL or admin panel. The contract's `settleMatch()` reads from this table via the Supabase Edge Function.
 
@@ -210,18 +236,18 @@ For demo, swap mock oracle by just inserting rows into `goal_events` via admin S
 
 ```typescript
 // src/services/index.ts
-import { VITE_USE_MOCK } from '../utils/env'
+import { VITE_USE_MOCK } from "../utils/env";
 export const services = {
   data: VITE_USE_MOCK ? new MockDataService() : new RealDataService(),
   betting: VITE_USE_MOCK ? new MockBettingService() : new RealBettingService(),
   wallet: VITE_USE_MOCK ? new MockWalletService() : new RealWalletService(),
-}
+};
 // Phase 4: RealDataService calls CRE instead of Supabase static
 ```
 
 ---
 
-## Phase 5 — Live Odds ML / CRE API
+## Phase 5 — Live Odds ML / CRE API ❌ NOT STARTED
 
 **Goal:** Real in-play odds modelling from captured bookmaker data → serve as CRE prediction feed.
 **References:** `docs/LIVE_ODDS_CAPTURE_AND_MOCK_CRE_API.md` · `CRE_API_ARCHITECTURE.md` (root)
@@ -248,13 +274,13 @@ The Odds API (polled every 30s during live match)
 // POST /api/v1/predict-odds
 interface PredictRequest {
   player: string;
-  pre_match_odds: number;           // e.g. 1.52
+  pre_match_odds: number; // e.g. 1.52
   current_stats: {
-    minute: number;                 // 0–90
+    minute: number; // 0–90
     score: { home: number; away: number };
     shots_on_target: { home: number; away: number };
     xg: { home: number; away: number };
-    possession: { home: number };   // 0–100
+    possession: { home: number }; // 0–100
     player_shots: number;
     player_xg: number;
     player_touches_in_box: number;
@@ -262,7 +288,7 @@ interface PredictRequest {
 }
 interface PredictResponse {
   predicted_odds: number;
-  confidence: number;               // 0–1
+  confidence: number; // 0–1
   factors: {
     time_decay: number;
     shots_effect: number;
@@ -276,31 +302,51 @@ interface PredictResponse {
 
 ## Full Checklist by Phase
 
-### Phase 2 — Admin + Supabase
-- [x] Supabase SQL schema (4 migration files)
-- [x] Admin Vite config + entry
-- [x] Admin routing + layout
-- [x] Dashboard, CreateEvent, EventDetail, FundPool pages
-- [x] contractService.ts stub
-- [x] package.json dev:admin / build:admin
-- [x] Apply migrations to live Supabase DB ✅
-- [ ] `useAdminWallet.ts` — MetaMask admin guard (compare to `contract.owner()`)
+### ~~Phase 1 — Chrome Extension~~ ✅ COMPLETE
+
+- [x] ~~Chrome MV3 extension (Vite + React 18 + TS + Tailwind)~~
+- [x] ~~BettingOverlay, PlayerButton, BetModal, BetChangeModal~~
+- [x] ~~BalanceDisplay, MyBets, SettlementDisplay, TopUpModal, WithdrawModal~~
+- [x] ~~Mock / Real service switcher (`VITE_USE_MOCK`)~~
+- [x] ~~`pre_match_odds.json` — 22 real players, full markets~~
+- [x] ~~`live_snapshots.json` — 11 snapshots, odds drift, goal events~~
+- [x] ~~Supabase SQL schema (4 migration files)~~
+
+### Phase 2 — Admin + Supabase 🔄
+
+- [x] ~~Supabase SQL schema (4 migration files)~~
+- [x] ~~Admin Vite config + entry (`vite.admin.config.ts`)~~
+- [x] ~~Admin routing + layout (react-router-dom v7)~~
+- [x] ~~Dashboard, CreateEvent, EventDetail, FundPool pages~~
+- [x] ~~Full admin UI restyle (dark theme, Inter font, ambient glow, pill tabs)~~
+- [x] ~~`admin/styles/admin.css` — body reset, font import, scrollbar~~
+- [x] ~~`tailwind.config.js` — `admin/**` added to content scan~~
+- [x] ~~`admin/tsconfig.json` — vite/client types + path aliases~~
+- [x] ~~`useAdminWallet.ts` — MetaMask admin guard (compares to hardcoded admin address, redirects `/unauthorized`)~~
+- [x] ~~`contractService.ts` — `SIMULATION_MODE=true`, MetaMask opens for auth, txs simulated~~
+- [x] ~~CreateEvent 3-step flow: DB insert → deploy contract → fund pool~~
+- [x] ~~package.json `dev:admin` / `build:admin` scripts~~
+- [x] ~~Apply migrations to live Supabase DB~~
+- [ ] **Push local uncommitted changes** ← DO THIS FIRST
 - [ ] Supabase Edge Functions: `lock-bet`, `settle-match`, `sync-odds`
 - [ ] Deploy admin to Netlify / Vercel (admin.goal.live)
 
-### Phase 3 — Smart Contracts
+### Phase 3 — Smart Contracts ❌
+
 - [ ] Hardhat project init (`contracts/`)
 - [ ] `GoalLiveBetting.sol` full implementation
 - [ ] `MockUSDC.sol` for tests
 - [ ] Hardhat tests (penalty formula, payout logic, settlement)
 - [ ] Deploy to Sepolia
 - [ ] Wire `contractService.ts` with real ABI + address
+- [ ] Set `SIMULATION_MODE = false` in `contractService.ts`, wire real ABI + address
 - [ ] Wire `bettingService.ts` → `lockBet()` / `changeBet()`
 - [ ] Extension: real MetaMask flow end-to-end
 - [ ] Admin: real `createMatch`, `fundPool`, `settleMatch` buttons work
 - [ ] `npm run build:all` script
 
-### Phase 4 — Chainlink CRE
+### Phase 4 — Chainlink CRE ❌
+
 - [ ] CRE workflow YAML
 - [ ] CRE cron for pre-game odds
 - [ ] CRE webhook for live goal events
@@ -308,7 +354,8 @@ interface PredictResponse {
 - [ ] Swap MockOracle for real CRE address on contract
 - [ ] World ID integration (3 checkpoints: bet / complete / withdraw)
 
-### Phase 5 — Live Odds ML API
+### Phase 5 — Live Odds ML API ❌
+
 - [ ] `OddsCapture` TS service (poll The Odds API → Google Sheets)
 - [ ] Google Sheets → MatchProfile JSON export script
 - [ ] Python RF model training (`model_training.py`)
@@ -320,19 +367,19 @@ interface PredictResponse {
 
 ## Tech Stack Reference
 
-| Layer | Tech | Notes |
-|---|---|---|
-| Extension UI | React 18 + Vite + TS + Tailwind | Chrome MV3, `src/` |
-| Admin UI | React 18 + Vite + TS + Tailwind | Standalone SPA, `admin/`, port 5174 |
-| Database | Supabase (PostgreSQL) | Project ID: `weryswulejhjkrmervnf` |
-| Realtime | Supabase Realtime / WebSocket | Match state updates |
-| Blockchain | Ethereum Sepolia | USDC testnet |
-| Contracts | Solidity 0.8.x + Hardhat + OpenZeppelin | Phase 3 |
-| Oracle | Chainlink CRE (Opta / Sportmonks node) | Phase 4 (mocked now) |
-| Wallet | ethers.js v6 + MetaMask | Extension + admin |
-| Auth | World ID (@worldcoin/idkit) | Phase 4+ |
-| ML / CRE API | Python scikit-learn RF + Node Express | Phase 5 |
-| Hosting | Netlify / Vercel | admin.goal.live |
+| Layer        | Tech                                    | Notes                               |
+| ------------ | --------------------------------------- | ----------------------------------- |
+| Extension UI | React 18 + Vite + TS + Tailwind         | Chrome MV3, `src/`                  |
+| Admin UI     | React 18 + Vite + TS + Tailwind         | Standalone SPA, `admin/`, port 5174 |
+| Database     | Supabase (PostgreSQL)                   | Project ID: `weryswulejhjkrmervnf`  |
+| Realtime     | Supabase Realtime / WebSocket           | Match state updates                 |
+| Blockchain   | Ethereum Sepolia                        | USDC testnet                        |
+| Contracts    | Solidity 0.8.x + Hardhat + OpenZeppelin | Phase 3                             |
+| Oracle       | Chainlink CRE (Opta / Sportmonks node)  | Phase 4 (mocked now)                |
+| Wallet       | ethers.js v6 + MetaMask                 | Extension + admin                   |
+| Auth         | World ID (@worldcoin/idkit)             | Phase 4+                            |
+| ML / CRE API | Python scikit-learn RF + Node Express   | Phase 5                             |
+| Hosting      | Netlify / Vercel                        | admin.goal.live                     |
 
 ## Npm Scripts
 
@@ -367,15 +414,15 @@ ODDS_API_KEY=284c2661be564a872e91d8a4bb885ac9
 
 ## Key Design Decisions
 
-| Decision | Choice | Reason |
-|---|---|---|
-| Bet type | Next Goal Scorer only | Single market simplifies MVP |
-| Blockchain | Ethereum Sepolia | Testnet USDC available |
-| Currency | USDC | Stable, no memecoin complexity |
-| Penalty | `base[n] × (1 − min/90)` | Time-decay + progressive |
-| Settlement | Two-phase (provisional → final post-match) | Handles VAR / goal corrections |
-| Admin auth | MetaMask address vs `contract.owner()` | No separate login, crypto-native |
-| CRE strategy | Mock oracle now, real CRE in Phase 4 | Flexible on data availability |
-| Admin build | Separate Vite config | Zero risk to extension build |
-| Wallet lib | ethers.js v6 (not wagmi) | Consistent across extension + admin |
-| Odds pipeline | OddsAPI → Sheets → JSON → RF model | Replayable, no live timing dependency |
+| Decision      | Choice                                     | Reason                                |
+| ------------- | ------------------------------------------ | ------------------------------------- |
+| Bet type      | Next Goal Scorer only                      | Single market simplifies MVP          |
+| Blockchain    | Ethereum Sepolia                           | Testnet USDC available                |
+| Currency      | USDC                                       | Stable, no memecoin complexity        |
+| Penalty       | `base[n] × (1 − min/90)`                   | Time-decay + progressive              |
+| Settlement    | Two-phase (provisional → final post-match) | Handles VAR / goal corrections        |
+| Admin auth    | MetaMask address vs `contract.owner()`     | No separate login, crypto-native      |
+| CRE strategy  | Mock oracle now, real CRE in Phase 4       | Flexible on data availability         |
+| Admin build   | Separate Vite config                       | Zero risk to extension build          |
+| Wallet lib    | ethers.js v6 (not wagmi)                   | Consistent across extension + admin   |
+| Odds pipeline | OddsAPI → Sheets → JSON → RF model         | Replayable, no live timing dependency |

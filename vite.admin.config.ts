@@ -6,6 +6,7 @@ import { resolve } from "path";
 export default defineConfig({
   plugins: [react()],
   root: resolve(__dirname, "admin"),
+  envDir: resolve(__dirname), // load .env from project root, not admin/
   build: {
     outDir: resolve(__dirname, "dist-admin"),
     emptyOutDir: true,
