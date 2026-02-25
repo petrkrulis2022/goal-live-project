@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import type { ReactNode } from "react";
 
 const NAV = [
@@ -6,7 +6,17 @@ const NAV = [
   { to: "/events/new", label: "Create Event" },
 ];
 
-export default function Layout({ children }: { children: ReactNode }) {
+interface LayoutProps {
+  children: ReactNode;
+  address: string;
+  onDisconnect: () => void;
+}
+
+export default function Layout({
+  children,
+  address,
+  onDisconnect,
+}: LayoutProps) {
   return (
     <div className="min-h-screen bg-gray-950 text-white flex">
       {/* Sidebar */}
@@ -36,8 +46,21 @@ export default function Layout({ children }: { children: ReactNode }) {
             </NavLink>
           ))}
         </nav>
-        <div className="px-5 py-4 border-t border-gray-800 text-xs text-gray-600">
-          goal.live v1.0 — MVP
+
+        {/* Wallet info */}
+        <div className="px-4 py-4 border-t border-gray-800">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
+            <span className="font-mono text-xs text-gray-300 truncate">
+              {address.slice(0, 6)}…{address.slice(-4)}
+            </span>
+          </div>
+          <button
+            onClick={onDisconnect}
+            className="w-full text-xs text-gray-500 hover:text-red-400 transition-colors text-left py-1"
+          >
+            Disconnect
+          </button>
         </div>
       </aside>
 
