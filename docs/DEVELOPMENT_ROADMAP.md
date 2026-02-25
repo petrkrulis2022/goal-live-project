@@ -1,21 +1,21 @@
 # goal.live — Master Development Plan
 
 **Last Updated:** February 25, 2026
-**Status:** Phase 1 ✅ Complete · Phase 2 🔄 In Progress — admin UI + Edge Functions done, **deploy + Phase 3 smart contracts remain**
-**Repo:** `petrkrulis2022/goal-live-project` · branch `main` · last commit `b5de08f`
+**Status:** Phase 1 ✅ Complete · Phase 2 ✅ Complete — admin UI + Edge Functions deployed · **Phase 3 smart contracts next**
+**Repo:** `petrkrulis2022/goal-live-project` · branch `main` · last commit `f701763`
 **Uncommitted local:** none — all pushed
 
 ---
 
-> ## ▶ RESUME HERE — Phase 3 Start
+> ## ▶ RESUME HERE — Phase 3: Smart Contracts
 >
-> **Last completed:** All admin restyling pushed (`b5de08f`). All 3 Supabase Edge Functions scaffolded (`lock-bet`, `settle-match`, `sync-odds`) and pushed.
+> **Last completed:** Phase 2 fully done. Edge Functions (`lock-bet`, `settle-match`, `sync-odds`) deployed to Supabase project `weryswulejhjkrmervnf`. `ODDS_API_KEY` secret set.
 >
 > **Immediate next tasks (in order):**
 >
-> 1. **Deploy Edge Functions** → `supabase functions deploy lock-bet settle-match sync-odds` (needs Supabase CLI + `supabase login`)
-> 2. **Phase 3** — Init Hardhat project in `contracts/`, write `GoalLiveBetting.sol` (spec in `docs/CONTRACTS_BUILD_PROMPT.md`)
-> 3. **Wire Phase 3** — Deploy to Sepolia → copy ABI → set `SIMULATION_MODE = false` in `contractService.ts`
+> 1. **Init Hardhat project** → `mkdir contracts && cd contracts && npm init -y && npx hardhat init` (TypeScript project)
+> 2. **Write `GoalLiveBetting.sol`** — full spec in `docs/CONTRACTS_BUILD_PROMPT.md`
+> 3. **Deploy to Sepolia** → copy ABI → set `SIMULATION_MODE = false` in `admin/src/services/contractService.ts`
 
 ---
 
@@ -54,7 +54,7 @@
 | ~~`src/data/live_snapshots.json` — 11 snapshots min 0–90, live odds drift, goal events~~ | ✅     |
 | ~~Supabase SQL schema written (4 migration files in `supabase/migrations/`)~~            | ✅     |
 
-### Phase 2 — Admin Web App + Supabase 🔄
+### ~~Phase 2 — Admin Web App + Supabase~~ ✅ COMPLETE
 
 | Component                                                                                        | Status                                                    |
 | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
@@ -73,7 +73,7 @@
 | ~~`admin/index.html` — Google Fonts: Inter 400–800 + JetBrains Mono~~                            | ✅ done (local)                                           |
 | ~~`package.json` scripts: `dev:admin`, `build:admin`~~                                           | ✅ done                                                   |
 | ~~Supabase migrations applied to live DB~~                                                       | ✅ All 4 migrations run, project active                   |
-| ~~Supabase Edge Functions: `lock-bet`, `settle-match`, `sync-odds`~~                             | ✅ done (`supabase/functions/`)                           |
+| ~~Supabase Edge Functions: `lock-bet`, `settle-match`, `sync-odds`~~                             | ✅ deployed to `weryswulejhjkrmervnf`                     |
 | Deploy admin to Netlify / Vercel (admin.goal.live)                                               | ⏸ deferred (admin still evolving)                         |
 
 ---
@@ -87,11 +87,9 @@
 ~~3. Build `useAdminWallet.ts` — MetaMask connect + admin guard~~ ✅
 ~~4. Push local uncommitted changes~~ ✅ (`b5de08f`)
 ~~5. Build Supabase Edge Functions: `lock-bet`, `settle-match`, `sync-odds`~~ ✅
+~~6. Deploy Edge Functions~~ ✅ live on `weryswulejhjkrmervnf` · `ODDS_API_KEY` secret set
 
-**Still outstanding:**
-
-1. **Deploy Edge Functions** → `supabase functions deploy lock-bet settle-match sync-odds`
-2. Deploy admin to Netlify/Vercel (admin.goal.live) — deferred until Phase 3 wired
+**Phase 2 complete. Deploy admin to Netlify/Vercel deferred until Phase 3 is wired.**
 
 ---
 
@@ -330,8 +328,8 @@ interface PredictResponse {
 - [x] ~~Apply migrations to live Supabase DB~~
 - [x] ~~**Push local uncommitted changes**~~ ← done (`b5de08f`)
 - [x] ~~Supabase Edge Functions: `lock-bet`, `settle-match`, `sync-odds`~~ ← `supabase/functions/`
-- [ ] Deploy Edge Functions via Supabase CLI
-- [ ] Deploy admin to Netlify / Vercel (admin.goal.live) — deferred
+- [x] ~~Deploy Edge Functions via Supabase CLI~~ ← live on `weryswulejhjkrmervnf`
+- [ ] Deploy admin to Netlify / Vercel (admin.goal.live) — deferred until Phase 3 wired
 
 ### Phase 3 — Smart Contracts ❌
 
