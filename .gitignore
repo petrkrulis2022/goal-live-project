@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist-content/
+dist-admin/
+
+# Env files — NEVER commit keys
+.env
+.env.local
+.env.development
+.env.production
+# Keep the example template
+!.env.example
+
+# Editor
+.vscode/settings.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
