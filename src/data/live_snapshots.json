@@ -1,14 +1,45 @@
 {
-  "match_id": "cf641a7ccfddaeccd926ca123d72a4b5",
+  "match_id": "match_city_newcastle_20260221",
   "home_team": "Manchester City",
   "away_team": "Newcastle United",
   "match_date": "2026-02-21",
+  "goal_script": [
+    {
+      "minute": 17,
+      "player_id": "city_1",
+      "player": "Haaland Erling",
+      "team": "home"
+    },
+    {
+      "minute": 38,
+      "player_id": "newc_1",
+      "player": "Gordon Anthony",
+      "team": "away"
+    },
+    {
+      "minute": 54,
+      "player_id": "city_2",
+      "player": "Marmoush Omar",
+      "team": "home"
+    },
+    {
+      "minute": 71,
+      "player_id": "newc_2",
+      "player": "Woltemade Nick",
+      "team": "away"
+    },
+    {
+      "minute": 84,
+      "player_id": "city_3",
+      "player": "Semenyo Antoine",
+      "team": "home"
+    }
+  ],
   "snapshots": [
     {
       "minute": 0,
       "timestamp": "2026-02-21T20:00:00Z",
       "phase": "pre_match",
-      "duration_seconds": 0,
       "score": {
         "home": 0,
         "away": 0
@@ -34,13 +65,13 @@
           "home": 0,
           "away": 0
         },
-        "pass_accuracy_percent": {
+        "pass_accuracy": {
           "home": 0,
           "away": 0
         }
       },
       "player_stats": {
-        "Erling Haaland": {
+        "Haaland Erling": {
           "shots": 0,
           "shots_on_target": 0,
           "xg": 0.0,
@@ -48,7 +79,7 @@
           "on_field": true,
           "scored": false
         },
-        "Bernardo Silva": {
+        "Marmoush Omar": {
           "shots": 0,
           "shots_on_target": 0,
           "xg": 0.0,
@@ -56,7 +87,7 @@
           "on_field": true,
           "scored": false
         },
-        "Phil Foden": {
+        "Semenyo Antoine": {
           "shots": 0,
           "shots_on_target": 0,
           "xg": 0.0,
@@ -64,7 +95,7 @@
           "on_field": true,
           "scored": false
         },
-        "Jack Grealish": {
+        "Silva Bernardo": {
           "shots": 0,
           "shots_on_target": 0,
           "xg": 0.0,
@@ -72,7 +103,7 @@
           "on_field": true,
           "scored": false
         },
-        "Alexander Isak": {
+        "Rodri": {
           "shots": 0,
           "shots_on_target": 0,
           "xg": 0.0,
@@ -80,7 +111,135 @@
           "on_field": true,
           "scored": false
         },
-        "Anthony Gordon": {
+        "O'Reilly Nico": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Ait-Nouri Rayan": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Nunes Matheus": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Guehi Marc": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Dias Ruben": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Donnarumma Gianluigi": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Gordon Anthony": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Woltemade Nick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Elanga Anthony": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Tonali Sandro": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Ramsey Jacob": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Trippier Kieran": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Willock Joe": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Hall Lewis": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Thiaw Malick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Burn Dan": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Pope Nick": {
           "shots": 0,
           "shots_on_target": 0,
           "xg": 0.0,
@@ -90,80 +249,188 @@
         }
       },
       "live_odds": {
-        "Erling Haaland": 1.52,
-        "Bernardo Silva": 2.4,
-        "Phil Foden": 2.8,
-        "Jack Grealish": 3.2,
-        "João Nunes": 5.5,
-        "Alexander Isak": 3.5,
-        "Callum Wilson": 4.5,
-        "Anthony Gordon": 5.0,
-        "Bruno Guimarães": 7.5
+        "Haaland Erling": 1.52,
+        "Marmoush Omar": 2.4,
+        "Semenyo Antoine": 3.5,
+        "Silva Bernardo": 4.8,
+        "Rodri": 5.5,
+        "O'Reilly Nico": 6.0,
+        "Ait-Nouri Rayan": 7.0,
+        "Nunes Matheus": 8.0,
+        "Guehi Marc": 9.0,
+        "Dias Ruben": 10.0,
+        "Donnarumma Gianluigi": 80.0,
+        "Gordon Anthony": 4.5,
+        "Woltemade Nick": 3.7,
+        "Elanga Anthony": 5.0,
+        "Tonali Sandro": 7.5,
+        "Ramsey Jacob": 7.0,
+        "Trippier Kieran": 8.0,
+        "Willock Joe": 8.5,
+        "Hall Lewis": 9.0,
+        "Thiaw Malick": 12.0,
+        "Burn Dan": 14.0,
+        "Pope Nick": 80.0
       },
       "events": []
     },
     {
-      "minute": 15,
-      "timestamp": "2026-02-21T20:15:00Z",
+      "minute": 17,
+      "timestamp": "2026-02-21T20:17:00Z",
       "phase": "first_half",
-      "duration_seconds": 900,
       "score": {
         "home": 1,
         "away": 0
       },
       "stats": {
         "shots_on_target": {
-          "home": 2,
+          "home": 3,
           "away": 1
         },
         "total_shots": {
-          "home": 4,
-          "away": 2
+          "home": 6,
+          "away": 3
         },
         "xg": {
-          "home": 0.9,
-          "away": 0.3
+          "home": 1.05,
+          "away": 0.32
         },
         "possession": {
-          "home": 58,
-          "away": 42
+          "home": 61,
+          "away": 39
         },
         "passes": {
-          "home": 245,
-          "away": 180
+          "home": 310,
+          "away": 195
         },
-        "pass_accuracy_percent": {
-          "home": 87,
-          "away": 84
+        "pass_accuracy": {
+          "home": 89,
+          "away": 82
         }
       },
       "player_stats": {
-        "Erling Haaland": {
+        "Haaland Erling": {
           "shots": 2,
           "shots_on_target": 1,
           "xg": 0.55,
-          "touches_in_box": 4,
+          "touches_in_box": 5,
           "on_field": true,
           "scored": true,
-          "goal_time": "15'"
+          "goal_time": "17'"
         },
-        "Bernardo Silva": {
-          "shots": 1,
-          "shots_on_target": 0,
-          "xg": 0.15,
-          "touches_in_box": 2,
-          "on_field": true,
-          "scored": false
-        },
-        "Phil Foden": {
+        "Marmoush Omar": {
           "shots": 1,
           "shots_on_target": 1,
-          "xg": 0.25,
+          "xg": 0.22,
+          "touches_in_box": 3,
+          "on_field": true,
+          "scored": false
+        },
+        "Semenyo Antoine": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.08,
           "touches_in_box": 2,
           "on_field": true,
           "scored": false
         },
-        "Jack Grealish": {
+        "Silva Bernardo": {
+          "shots": 1,
+          "shots_on_target": 1,
+          "xg": 0.18,
+          "touches_in_box": 2,
+          "on_field": true,
+          "scored": false
+        },
+        "Rodri": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "O'Reilly Nico": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.02,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Ait-Nouri Rayan": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Nunes Matheus": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Guehi Marc": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Dias Ruben": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Donnarumma Gianluigi": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Gordon Anthony": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.12,
+          "touches_in_box": 2,
+          "on_field": true,
+          "scored": false
+        },
+        "Woltemade Nick": {
+          "shots": 1,
+          "shots_on_target": 1,
+          "xg": 0.2,
+          "touches_in_box": 2,
+          "on_field": true,
+          "scored": false
+        },
+        "Elanga Anthony": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Tonali Sandro": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Ramsey Jacob": {
           "shots": 0,
           "shots_on_target": 0,
           "xg": 0.0,
@@ -171,41 +438,86 @@
           "on_field": true,
           "scored": false
         },
-        "Alexander Isak": {
-          "shots": 1,
+        "Trippier Kieran": {
+          "shots": 0,
           "shots_on_target": 0,
-          "xg": 0.2,
-          "touches_in_box": 1,
+          "xg": 0.0,
+          "touches_in_box": 0,
           "on_field": true,
           "scored": false
         },
-        "Anthony Gordon": {
-          "shots": 1,
-          "shots_on_target": 1,
-          "xg": 0.15,
-          "touches_in_box": 2,
+        "Willock Joe": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Hall Lewis": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Thiaw Malick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Burn Dan": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Pope Nick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
           "on_field": true,
           "scored": false
         }
       },
       "live_odds": {
-        "Erling Haaland": 1.2,
-        "Bernardo Silva": 2.1,
-        "Phil Foden": 2.5,
-        "Jack Grealish": 2.8,
-        "João Nunes": 4.5,
-        "Alexander Isak": 8.5,
-        "Callum Wilson": 12.5,
-        "Anthony Gordon": 12.0,
-        "Bruno Guimarães": 18.0
+        "Haaland Erling": 1.38,
+        "Marmoush Omar": 2.2,
+        "Semenyo Antoine": 3.2,
+        "Silva Bernardo": 4.5,
+        "Rodri": 5.2,
+        "O'Reilly Nico": 5.8,
+        "Ait-Nouri Rayan": 6.8,
+        "Nunes Matheus": 7.8,
+        "Guehi Marc": 9.5,
+        "Dias Ruben": 11.0,
+        "Donnarumma Gianluigi": 80.0,
+        "Gordon Anthony": 3.8,
+        "Woltemade Nick": 4.1,
+        "Elanga Anthony": 4.6,
+        "Tonali Sandro": 6.5,
+        "Ramsey Jacob": 6.8,
+        "Trippier Kieran": 7.5,
+        "Willock Joe": 8.0,
+        "Hall Lewis": 9.0,
+        "Thiaw Malick": 13.0,
+        "Burn Dan": 15.0,
+        "Pope Nick": 80.0
       },
       "events": [
         {
-          "type": "goal",
-          "player": "Erling Haaland",
-          "team": "Manchester City",
-          "minute": 15,
-          "assist": "João Nunes"
+          "minute": 17,
+          "type": "GOAL",
+          "player": "Haaland Erling",
+          "team": "home",
+          "score_after": "1-0"
         }
       ]
     },
@@ -213,7 +525,6 @@
       "minute": 30,
       "timestamp": "2026-02-21T20:30:00Z",
       "phase": "first_half",
-      "duration_seconds": 1800,
       "score": {
         "home": 1,
         "away": 0
@@ -221,625 +532,2174 @@
       "stats": {
         "shots_on_target": {
           "home": 4,
-          "away": 1
+          "away": 3
         },
         "total_shots": {
-          "home": 7,
-          "away": 2
+          "home": 9,
+          "away": 7
         },
         "xg": {
-          "home": 1.8,
-          "away": 0.3
+          "home": 1.4,
+          "away": 0.75
         },
         "possession": {
-          "home": 62,
-          "away": 38
+          "home": 57,
+          "away": 43
         },
         "passes": {
-          "home": 420,
-          "away": 250
+          "home": 560,
+          "away": 420
         },
-        "pass_accuracy_percent": {
+        "pass_accuracy": {
           "home": 88,
-          "away": 85
+          "away": 84
         }
       },
       "player_stats": {
-        "Erling Haaland": {
+        "Haaland Erling": {
           "shots": 3,
-          "shots_on_target": 1,
-          "xg": 0.9,
-          "touches_in_box": 5,
+          "shots_on_target": 2,
+          "xg": 0.72,
+          "touches_in_box": 7,
           "on_field": true,
-          "scored": true
+          "scored": true,
+          "goal_time": "17'"
         },
-        "Bernardo Silva": {
-          "shots": 1,
+        "Marmoush Omar": {
+          "shots": 2,
           "shots_on_target": 1,
-          "xg": 0.3,
-          "touches_in_box": 2,
+          "xg": 0.32,
+          "touches_in_box": 5,
           "on_field": true,
           "scored": false
         },
-        "Phil Foden": {
+        "Semenyo Antoine": {
           "shots": 2,
           "shots_on_target": 1,
-          "xg": 0.4,
+          "xg": 0.18,
+          "touches_in_box": 4,
+          "on_field": true,
+          "scored": false
+        },
+        "Silva Bernardo": {
+          "shots": 1,
+          "shots_on_target": 1,
+          "xg": 0.18,
           "touches_in_box": 3,
           "on_field": true,
           "scored": false
         },
-        "Jack Grealish": {
+        "Rodri": {
           "shots": 1,
-          "shots_on_target": 1,
-          "xg": 0.2,
+          "shots_on_target": 0,
+          "xg": 0.05,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "O'Reilly Nico": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.02,
           "touches_in_box": 2,
           "on_field": true,
           "scored": false
         },
-        "Alexander Isak": {
-          "shots": 1,
+        "Ait-Nouri Rayan": {
+          "shots": 0,
           "shots_on_target": 0,
-          "xg": 0.2,
+          "xg": 0.0,
           "touches_in_box": 1,
           "on_field": true,
           "scored": false
         },
-        "Anthony Gordon": {
+        "Nunes Matheus": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Guehi Marc": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Dias Ruben": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Donnarumma Gianluigi": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Gordon Anthony": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.28,
+          "touches_in_box": 4,
+          "on_field": true,
+          "scored": false
+        },
+        "Woltemade Nick": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.32,
+          "touches_in_box": 4,
+          "on_field": true,
+          "scored": false
+        },
+        "Elanga Anthony": {
           "shots": 1,
           "shots_on_target": 1,
           "xg": 0.15,
+          "touches_in_box": 3,
+          "on_field": true,
+          "scored": false
+        },
+        "Tonali Sandro": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.05,
           "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Ramsey Jacob": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.05,
+          "touches_in_box": 2,
+          "on_field": true,
+          "scored": false
+        },
+        "Trippier Kieran": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Willock Joe": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Hall Lewis": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Thiaw Malick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Burn Dan": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Pope Nick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
           "on_field": true,
           "scored": false
         }
       },
       "live_odds": {
-        "Erling Haaland": 1.18,
-        "Bernardo Silva": 1.95,
-        "Phil Foden": 2.4,
-        "Jack Grealish": 2.6,
-        "João Nunes": 4.2,
-        "Alexander Isak": 10.0,
-        "Callum Wilson": 14.5,
-        "Anthony Gordon": 14.5,
-        "Bruno Guimarães": 22.0
+        "Haaland Erling": 1.42,
+        "Marmoush Omar": 2.28,
+        "Semenyo Antoine": 3.3,
+        "Silva Bernardo": 4.6,
+        "Rodri": 5.3,
+        "O'Reilly Nico": 5.9,
+        "Ait-Nouri Rayan": 7.0,
+        "Nunes Matheus": 8.0,
+        "Guehi Marc": 10.0,
+        "Dias Ruben": 12.0,
+        "Donnarumma Gianluigi": 80.0,
+        "Gordon Anthony": 3.5,
+        "Woltemade Nick": 3.8,
+        "Elanga Anthony": 4.4,
+        "Tonali Sandro": 6.2,
+        "Ramsey Jacob": 6.5,
+        "Trippier Kieran": 7.2,
+        "Willock Joe": 8.0,
+        "Hall Lewis": 9.5,
+        "Thiaw Malick": 14.0,
+        "Burn Dan": 16.0,
+        "Pope Nick": 80.0
       },
       "events": []
     },
     {
-      "minute": 45,
-      "timestamp": "2026-02-21T20:45:00Z",
+      "minute": 38,
+      "timestamp": "2026-02-21T20:38:00Z",
       "phase": "first_half",
-      "duration_seconds": 2700,
       "score": {
-        "home": 2,
-        "away": 0
+        "home": 1,
+        "away": 1
       },
       "stats": {
         "shots_on_target": {
           "home": 5,
-          "away": 1
+          "away": 4
         },
         "total_shots": {
-          "home": 9,
-          "away": 2
+          "home": 11,
+          "away": 9
         },
         "xg": {
-          "home": 2.3,
-          "away": 0.3
+          "home": 1.58,
+          "away": 1.12
         },
         "possession": {
-          "home": 60,
-          "away": 40
+          "home": 55,
+          "away": 45
         },
         "passes": {
-          "home": 580,
-          "away": 310
+          "home": 680,
+          "away": 560
         },
-        "pass_accuracy_percent": {
+        "pass_accuracy": {
+          "home": 87,
+          "away": 85
+        }
+      },
+      "player_stats": {
+        "Haaland Erling": {
+          "shots": 4,
+          "shots_on_target": 2,
+          "xg": 0.8,
+          "touches_in_box": 8,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "17'"
+        },
+        "Marmoush Omar": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.32,
+          "touches_in_box": 6,
+          "on_field": true,
+          "scored": false
+        },
+        "Semenyo Antoine": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.22,
+          "touches_in_box": 5,
+          "on_field": true,
+          "scored": false
+        },
+        "Silva Bernardo": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.22,
+          "touches_in_box": 4,
+          "on_field": true,
+          "scored": false
+        },
+        "Rodri": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.05,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "O'Reilly Nico": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.02,
+          "touches_in_box": 2,
+          "on_field": true,
+          "scored": false
+        },
+        "Ait-Nouri Rayan": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Nunes Matheus": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Guehi Marc": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Dias Ruben": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Donnarumma Gianluigi": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Gordon Anthony": {
+          "shots": 3,
+          "shots_on_target": 2,
+          "xg": 0.55,
+          "touches_in_box": 6,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "38'"
+        },
+        "Woltemade Nick": {
+          "shots": 3,
+          "shots_on_target": 1,
+          "xg": 0.4,
+          "touches_in_box": 5,
+          "on_field": true,
+          "scored": false
+        },
+        "Elanga Anthony": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.18,
+          "touches_in_box": 4,
+          "on_field": true,
+          "scored": false
+        },
+        "Tonali Sandro": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.05,
+          "touches_in_box": 2,
+          "on_field": true,
+          "scored": false
+        },
+        "Ramsey Jacob": {
+          "shots": 1,
+          "shots_on_target": 1,
+          "xg": 0.12,
+          "touches_in_box": 3,
+          "on_field": true,
+          "scored": false
+        },
+        "Trippier Kieran": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.05,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Willock Joe": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Hall Lewis": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Thiaw Malick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Burn Dan": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Pope Nick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        }
+      },
+      "live_odds": {
+        "Haaland Erling": 1.44,
+        "Marmoush Omar": 2.32,
+        "Semenyo Antoine": 3.38,
+        "Silva Bernardo": 4.65,
+        "Rodri": 5.4,
+        "O'Reilly Nico": 6.0,
+        "Ait-Nouri Rayan": 7.2,
+        "Nunes Matheus": 8.2,
+        "Guehi Marc": 10.5,
+        "Dias Ruben": 12.5,
+        "Donnarumma Gianluigi": 80.0,
+        "Gordon Anthony": 4.0,
+        "Woltemade Nick": 3.6,
+        "Elanga Anthony": 4.5,
+        "Tonali Sandro": 6.5,
+        "Ramsey Jacob": 6.6,
+        "Trippier Kieran": 7.4,
+        "Willock Joe": 8.2,
+        "Hall Lewis": 9.8,
+        "Thiaw Malick": 14.5,
+        "Burn Dan": 17.0,
+        "Pope Nick": 80.0
+      },
+      "events": [
+        {
+          "minute": 38,
+          "type": "GOAL",
+          "player": "Gordon Anthony",
+          "team": "away",
+          "score_after": "1-1"
+        }
+      ]
+    },
+    {
+      "minute": 45,
+      "timestamp": "2026-02-21T20:45:00Z",
+      "phase": "half_time",
+      "score": {
+        "home": 1,
+        "away": 1
+      },
+      "stats": {
+        "shots_on_target": {
+          "home": 5,
+          "away": 4
+        },
+        "total_shots": {
+          "home": 12,
+          "away": 10
+        },
+        "xg": {
+          "home": 1.65,
+          "away": 1.18
+        },
+        "possession": {
+          "home": 56,
+          "away": 44
+        },
+        "passes": {
+          "home": 780,
+          "away": 620
+        },
+        "pass_accuracy": {
           "home": 87,
           "away": 84
         }
       },
       "player_stats": {
-        "Erling Haaland": {
+        "Haaland Erling": {
+          "shots": 4,
+          "shots_on_target": 2,
+          "xg": 0.82,
+          "touches_in_box": 8,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "17'"
+        },
+        "Marmoush Omar": {
           "shots": 3,
           "shots_on_target": 1,
-          "xg": 0.9,
+          "xg": 0.38,
+          "touches_in_box": 6,
+          "on_field": true,
+          "scored": false
+        },
+        "Semenyo Antoine": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.22,
           "touches_in_box": 5,
           "on_field": true,
-          "scored": true
+          "scored": false
         },
-        "Bernardo Silva": {
-          "shots": 1,
+        "Silva Bernardo": {
+          "shots": 2,
           "shots_on_target": 1,
-          "xg": 0.3,
+          "xg": 0.22,
+          "touches_in_box": 4,
+          "on_field": true,
+          "scored": false
+        },
+        "Rodri": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.05,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "O'Reilly Nico": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.02,
           "touches_in_box": 2,
           "on_field": true,
           "scored": false
         },
-        "Phil Foden": {
+        "Ait-Nouri Rayan": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Nunes Matheus": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Guehi Marc": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Dias Ruben": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Donnarumma Gianluigi": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Gordon Anthony": {
           "shots": 3,
           "shots_on_target": 2,
-          "xg": 0.65,
-          "touches_in_box": 4,
+          "xg": 0.55,
+          "touches_in_box": 6,
           "on_field": true,
           "scored": true,
           "goal_time": "38'"
         },
-        "Jack Grealish": {
+        "Woltemade Nick": {
+          "shots": 3,
+          "shots_on_target": 1,
+          "xg": 0.42,
+          "touches_in_box": 6,
+          "on_field": true,
+          "scored": false
+        },
+        "Elanga Anthony": {
           "shots": 2,
           "shots_on_target": 1,
-          "xg": 0.35,
+          "xg": 0.18,
+          "touches_in_box": 4,
+          "on_field": true,
+          "scored": false
+        },
+        "Tonali Sandro": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.05,
           "touches_in_box": 2,
           "on_field": true,
           "scored": false
         },
-        "Alexander Isak": {
-          "shots": 1,
-          "shots_on_target": 0,
-          "xg": 0.2,
-          "touches_in_box": 1,
-          "on_field": true,
-          "scored": false
-        },
-        "Anthony Gordon": {
+        "Ramsey Jacob": {
           "shots": 1,
           "shots_on_target": 1,
-          "xg": 0.15,
-          "touches_in_box": 1,
-          "on_field": true,
-          "scored": false
-        }
-      },
-      "live_odds": {
-        "Erling Haaland": 1.15,
-        "Bernardo Silva": 1.9,
-        "Phil Foden": 1.5,
-        "Jack Grealish": 2.2,
-        "João Nunes": 3.8,
-        "Alexander Isak": 15.0,
-        "Callum Wilson": 22.0,
-        "Anthony Gordon": 25.0,
-        "Bruno Guimarães": 35.0
-      },
-      "events": [
-        {
-          "type": "goal",
-          "player": "Phil Foden",
-          "team": "Manchester City",
-          "minute": 38,
-          "assist": "Jack Grealish"
-        }
-      ]
-    },
-    {
-      "minute": 60,
-      "timestamp": "2026-02-21T21:00:00Z",
-      "phase": "second_half",
-      "duration_seconds": 3600,
-      "score": {
-        "home": 2,
-        "away": 0
-      },
-      "stats": {
-        "shots_on_target": {
-          "home": 8,
-          "away": 2
-        },
-        "total_shots": {
-          "home": 12,
-          "away": 3
-        },
-        "xg": {
-          "home": 3.1,
-          "away": 0.6
-        },
-        "possession": {
-          "home": 68,
-          "away": 32
-        },
-        "passes": {
-          "home": 810,
-          "away": 420
-        },
-        "pass_accuracy_percent": {
-          "home": 89,
-          "away": 83
-        }
-      },
-      "player_stats": {
-        "Erling Haaland": {
-          "shots": 5,
-          "shots_on_target": 1,
-          "xg": 1.2,
-          "touches_in_box": 7,
-          "on_field": true,
-          "scored": true
-        },
-        "Bernardo Silva": {
-          "shots": 2,
-          "shots_on_target": 1,
-          "xg": 0.4,
+          "xg": 0.12,
           "touches_in_box": 3,
           "on_field": true,
           "scored": false
         },
-        "Phil Foden": {
-          "shots": 4,
-          "shots_on_target": 2,
-          "xg": 0.8,
-          "touches_in_box": 5,
-          "on_field": true,
-          "scored": true
-        },
-        "Jack Grealish": {
+        "Trippier Kieran": {
           "shots": 1,
           "shots_on_target": 0,
-          "xg": 0.1,
+          "xg": 0.05,
           "touches_in_box": 2,
           "on_field": true,
           "scored": false
         },
-        "Alexander Isak": {
-          "shots": 2,
-          "shots_on_target": 1,
-          "xg": 0.35,
-          "touches_in_box": 2,
-          "on_field": true,
-          "scored": false
-        },
-        "Anthony Gordon": {
-          "shots": 1,
-          "shots_on_target": 1,
-          "xg": 0.25,
+        "Willock Joe": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
           "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Hall Lewis": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Thiaw Malick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Burn Dan": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Pope Nick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
           "on_field": true,
           "scored": false
         }
       },
       "live_odds": {
-        "Erling Haaland": 1.12,
-        "Bernardo Silva": 1.85,
-        "Phil Foden": 1.55,
-        "Jack Grealish": 2.1,
-        "João Nunes": 3.4,
-        "Alexander Isak": 22.0,
-        "Callum Wilson": 35.0,
-        "Anthony Gordon": 32.0,
-        "Bruno Guimarães": 50.0
+        "Haaland Erling": 1.48,
+        "Marmoush Omar": 2.38,
+        "Semenyo Antoine": 3.45,
+        "Silva Bernardo": 4.7,
+        "Rodri": 5.45,
+        "O'Reilly Nico": 6.0,
+        "Ait-Nouri Rayan": 7.2,
+        "Nunes Matheus": 8.2,
+        "Guehi Marc": 10.5,
+        "Dias Ruben": 12.5,
+        "Donnarumma Gianluigi": 80.0,
+        "Gordon Anthony": 4.2,
+        "Woltemade Nick": 3.65,
+        "Elanga Anthony": 4.55,
+        "Tonali Sandro": 6.6,
+        "Ramsey Jacob": 6.7,
+        "Trippier Kieran": 7.5,
+        "Willock Joe": 8.3,
+        "Hall Lewis": 9.8,
+        "Thiaw Malick": 14.5,
+        "Burn Dan": 17.0,
+        "Pope Nick": 80.0
       },
       "events": []
     },
     {
-      "minute": 72,
-      "timestamp": "2026-02-21T21:12:00Z",
+      "minute": 54,
+      "timestamp": "2026-02-21T21:09:00Z",
       "phase": "second_half",
-      "duration_seconds": 4320,
       "score": {
-        "home": 3,
-        "away": 0
-      },
-      "stats": {
-        "shots_on_target": {
-          "home": 10,
-          "away": 2
-        },
-        "total_shots": {
-          "home": 14,
-          "away": 3
-        },
-        "xg": {
-          "home": 3.4,
-          "away": 0.6
-        },
-        "possession": {
-          "home": 65,
-          "away": 35
-        },
-        "passes": {
-          "home": 920,
-          "away": 480
-        },
-        "pass_accuracy_percent": {
-          "home": 89,
-          "away": 84
-        }
-      },
-      "player_stats": {
-        "Erling Haaland": {
-          "shots": 5,
-          "shots_on_target": 1,
-          "xg": 1.2,
-          "touches_in_box": 7,
-          "on_field": true,
-          "scored": true
-        },
-        "Bernardo Silva": {
-          "shots": 2,
-          "shots_on_target": 1,
-          "xg": 0.4,
-          "touches_in_box": 3,
-          "on_field": true,
-          "scored": false
-        },
-        "Phil Foden": {
-          "shots": 5,
-          "shots_on_target": 2,
-          "xg": 0.8,
-          "touches_in_box": 5,
-          "on_field": true,
-          "scored": true
-        },
-        "Jack Grealish": {
-          "shots": 3,
-          "shots_on_target": 1,
-          "xg": 0.3,
-          "touches_in_box": 3,
-          "on_field": true,
-          "scored": true,
-          "goal_time": "72'"
-        },
-        "Alexander Isak": {
-          "shots": 2,
-          "shots_on_target": 1,
-          "xg": 0.35,
-          "touches_in_box": 2,
-          "on_field": true,
-          "scored": false
-        },
-        "Anthony Gordon": {
-          "shots": 1,
-          "shots_on_target": 1,
-          "xg": 0.25,
-          "touches_in_box": 1,
-          "on_field": true,
-          "scored": false
-        }
-      },
-      "live_odds": {
-        "Erling Haaland": 1.08,
-        "Bernardo Silva": 1.8,
-        "Phil Foden": 2.2,
-        "Jack Grealish": 1.4,
-        "João Nunes": 2.9,
-        "Alexander Isak": 30.0,
-        "Callum Wilson": 50.0,
-        "Anthony Gordon": 48.0,
-        "Bruno Guimarães": 75.0
-      },
-      "events": [
-        {
-          "type": "goal",
-          "player": "Jack Grealish",
-          "team": "Manchester City",
-          "minute": 72,
-          "assist": "Bernardo Silva"
-        }
-      ]
-    },
-    {
-      "minute": 85,
-      "timestamp": "2026-02-21T21:25:00Z",
-      "phase": "second_half",
-      "duration_seconds": 5100,
-      "score": {
-        "home": 3,
+        "home": 2,
         "away": 1
       },
       "stats": {
         "shots_on_target": {
-          "home": 11,
-          "away": 3
+          "home": 7,
+          "away": 5
         },
         "total_shots": {
           "home": 15,
-          "away": 4
+          "away": 12
         },
         "xg": {
-          "home": 3.6,
-          "away": 0.8
+          "home": 2.2,
+          "away": 1.45
         },
         "possession": {
-          "home": 66,
-          "away": 34
+          "home": 59,
+          "away": 41
         },
         "passes": {
-          "home": 1050,
-          "away": 550
+          "home": 1020,
+          "away": 760
         },
-        "pass_accuracy_percent": {
-          "home": 89,
-          "away": 84
+        "pass_accuracy": {
+          "home": 88,
+          "away": 83
         }
       },
       "player_stats": {
-        "Erling Haaland": {
+        "Haaland Erling": {
           "shots": 5,
+          "shots_on_target": 3,
+          "xg": 0.92,
+          "touches_in_box": 10,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "17'"
+        },
+        "Marmoush Omar": {
+          "shots": 4,
+          "shots_on_target": 2,
+          "xg": 0.62,
+          "touches_in_box": 8,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "54'"
+        },
+        "Semenyo Antoine": {
+          "shots": 3,
           "shots_on_target": 1,
-          "xg": 1.2,
+          "xg": 0.28,
           "touches_in_box": 7,
           "on_field": true,
-          "scored": true
+          "scored": false
         },
-        "Bernardo Silva": {
+        "Silva Bernardo": {
           "shots": 2,
           "shots_on_target": 1,
-          "xg": 0.4,
+          "xg": 0.25,
+          "touches_in_box": 5,
+          "on_field": true,
+          "scored": false
+        },
+        "Rodri": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.05,
+          "touches_in_box": 2,
+          "on_field": true,
+          "scored": false
+        },
+        "O'Reilly Nico": {
+          "shots": 1,
+          "shots_on_target": 1,
+          "xg": 0.12,
           "touches_in_box": 3,
           "on_field": true,
           "scored": false
         },
-        "Phil Foden": {
-          "shots": 5,
-          "shots_on_target": 3,
-          "xg": 1.0,
-          "touches_in_box": 5,
-          "on_field": true,
-          "scored": true
-        },
-        "Jack Grealish": {
-          "shots": 3,
-          "shots_on_target": 1,
-          "xg": 0.3,
-          "touches_in_box": 3,
-          "on_field": true,
-          "scored": true
-        },
-        "Alexander Isak": {
-          "shots": 3,
-          "shots_on_target": 2,
-          "xg": 0.55,
+        "Ait-Nouri Rayan": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
           "touches_in_box": 2,
           "on_field": true,
-          "scored": true,
-          "goal_time": "85'"
+          "scored": false
         },
-        "Anthony Gordon": {
+        "Nunes Matheus": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Guehi Marc": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Dias Ruben": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Donnarumma Gianluigi": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Gordon Anthony": {
+          "shots": 4,
+          "shots_on_target": 2,
+          "xg": 0.68,
+          "touches_in_box": 8,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "38'"
+        },
+        "Woltemade Nick": {
+          "shots": 4,
+          "shots_on_target": 2,
+          "xg": 0.55,
+          "touches_in_box": 8,
+          "on_field": true,
+          "scored": false
+        },
+        "Elanga Anthony": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.2,
+          "touches_in_box": 5,
+          "on_field": true,
+          "scored": false
+        },
+        "Tonali Sandro": {
+          "shots": 2,
+          "shots_on_target": 0,
+          "xg": 0.08,
+          "touches_in_box": 3,
+          "on_field": true,
+          "scored": false
+        },
+        "Ramsey Jacob": {
           "shots": 1,
           "shots_on_target": 1,
-          "xg": 0.25,
+          "xg": 0.14,
+          "touches_in_box": 4,
+          "on_field": true,
+          "scored": false
+        },
+        "Trippier Kieran": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.06,
+          "touches_in_box": 2,
+          "on_field": true,
+          "scored": false
+        },
+        "Willock Joe": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.05,
+          "touches_in_box": 2,
+          "on_field": true,
+          "scored": false
+        },
+        "Hall Lewis": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
           "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Thiaw Malick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Burn Dan": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Pope Nick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
           "on_field": true,
           "scored": false
         }
       },
       "live_odds": {
-        "Erling Haaland": 1.05,
-        "Bernardo Silva": 1.95,
-        "Phil Foden": 2.2,
-        "Jack Grealish": 1.8,
-        "João Nunes": 3.5,
-        "Alexander Isak": 18.0,
-        "Callum Wilson": 65.0,
-        "Anthony Gordon": 60.0,
-        "Bruno Guimarães": 95.0
+        "Haaland Erling": 1.36,
+        "Marmoush Omar": 2.1,
+        "Semenyo Antoine": 3.1,
+        "Silva Bernardo": 4.4,
+        "Rodri": 5.1,
+        "O'Reilly Nico": 5.7,
+        "Ait-Nouri Rayan": 6.8,
+        "Nunes Matheus": 7.8,
+        "Guehi Marc": 10.0,
+        "Dias Ruben": 12.0,
+        "Donnarumma Gianluigi": 80.0,
+        "Gordon Anthony": 3.6,
+        "Woltemade Nick": 3.4,
+        "Elanga Anthony": 4.2,
+        "Tonali Sandro": 6.0,
+        "Ramsey Jacob": 6.2,
+        "Trippier Kieran": 7.0,
+        "Willock Joe": 7.8,
+        "Hall Lewis": 9.5,
+        "Thiaw Malick": 13.5,
+        "Burn Dan": 16.0,
+        "Pope Nick": 80.0
       },
       "events": [
         {
-          "type": "goal",
-          "player": "Alexander Isak",
-          "team": "Newcastle United",
-          "minute": 85,
-          "assist": "Anthony Gordon"
+          "minute": 54,
+          "type": "GOAL",
+          "player": "Marmoush Omar",
+          "team": "home",
+          "score_after": "2-1"
+        }
+      ]
+    },
+    {
+      "minute": 65,
+      "timestamp": "2026-02-21T21:20:00Z",
+      "phase": "second_half",
+      "score": {
+        "home": 2,
+        "away": 1
+      },
+      "stats": {
+        "shots_on_target": {
+          "home": 8,
+          "away": 7
+        },
+        "total_shots": {
+          "home": 17,
+          "away": 15
+        },
+        "xg": {
+          "home": 2.45,
+          "away": 1.88
+        },
+        "possession": {
+          "home": 54,
+          "away": 46
+        },
+        "passes": {
+          "home": 1240,
+          "away": 1060
+        },
+        "pass_accuracy": {
+          "home": 87,
+          "away": 85
+        }
+      },
+      "player_stats": {
+        "Haaland Erling": {
+          "shots": 6,
+          "shots_on_target": 3,
+          "xg": 1.05,
+          "touches_in_box": 12,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "17'"
+        },
+        "Marmoush Omar": {
+          "shots": 5,
+          "shots_on_target": 3,
+          "xg": 0.75,
+          "touches_in_box": 10,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "54'"
+        },
+        "Semenyo Antoine": {
+          "shots": 3,
+          "shots_on_target": 1,
+          "xg": 0.3,
+          "touches_in_box": 8,
+          "on_field": true,
+          "scored": false
+        },
+        "Silva Bernardo": {
+          "shots": 3,
+          "shots_on_target": 2,
+          "xg": 0.38,
+          "touches_in_box": 6,
+          "on_field": true,
+          "scored": false
+        },
+        "Rodri": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.05,
+          "touches_in_box": 2,
+          "on_field": true,
+          "scored": false
+        },
+        "O'Reilly Nico": {
+          "shots": 1,
+          "shots_on_target": 1,
+          "xg": 0.14,
+          "touches_in_box": 4,
+          "on_field": true,
+          "scored": false
+        },
+        "Ait-Nouri Rayan": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.05,
+          "touches_in_box": 2,
+          "on_field": true,
+          "scored": false
+        },
+        "Nunes Matheus": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Guehi Marc": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Dias Ruben": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Donnarumma Gianluigi": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Gordon Anthony": {
+          "shots": 5,
+          "shots_on_target": 3,
+          "xg": 0.8,
+          "touches_in_box": 10,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "38'"
+        },
+        "Woltemade Nick": {
+          "shots": 5,
+          "shots_on_target": 2,
+          "xg": 0.68,
+          "touches_in_box": 9,
+          "on_field": true,
+          "scored": false
+        },
+        "Elanga Anthony": {
+          "shots": 3,
+          "shots_on_target": 1,
+          "xg": 0.26,
+          "touches_in_box": 6,
+          "on_field": true,
+          "scored": false
+        },
+        "Tonali Sandro": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.12,
+          "touches_in_box": 4,
+          "on_field": true,
+          "scored": false
+        },
+        "Ramsey Jacob": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.18,
+          "touches_in_box": 5,
+          "on_field": true,
+          "scored": false
+        },
+        "Trippier Kieran": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.1,
+          "touches_in_box": 3,
+          "on_field": true,
+          "scored": false
+        },
+        "Willock Joe": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.05,
+          "touches_in_box": 2,
+          "on_field": true,
+          "scored": false
+        },
+        "Hall Lewis": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Thiaw Malick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Burn Dan": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Pope Nick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        }
+      },
+      "live_odds": {
+        "Haaland Erling": 1.4,
+        "Marmoush Omar": 2.18,
+        "Semenyo Antoine": 3.15,
+        "Silva Bernardo": 4.45,
+        "Rodri": 5.15,
+        "O'Reilly Nico": 5.75,
+        "Ait-Nouri Rayan": 6.9,
+        "Nunes Matheus": 7.9,
+        "Guehi Marc": 10.2,
+        "Dias Ruben": 12.2,
+        "Donnarumma Gianluigi": 80.0,
+        "Gordon Anthony": 3.2,
+        "Woltemade Nick": 3.1,
+        "Elanga Anthony": 4.0,
+        "Tonali Sandro": 5.8,
+        "Ramsey Jacob": 6.0,
+        "Trippier Kieran": 6.8,
+        "Willock Joe": 7.5,
+        "Hall Lewis": 9.2,
+        "Thiaw Malick": 13.0,
+        "Burn Dan": 15.5,
+        "Pope Nick": 80.0
+      },
+      "events": []
+    },
+    {
+      "minute": 71,
+      "timestamp": "2026-02-21T21:26:00Z",
+      "phase": "second_half",
+      "score": {
+        "home": 2,
+        "away": 2
+      },
+      "stats": {
+        "shots_on_target": {
+          "home": 8,
+          "away": 8
+        },
+        "total_shots": {
+          "home": 18,
+          "away": 17
+        },
+        "xg": {
+          "home": 2.5,
+          "away": 2.3
+        },
+        "possession": {
+          "home": 52,
+          "away": 48
+        },
+        "passes": {
+          "home": 1360,
+          "away": 1240
+        },
+        "pass_accuracy": {
+          "home": 87,
+          "away": 85
+        }
+      },
+      "player_stats": {
+        "Haaland Erling": {
+          "shots": 6,
+          "shots_on_target": 3,
+          "xg": 1.05,
+          "touches_in_box": 12,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "17'"
+        },
+        "Marmoush Omar": {
+          "shots": 5,
+          "shots_on_target": 3,
+          "xg": 0.75,
+          "touches_in_box": 10,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "54'"
+        },
+        "Semenyo Antoine": {
+          "shots": 4,
+          "shots_on_target": 2,
+          "xg": 0.42,
+          "touches_in_box": 9,
+          "on_field": true,
+          "scored": false
+        },
+        "Silva Bernardo": {
+          "shots": 3,
+          "shots_on_target": 2,
+          "xg": 0.38,
+          "touches_in_box": 7,
+          "on_field": true,
+          "scored": false
+        },
+        "Rodri": {
+          "shots": 2,
+          "shots_on_target": 0,
+          "xg": 0.08,
+          "touches_in_box": 2,
+          "on_field": true,
+          "scored": false
+        },
+        "O'Reilly Nico": {
+          "shots": 1,
+          "shots_on_target": 1,
+          "xg": 0.14,
+          "touches_in_box": 4,
+          "on_field": true,
+          "scored": false
+        },
+        "Ait-Nouri Rayan": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.05,
+          "touches_in_box": 2,
+          "on_field": true,
+          "scored": false
+        },
+        "Nunes Matheus": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Guehi Marc": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Dias Ruben": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Donnarumma Gianluigi": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Gordon Anthony": {
+          "shots": 6,
+          "shots_on_target": 3,
+          "xg": 0.9,
+          "touches_in_box": 11,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "38'"
+        },
+        "Woltemade Nick": {
+          "shots": 6,
+          "shots_on_target": 3,
+          "xg": 0.92,
+          "touches_in_box": 11,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "71'"
+        },
+        "Elanga Anthony": {
+          "shots": 3,
+          "shots_on_target": 1,
+          "xg": 0.26,
+          "touches_in_box": 7,
+          "on_field": true,
+          "scored": false
+        },
+        "Tonali Sandro": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.14,
+          "touches_in_box": 5,
+          "on_field": true,
+          "scored": false
+        },
+        "Ramsey Jacob": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.18,
+          "touches_in_box": 6,
+          "on_field": true,
+          "scored": false
+        },
+        "Trippier Kieran": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.12,
+          "touches_in_box": 4,
+          "on_field": true,
+          "scored": false
+        },
+        "Willock Joe": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.05,
+          "touches_in_box": 2,
+          "on_field": true,
+          "scored": false
+        },
+        "Hall Lewis": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Thiaw Malick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Burn Dan": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Pope Nick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        }
+      },
+      "live_odds": {
+        "Haaland Erling": 1.34,
+        "Marmoush Omar": 2.14,
+        "Semenyo Antoine": 3.05,
+        "Silva Bernardo": 4.3,
+        "Rodri": 5.0,
+        "O'Reilly Nico": 5.6,
+        "Ait-Nouri Rayan": 6.7,
+        "Nunes Matheus": 7.7,
+        "Guehi Marc": 10.0,
+        "Dias Ruben": 11.8,
+        "Donnarumma Gianluigi": 80.0,
+        "Gordon Anthony": 3.8,
+        "Woltemade Nick": 4.0,
+        "Elanga Anthony": 4.2,
+        "Tonali Sandro": 5.6,
+        "Ramsey Jacob": 5.8,
+        "Trippier Kieran": 6.6,
+        "Willock Joe": 7.2,
+        "Hall Lewis": 9.0,
+        "Thiaw Malick": 12.5,
+        "Burn Dan": 15.0,
+        "Pope Nick": 80.0
+      },
+      "events": [
+        {
+          "minute": 71,
+          "type": "GOAL",
+          "player": "Woltemade Nick",
+          "team": "away",
+          "score_after": "2-2"
+        }
+      ]
+    },
+    {
+      "minute": 80,
+      "timestamp": "2026-02-21T21:35:00Z",
+      "phase": "second_half",
+      "score": {
+        "home": 2,
+        "away": 2
+      },
+      "stats": {
+        "shots_on_target": {
+          "home": 10,
+          "away": 9
+        },
+        "total_shots": {
+          "home": 21,
+          "away": 19
+        },
+        "xg": {
+          "home": 3.0,
+          "away": 2.72
+        },
+        "possession": {
+          "home": 53,
+          "away": 47
+        },
+        "passes": {
+          "home": 1580,
+          "away": 1440
+        },
+        "pass_accuracy": {
+          "home": 87,
+          "away": 85
+        }
+      },
+      "player_stats": {
+        "Haaland Erling": {
+          "shots": 7,
+          "shots_on_target": 4,
+          "xg": 1.22,
+          "touches_in_box": 14,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "17'"
+        },
+        "Marmoush Omar": {
+          "shots": 6,
+          "shots_on_target": 3,
+          "xg": 0.88,
+          "touches_in_box": 12,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "54'"
+        },
+        "Semenyo Antoine": {
+          "shots": 5,
+          "shots_on_target": 2,
+          "xg": 0.55,
+          "touches_in_box": 11,
+          "on_field": true,
+          "scored": false
+        },
+        "Silva Bernardo": {
+          "shots": 4,
+          "shots_on_target": 2,
+          "xg": 0.45,
+          "touches_in_box": 9,
+          "on_field": true,
+          "scored": false
+        },
+        "Rodri": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.1,
+          "touches_in_box": 3,
+          "on_field": true,
+          "scored": false
+        },
+        "O'Reilly Nico": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.18,
+          "touches_in_box": 5,
+          "on_field": true,
+          "scored": false
+        },
+        "Ait-Nouri Rayan": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.05,
+          "touches_in_box": 2,
+          "on_field": true,
+          "scored": false
+        },
+        "Nunes Matheus": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Guehi Marc": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Dias Ruben": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Donnarumma Gianluigi": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Gordon Anthony": {
+          "shots": 7,
+          "shots_on_target": 4,
+          "xg": 1.1,
+          "touches_in_box": 13,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "38'"
+        },
+        "Woltemade Nick": {
+          "shots": 7,
+          "shots_on_target": 4,
+          "xg": 1.08,
+          "touches_in_box": 13,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "71'"
+        },
+        "Elanga Anthony": {
+          "shots": 4,
+          "shots_on_target": 2,
+          "xg": 0.38,
+          "touches_in_box": 9,
+          "on_field": true,
+          "scored": false
+        },
+        "Tonali Sandro": {
+          "shots": 3,
+          "shots_on_target": 1,
+          "xg": 0.18,
+          "touches_in_box": 6,
+          "on_field": true,
+          "scored": false
+        },
+        "Ramsey Jacob": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.2,
+          "touches_in_box": 7,
+          "on_field": true,
+          "scored": false
+        },
+        "Trippier Kieran": {
+          "shots": 3,
+          "shots_on_target": 1,
+          "xg": 0.18,
+          "touches_in_box": 5,
+          "on_field": true,
+          "scored": false
+        },
+        "Willock Joe": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.1,
+          "touches_in_box": 3,
+          "on_field": true,
+          "scored": false
+        },
+        "Hall Lewis": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Thiaw Malick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Burn Dan": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Pope Nick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        }
+      },
+      "live_odds": {
+        "Haaland Erling": 1.28,
+        "Marmoush Omar": 2.0,
+        "Semenyo Antoine": 2.8,
+        "Silva Bernardo": 4.1,
+        "Rodri": 4.8,
+        "O'Reilly Nico": 5.4,
+        "Ait-Nouri Rayan": 6.5,
+        "Nunes Matheus": 7.5,
+        "Guehi Marc": 9.8,
+        "Dias Ruben": 11.5,
+        "Donnarumma Gianluigi": 80.0,
+        "Gordon Anthony": 3.0,
+        "Woltemade Nick": 3.2,
+        "Elanga Anthony": 3.8,
+        "Tonali Sandro": 5.4,
+        "Ramsey Jacob": 5.6,
+        "Trippier Kieran": 6.4,
+        "Willock Joe": 7.0,
+        "Hall Lewis": 8.8,
+        "Thiaw Malick": 12.0,
+        "Burn Dan": 14.5,
+        "Pope Nick": 80.0
+      },
+      "events": []
+    },
+    {
+      "minute": 84,
+      "timestamp": "2026-02-21T21:39:00Z",
+      "phase": "second_half",
+      "score": {
+        "home": 3,
+        "away": 2
+      },
+      "stats": {
+        "shots_on_target": {
+          "home": 11,
+          "away": 9
+        },
+        "total_shots": {
+          "home": 22,
+          "away": 20
+        },
+        "xg": {
+          "home": 3.38,
+          "away": 2.8
+        },
+        "possession": {
+          "home": 53,
+          "away": 47
+        },
+        "passes": {
+          "home": 1680,
+          "away": 1520
+        },
+        "pass_accuracy": {
+          "home": 87,
+          "away": 85
+        }
+      },
+      "player_stats": {
+        "Haaland Erling": {
+          "shots": 7,
+          "shots_on_target": 4,
+          "xg": 1.22,
+          "touches_in_box": 14,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "17'"
+        },
+        "Marmoush Omar": {
+          "shots": 7,
+          "shots_on_target": 3,
+          "xg": 0.92,
+          "touches_in_box": 13,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "54'"
+        },
+        "Semenyo Antoine": {
+          "shots": 6,
+          "shots_on_target": 3,
+          "xg": 0.72,
+          "touches_in_box": 13,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "84'"
+        },
+        "Silva Bernardo": {
+          "shots": 4,
+          "shots_on_target": 2,
+          "xg": 0.45,
+          "touches_in_box": 9,
+          "on_field": true,
+          "scored": false
+        },
+        "Rodri": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.1,
+          "touches_in_box": 3,
+          "on_field": true,
+          "scored": false
+        },
+        "O'Reilly Nico": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.18,
+          "touches_in_box": 5,
+          "on_field": true,
+          "scored": false
+        },
+        "Ait-Nouri Rayan": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.05,
+          "touches_in_box": 2,
+          "on_field": true,
+          "scored": false
+        },
+        "Nunes Matheus": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Guehi Marc": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Dias Ruben": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Donnarumma Gianluigi": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Gordon Anthony": {
+          "shots": 7,
+          "shots_on_target": 4,
+          "xg": 1.1,
+          "touches_in_box": 13,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "38'"
+        },
+        "Woltemade Nick": {
+          "shots": 7,
+          "shots_on_target": 4,
+          "xg": 1.08,
+          "touches_in_box": 13,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "71'"
+        },
+        "Elanga Anthony": {
+          "shots": 4,
+          "shots_on_target": 2,
+          "xg": 0.38,
+          "touches_in_box": 9,
+          "on_field": true,
+          "scored": false
+        },
+        "Tonali Sandro": {
+          "shots": 3,
+          "shots_on_target": 1,
+          "xg": 0.18,
+          "touches_in_box": 6,
+          "on_field": true,
+          "scored": false
+        },
+        "Ramsey Jacob": {
+          "shots": 3,
+          "shots_on_target": 1,
+          "xg": 0.22,
+          "touches_in_box": 7,
+          "on_field": true,
+          "scored": false
+        },
+        "Trippier Kieran": {
+          "shots": 3,
+          "shots_on_target": 1,
+          "xg": 0.18,
+          "touches_in_box": 5,
+          "on_field": true,
+          "scored": false
+        },
+        "Willock Joe": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.1,
+          "touches_in_box": 3,
+          "on_field": true,
+          "scored": false
+        },
+        "Hall Lewis": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Thiaw Malick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Burn Dan": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Pope Nick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        }
+      },
+      "live_odds": {
+        "Haaland Erling": 1.22,
+        "Marmoush Omar": 1.95,
+        "Semenyo Antoine": 2.7,
+        "Silva Bernardo": 4.0,
+        "Rodri": 4.7,
+        "O'Reilly Nico": 5.3,
+        "Ait-Nouri Rayan": 6.4,
+        "Nunes Matheus": 7.4,
+        "Guehi Marc": 9.8,
+        "Dias Ruben": 11.5,
+        "Donnarumma Gianluigi": 80.0,
+        "Gordon Anthony": 2.8,
+        "Woltemade Nick": 2.6,
+        "Elanga Anthony": 3.6,
+        "Tonali Sandro": 5.2,
+        "Ramsey Jacob": 5.4,
+        "Trippier Kieran": 6.2,
+        "Willock Joe": 6.8,
+        "Hall Lewis": 8.6,
+        "Thiaw Malick": 11.5,
+        "Burn Dan": 14.0,
+        "Pope Nick": 80.0
+      },
+      "events": [
+        {
+          "minute": 84,
+          "type": "GOAL",
+          "player": "Semenyo Antoine",
+          "team": "home",
+          "score_after": "3-2"
         }
       ]
     },
     {
       "minute": 90,
-      "timestamp": "2026-02-21T21:30:00Z",
+      "timestamp": "2026-02-21T21:45:00Z",
       "phase": "full_time",
-      "duration_seconds": 5400,
       "score": {
         "home": 3,
-        "away": 1
+        "away": 2
       },
       "stats": {
         "shots_on_target": {
           "home": 12,
-          "away": 3
+          "away": 10
         },
         "total_shots": {
-          "home": 16,
-          "away": 4
+          "home": 24,
+          "away": 22
         },
         "xg": {
-          "home": 3.8,
-          "away": 0.9
+          "home": 3.62,
+          "away": 3.02
         },
         "possession": {
-          "home": 65,
-          "away": 35
+          "home": 53,
+          "away": 47
         },
         "passes": {
-          "home": 1100,
-          "away": 580
+          "home": 1820,
+          "away": 1660
         },
-        "pass_accuracy_percent": {
-          "home": 89,
-          "away": 84
+        "pass_accuracy": {
+          "home": 87,
+          "away": 85
         }
       },
       "player_stats": {
-        "Erling Haaland": {
-          "shots": 6,
-          "shots_on_target": 2,
-          "xg": 1.8,
-          "touches_in_box": 9,
+        "Haaland Erling": {
+          "shots": 8,
+          "shots_on_target": 4,
+          "xg": 1.32,
+          "touches_in_box": 15,
           "on_field": true,
-          "scored": true
+          "scored": true,
+          "goal_time": "17'"
         },
-        "Bernardo Silva": {
+        "Marmoush Omar": {
+          "shots": 8,
+          "shots_on_target": 4,
+          "xg": 1.02,
+          "touches_in_box": 14,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "54'"
+        },
+        "Semenyo Antoine": {
+          "shots": 6,
+          "shots_on_target": 3,
+          "xg": 0.75,
+          "touches_in_box": 13,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "84'"
+        },
+        "Silva Bernardo": {
+          "shots": 5,
+          "shots_on_target": 2,
+          "xg": 0.52,
+          "touches_in_box": 10,
+          "on_field": true,
+          "scored": false
+        },
+        "Rodri": {
           "shots": 2,
           "shots_on_target": 1,
-          "xg": 0.4,
+          "xg": 0.1,
           "touches_in_box": 3,
           "on_field": true,
           "scored": false
         },
-        "Phil Foden": {
-          "shots": 6,
-          "shots_on_target": 3,
-          "xg": 1.2,
-          "touches_in_box": 6,
-          "on_field": true,
-          "scored": true
-        },
-        "Jack Grealish": {
-          "shots": 3,
+        "O'Reilly Nico": {
+          "shots": 2,
           "shots_on_target": 1,
-          "xg": 0.3,
-          "touches_in_box": 3,
+          "xg": 0.18,
+          "touches_in_box": 5,
           "on_field": true,
-          "scored": true
+          "scored": false
         },
-        "Alexander Isak": {
-          "shots": 3,
-          "shots_on_target": 2,
-          "xg": 0.55,
+        "Ait-Nouri Rayan": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.05,
           "touches_in_box": 2,
           "on_field": true,
-          "scored": true
+          "scored": false
         },
-        "Anthony Gordon": {
-          "shots": 1,
-          "shots_on_target": 1,
-          "xg": 0.25,
+        "Nunes Matheus": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
           "touches_in_box": 1,
+          "on_field": true,
+          "scored": false
+        },
+        "Guehi Marc": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Dias Ruben": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Donnarumma Gianluigi": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Gordon Anthony": {
+          "shots": 8,
+          "shots_on_target": 4,
+          "xg": 1.18,
+          "touches_in_box": 14,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "38'"
+        },
+        "Woltemade Nick": {
+          "shots": 8,
+          "shots_on_target": 4,
+          "xg": 1.15,
+          "touches_in_box": 14,
+          "on_field": true,
+          "scored": true,
+          "goal_time": "71'"
+        },
+        "Elanga Anthony": {
+          "shots": 5,
+          "shots_on_target": 2,
+          "xg": 0.42,
+          "touches_in_box": 10,
+          "on_field": true,
+          "scored": false
+        },
+        "Tonali Sandro": {
+          "shots": 3,
+          "shots_on_target": 1,
+          "xg": 0.2,
+          "touches_in_box": 7,
+          "on_field": true,
+          "scored": false
+        },
+        "Ramsey Jacob": {
+          "shots": 3,
+          "shots_on_target": 2,
+          "xg": 0.26,
+          "touches_in_box": 8,
+          "on_field": true,
+          "scored": false
+        },
+        "Trippier Kieran": {
+          "shots": 3,
+          "shots_on_target": 1,
+          "xg": 0.2,
+          "touches_in_box": 6,
+          "on_field": true,
+          "scored": false
+        },
+        "Willock Joe": {
+          "shots": 2,
+          "shots_on_target": 1,
+          "xg": 0.1,
+          "touches_in_box": 3,
+          "on_field": true,
+          "scored": false
+        },
+        "Hall Lewis": {
+          "shots": 1,
+          "shots_on_target": 0,
+          "xg": 0.05,
+          "touches_in_box": 2,
+          "on_field": true,
+          "scored": false
+        },
+        "Thiaw Malick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Burn Dan": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
+          "on_field": true,
+          "scored": false
+        },
+        "Pope Nick": {
+          "shots": 0,
+          "shots_on_target": 0,
+          "xg": 0.0,
+          "touches_in_box": 0,
           "on_field": true,
           "scored": false
         }
       },
-      "live_odds": {
-        "Erling Haaland": 1.05,
-        "Bernardo Silva": 2.8,
-        "Phil Foden": 2.5,
-        "Jack Grealish": 1.8,
-        "João Nunes": 5.0,
-        "Alexander Isak": 50.0,
-        "Callum Wilson": 95.0,
-        "Anthony Gordon": 85.0,
-        "Bruno Guimarães": 120.0
-      },
+      "live_odds": null,
       "events": []
     }
-  ],
-  "final_result": {
-    "home_team": "Manchester City",
-    "away_team": "Newcastle United",
-    "final_score": "3-1",
-    "goal_scorers": [
-      "Erling Haaland (15')",
-      "Phil Foden (38')",
-      "Jack Grealish (72')",
-      "Alexander Isak (85')"
-    ],
-    "possessions_percent": "65-35",
-    "total_shots": "16-4",
-    "shots_on_target": "12-3",
-    "final_xg": "3.8-0.9"
-  },
-  "model_training_available": true,
-  "description": "Complete Manchester City vs Newcastle match data collected during live play. Contains 8 snapshots with detailed player statistics, live odds evolution, and match events. Used or training odds prediction model."
+  ]
 }
