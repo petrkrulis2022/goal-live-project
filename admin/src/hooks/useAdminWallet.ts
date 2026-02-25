@@ -1,5 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 
+declare global {
+  interface Window {
+    ethereum?: {
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+      on: (event: string, handler: (...args: unknown[]) => void) => void;
+      removeListener: (event: string, handler: (...args: unknown[]) => void) => void;
+    };
+  }
+}
+
 const ADMIN_ADDRESS = "0xcb443c2db4025128964397CCb5BC4F4E8ab6A665";
 
 export type WalletStatus =
@@ -28,9 +38,10 @@ export function useAdminWallet() {
   // On mount: check if already connected
   useEffect(() => {
     if (!window.ethereum) return;
-    (window.ethereum as any)
+    window.ethereum
       .request({ method: "eth_accounts" })
-      .then((accounts: string[]) => {
+      .then((res) => {
+        const accounts = res as string[];
         const addr = accounts[0] ?? null;
         setAddress(addr);
         evaluate(addr);
@@ -41,14 +52,14 @@ export function useAdminWallet() {
   // Listen for account changes
   useEffect(() => {
     if (!window.ethereum) return;
-    const handler = (accounts: string[]) => {
+    const handler = (...args: unknown[]) => {
+      const accounts = args[0] as string[];
       const addr = accounts[0] ?? null;
       setAddress(addr);
       evaluate(addr);
     };
-    (window.ethereum as any).on("accountsChanged", handler);
-    return () =>
-      (window.ethereum as any).removeListener("accountsChanged", handler);
+    window.ethereum.on("accountsChanged", handler);
+    return () => window.ethereum!.removeListener("accountsChanged", handler);
   }, []);
 
   const connect = useCallback(async () => {
@@ -59,9 +70,10 @@ export function useAdminWallet() {
     }
     setStatus("connecting");
     try {
-      const accounts: string[] = await (window.ethereum as any).request({
+      const res = await window.ethereum.request({
         method: "eth_requestAccounts",
       });
+      const accounts = res as string[];
       const addr = accounts[0] ?? null;
       setAddress(addr);
       evaluate(addr);
