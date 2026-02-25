@@ -1,7 +1,7 @@
 # goal.live — Master Development Plan
 
 **Last Updated:** February 25, 2026
-**Status:** Phase 1 ✅ Complete · Phase 2 🔄 In Progress (admin scaffold done, Supabase pending)
+**Status:** Phase 1 ✅ Complete · Phase 2 🔄 In Progress (admin scaffold done, Supabase live ✅)
 **Repo:** `petrkrulis2022/goal-live-project` · branch `main` · last commit `e0e818a`
 
 ---
@@ -54,22 +54,20 @@
 | `admin/src/pages/FundPool.tsx` — contract deploy stub + USDC fund input | ✅ |
 | `admin/src/services/contractService.ts` — ethers.js stubs (Phase 3 wires real contract) | ✅ |
 | `package.json` scripts: `dev:admin`, `build:admin` | ✅ |
-| **Supabase migrations applied to live DB** | ❌ User must restore paused project |
+| **Supabase migrations applied to live DB** | ✅ All 4 migrations run, project active |
 
 ---
 
-## Phase 2 Remaining — Supabase
+## Phase 2 Remaining — Admin Completion
 
-> User action required — project is paused on free tier
+> Supabase is live ✅ — all 4 migrations applied
 
-1. Go to https://supabase.com/dashboard/project/weryswulejhjkrmervnf → restore project
-2. SQL Editor → run in order:
-   - `supabase/migrations/001_matches_players.sql`
-   - `supabase/migrations/002_bets.sql`
-   - `supabase/migrations/003_events_odds_ai.sql`
-   - `supabase/migrations/004_seed_demo_match.sql`
-3. Set `.env` with `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`
-4. Run `npm run dev:admin` → test Dashboard loads matches
+Next steps:
+1. Set `.env` with `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` if not done
+2. Run `npm run dev:admin` → verify Dashboard loads the seeded Man City vs Newcastle match
+3. Build `useAdminWallet.ts` — MetaMask connect + admin guard
+4. Build Supabase Edge Functions: `lock-bet`, `settle-match`, `sync-odds`
+5. Deploy admin to Netlify/Vercel (admin.goal.live)
 
 ---
 
@@ -285,7 +283,7 @@ interface PredictResponse {
 - [x] Dashboard, CreateEvent, EventDetail, FundPool pages
 - [x] contractService.ts stub
 - [x] package.json dev:admin / build:admin
-- [ ] Apply migrations to live Supabase DB ← **user action**
+- [x] Apply migrations to live Supabase DB ✅
 - [ ] `useAdminWallet.ts` — MetaMask admin guard (compare to `contract.owner()`)
 - [ ] Supabase Edge Functions: `lock-bet`, `settle-match`, `sync-odds`
 - [ ] Deploy admin to Netlify / Vercel (admin.goal.live)
