@@ -1,4 +1,4 @@
--- ── 3. BETS ─────────────────────────────────────────────────────────────────
+--- ── 3. BETS ─────────────────────────────────────────────────────────────────
 create type bet_type as enum ('NEXT_GOAL_SCORER','MATCH_WINNER');
 create type bet_status as enum (
   'active','provisional_win','provisional_loss',

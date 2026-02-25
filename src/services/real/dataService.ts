@@ -124,7 +124,10 @@ class SupabaseDataService implements IDataService {
         (payload) => {
           const row = payload.new as DbMatch;
           callbacks.onMinuteTick(row.current_minute);
-          callbacks.onScoreUpdate({ home: row.score_home, away: row.score_away });
+          callbacks.onScoreUpdate({
+            home: row.score_home,
+            away: row.score_away,
+          });
           callbacks.onStatusChange(row.status as Match["status"]);
           if (row.status === "finished") {
             callbacks.onMatchEnd({

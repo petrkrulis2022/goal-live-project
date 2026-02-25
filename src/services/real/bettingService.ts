@@ -47,8 +47,15 @@ class SupabaseBettingService implements IBettingService {
   // ── placeBet ─────────────────────────────────
   async placeBet(params: PlaceBetParams): Promise<PlaceBetResult> {
     const {
-      matchId, wallet, betType, playerId, outcome,
-      amount, odds, currentMinute, goalWindow,
+      matchId,
+      wallet,
+      betType,
+      playerId,
+      outcome,
+      amount,
+      odds,
+      currentMinute,
+      goalWindow,
     } = params;
 
     // Resolve match uuid
@@ -109,7 +116,14 @@ class SupabaseBettingService implements IBettingService {
 
   // ── changeBet ─────────────────────────────────
   async changeBet(params: ChangeBetParams): Promise<ChangeBetResult> {
-    const { betId, newPlayerId, newOutcome, newOdds, currentMinute, newAmount } = params;
+    const {
+      betId,
+      newPlayerId,
+      newOutcome,
+      newOdds,
+      currentMinute,
+      newAmount,
+    } = params;
 
     const { data: existing, error: fe } = await supabase
       .from("bets")
@@ -253,8 +267,7 @@ class SupabaseBettingService implements IBettingService {
       const inWindow =
         (bet.goal_window_at_placement ?? 0) <= minute &&
         minute <= (bet.goal_window_at_placement ?? 0) + goalWindow;
-      const isWinner =
-        bet.current_player_id === scoringPlayerId && inWindow;
+      const isWinner = bet.current_player_id === scoringPlayerId && inWindow;
       await supabase
         .from("bets")
         .update({ status: isWinner ? "provisional_win" : "provisional_loss" })
