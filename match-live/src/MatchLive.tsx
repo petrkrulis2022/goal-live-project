@@ -57,30 +57,32 @@ const SCORER_ODDS: { name: string; team: "home" | "away"; odds: number }[] = [
   { name: "Touba Ahmed", team: "away", odds: 60.0 },
 ];
 
+// 3rd goalscorer odds — Czech bookie snapshot at 1-1, 2nd half (26 Feb 2026)
+// Players not shown in bookie list retain their previous odds
 const SCORER_ODDS_2ND: { name: string; team: "home" | "away"; odds: number }[] =
   [
     // Plzeň
-    { name: "Ladra Tomáš", team: "home", odds: 7.4 },
-    { name: "Lawal Salim Fago", team: "home", odds: 7.4 },
-    { name: "Višinský Denis", team: "home", odds: 9.4 },
-    { name: "Memic Amar", team: "home", odds: 14.5 },
-    { name: "Souare Cheick Oumar", team: "home", odds: 14.5 },
-    { name: "Hrošovský Patrik", team: "home", odds: 16.0 },
-    { name: "Červ Lukáš", team: "home", odds: 18.0 },
-    { name: "Dweh Sampson", team: "home", odds: 25.0 },
-    { name: "Špačil Karel", team: "home", odds: 25.0 },
+    { name: "Ladra Tomáš", team: "home", odds: 7.70 },
+    { name: "Lawal Salim Fago", team: "home", odds: 8.40 },
+    { name: "Višinský Denis", team: "home", odds: 9.30 },
+    { name: "Memic Amar", team: "home", odds: 13.00 },
+    { name: "Souare Cheick Oumar", team: "home", odds: 13.00 },
+    { name: "Hrošovský Patrik", team: "home", odds: 13.00 },
+    { name: "Červ Lukáš", team: "home", odds: 15.00 },
+    { name: "Dweh Sampson", team: "home", odds: 17.00 },
+    { name: "Špačil Karel", team: "home", odds: 17.00 },
     { name: "Jemelka Václav", team: "home", odds: 30.0 },
     // Panathinaikos
-    { name: "Tetteh Andreas", team: "away", odds: 8.1 },
+    { name: "Tetteh Andreas", team: "away", odds: 7.70 },
     { name: "Taborda Vicente", team: "away", odds: 11.5 },
     { name: "Zaroury Anass", team: "away", odds: 11.5 },
-    { name: "Bakasetas Anastasios", team: "away", odds: 13.5 },
-    { name: "Sanches Renato", team: "away", odds: 25.0 },
-    { name: "Calabria Davide", team: "away", odds: 35.0 },
-    { name: "Kyriakopoulos Georgios", team: "away", odds: 45.0 },
-    { name: "Ingason Sverrir Ingi", team: "away", odds: 60.0 },
-    { name: "Katris Georgios", team: "away", odds: 60.0 },
-    { name: "Touba Ahmed", team: "away", odds: 60.0 },
+    { name: "Bakasetas Anastasios", team: "away", odds: 11.50 },
+    { name: "Sanches Renato", team: "away", odds: 17.00 },
+    { name: "Calabria Davide", team: "away", odds: 21.00 },
+    { name: "Kyriakopoulos Georgios", team: "away", odds: 21.00 },
+    { name: "Ingason Sverrir Ingi", team: "away", odds: 28.00 },
+    { name: "Katris Georgios", team: "away", odds: 28.00 },
+    { name: "Touba Ahmed", team: "away", odds: 28.00 },
   ];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -162,9 +164,9 @@ function parseGoals(teamSummary: any): GoalEvent[] {
 // ─── Fallback odds — last known Betfair Exchange values at 1:1 (26 Feb 2026) ──
 // Shown when The Odds API quota is exhausted so the panel is never blank.
 const FALLBACK_H2H: H2HOdds = {
-  home: 3.00,
+  home: 3.0,
   draw: 2.02,
-  away: 5.30,
+  away: 5.3,
   bookmaker: "Betfair Exchange",
 };
 
@@ -349,13 +351,23 @@ export default function MatchLive() {
 
       // Single bookmaker: grab Betfair Exchange directly
       const bm = data.bookmakers?.[0];
-      if (!bm) { setOddsCached(true); return; }
+      if (!bm) {
+        setOddsCached(true);
+        return;
+      }
       const h2hMkt = bm.markets?.find((m: any) => m.key === "h2h");
-      if (!h2hMkt) { setOddsCached(true); return; }
+      if (!h2hMkt) {
+        setOddsCached(true);
+        return;
+      }
       const newH2h = {
-        home: h2hMkt.outcomes.find((o: any) => o.name === data.home_team)?.price ?? 0,
+        home:
+          h2hMkt.outcomes.find((o: any) => o.name === data.home_team)?.price ??
+          0,
         draw: h2hMkt.outcomes.find((o: any) => o.name === "Draw")?.price ?? 0,
-        away: h2hMkt.outcomes.find((o: any) => o.name === data.away_team)?.price ?? 0,
+        away:
+          h2hMkt.outcomes.find((o: any) => o.name === data.away_team)?.price ??
+          0,
         bookmaker: bm.title,
       };
       // detect changes vs previous fetch
@@ -756,20 +768,37 @@ export default function MatchLive() {
             {h2h ? (
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { label: `1 · ${(match?.homeName ?? HOME_HINT).split(" ")[0]}`, val: h2h.home },
+                  {
+                    label: `1 · ${(match?.homeName ?? HOME_HINT).split(" ")[0]}`,
+                    val: h2h.home,
+                  },
                   { label: "X · Draw", val: h2h.draw },
-                  { label: `2 · ${(match?.awayName ?? AWAY_HINT).split(" ")[0]}`, val: h2h.away },
+                  {
+                    label: `2 · ${(match?.awayName ?? AWAY_HINT).split(" ")[0]}`,
+                    val: h2h.away,
+                  },
                 ].map(({ label, val }) => (
-                  <div key={label} className="flex flex-col items-center gap-1 rounded-xl py-5 px-2 bg-[#1e293b]">
-                    <span className="text-xs text-slate-400 font-medium text-center">{label}</span>
-                    <span className="text-3xl font-black tabular-nums text-blue-400">{val.toFixed(2)}</span>
+                  <div
+                    key={label}
+                    className="flex flex-col items-center gap-1 rounded-xl py-5 px-2 bg-[#1e293b]"
+                  >
+                    <span className="text-xs text-slate-400 font-medium text-center">
+                      {label}
+                    </span>
+                    <span className="text-3xl font-black tabular-nums text-blue-400">
+                      {val.toFixed(2)}
+                    </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-slate-500 text-center py-8">Loading odds…</div>
+              <div className="text-sm text-slate-500 text-center py-8">
+                Loading odds…
+              </div>
             )}
-            <p className="text-[11px] text-slate-600 mt-3 text-right">Source: Betfair Exchange · updated every 5 min</p>
+            <p className="text-[11px] text-slate-600 mt-3 text-right">
+              Source: Betfair Exchange · updated every 5 min
+            </p>
           </div>
         )}
 
