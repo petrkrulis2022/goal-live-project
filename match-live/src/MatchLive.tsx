@@ -159,33 +159,19 @@ function parseGoals(teamSummary: any): GoalEvent[] {
   }));
 }
 
-// ─── Fallback odds (kick-off snapshot captured 26 Feb 2026) ────────────────────
-// Used when The Odds API quota is exhausted so the tab is never blank.
+// ─── Fallback odds — last known Betfair Exchange values at 1:1 (26 Feb 2026) ──
+// Shown when The Odds API quota is exhausted so the panel is never blank.
 const FALLBACK_H2H: H2HOdds = {
-  home: 5.1,
-  draw: 3.1,
-  away: 1.78,
-  bookmaker: "Betclic",
+  home: 3.00,
+  draw: 2.02,
+  away: 5.30,
+  bookmaker: "Betfair Exchange",
 };
-const FALLBACK_ALL: {
-  bookmaker: string;
-  home: number;
-  draw: number;
-  away: number;
-}[] = [
-  { bookmaker: "Betclic", home: 5.1, draw: 3.15, away: 1.68 },
-  { bookmaker: "Winamax", home: 4.9, draw: 3.1, away: 1.78 },
-  { bookmaker: "Winamax FR", home: 4.6, draw: 2.85, away: 1.68 },
-];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function MatchLive() {
   const [match, setMatch] = useState<MatchData | null>(null);
   const [h2h, setH2h] = useState<H2HOdds | null>(FALLBACK_H2H);
-  const [allH2h, setAllH2h] =
-    useState<{ bookmaker: string; home: number; draw: number; away: number }[]>(
-      FALLBACK_ALL,
-    );
   const [oddsCached, setOddsCached] = useState(true);
   const [tab, setTab] = useState<"lineups" | "odds" | "scorers" | "scorers2nd">(
     "lineups",
@@ -352,7 +338,7 @@ export default function MatchLive() {
   async function fetchOdds() {
     try {
       const res = await fetch(
-        `/api/odds/sports/${ODDS_SPORT}/events/${ODDS_EVENT_ID}/odds/?apiKey=${ODDS_API_KEY}&markets=h2h&regions=eu`,
+        `/api/odds/sports/${ODDS_SPORT}/events/${ODDS_EVENT_ID}/odds/?apiKey=${ODDS_API_KEY}&markets=h2h&bookmakers=betfair_ex_eu`,
       );
       const data = await res.json();
       if (data.message) {
@@ -361,46 +347,23 @@ export default function MatchLive() {
         return;
       }
 
-      const rows: typeof allH2h = [];
-      let bestHome = 0,
-        bestDraw = 0,
-        bestAway = 0,
-        bestBm = "";
-
-      for (const bm of data.bookmakers ?? []) {
-        const h2hMkt = bm.markets?.find((m: any) => m.key === "h2h");
-        if (!h2hMkt) continue;
-        const home =
-          h2hMkt.outcomes.find((o: any) => o.name === data.home_team)?.price ??
-          0;
-        const draw =
-          h2hMkt.outcomes.find((o: any) => o.name === "Draw")?.price ?? 0;
-        const away =
-          h2hMkt.outcomes.find((o: any) => o.name === data.away_team)?.price ??
-          0;
-        rows.push({ bookmaker: bm.title, home, draw, away });
-        if (home > bestHome) {
-          bestHome = home;
-          bestBm = bm.title;
-        }
-        if (draw > bestDraw) bestDraw = draw;
-        if (away > bestAway) bestAway = away;
-      }
-
-      rows.sort((a, b) => b.home - a.home);
-      setAllH2h(rows);
+      // Single bookmaker: grab Betfair Exchange directly
+      const bm = data.bookmakers?.[0];
+      if (!bm) { setOddsCached(true); return; }
+      const h2hMkt = bm.markets?.find((m: any) => m.key === "h2h");
+      if (!h2hMkt) { setOddsCached(true); return; }
       const newH2h = {
-        home: bestHome,
-        draw: bestDraw,
-        away: bestAway,
-        bookmaker: bestBm,
+        home: h2hMkt.outcomes.find((o: any) => o.name === data.home_team)?.price ?? 0,
+        draw: h2hMkt.outcomes.find((o: any) => o.name === "Draw")?.price ?? 0,
+        away: h2hMkt.outcomes.find((o: any) => o.name === data.away_team)?.price ?? 0,
+        bookmaker: bm.title,
       };
       // detect changes vs previous fetch
       if (prevH2h.current) {
         const changed = {
-          home: prevH2h.current.home !== bestHome,
-          draw: prevH2h.current.draw !== bestDraw,
-          away: prevH2h.current.away !== bestAway,
+          home: prevH2h.current.home !== newH2h.home,
+          draw: prevH2h.current.draw !== newH2h.draw,
+          away: prevH2h.current.away !== newH2h.away,
         };
         if (changed.home || changed.draw || changed.away) {
           setOddsChanged(changed);
@@ -573,7 +536,7 @@ export default function MatchLive() {
         {h2h && (
           <div className="section-card">
             <div className="text-xs uppercase tracking-widest text-slate-500 mb-3 font-semibold flex items-center justify-between">
-              <span>Match Result — Best Available Odds</span>
+              <span>Match Result — Betfair Exchange</span>
               {oddsCached && (
                 <span className="text-amber-500/80 normal-case tracking-normal text-[10px] font-normal border border-amber-500/30 rounded px-1.5 py-0.5">
                   live odds unavailable
@@ -638,7 +601,7 @@ export default function MatchLive() {
               {t === "lineups"
                 ? "Lineups"
                 : t === "odds"
-                  ? "All Odds"
+                  ? "Betfair Odds"
                   : t === "scorers"
                     ? "1st Scorer"
                     : "2nd Scorer"}
@@ -779,91 +742,34 @@ export default function MatchLive() {
           </div>
         )}
 
-        {/* ── All Odds tab ── */}
+        {/* ── Betfair Odds tab ── */}
         {tab === "odds" && (
           <div className="section-card fade-in">
             <div className="text-xs uppercase tracking-widest text-slate-500 mb-4 font-semibold flex items-center justify-between">
-              <span>1X2 Odds · All Bookmakers</span>
+              <span>1X2 Odds · Betfair Exchange</span>
               {oddsCached && (
                 <span className="text-amber-500/80 normal-case tracking-normal text-[10px] font-normal border border-amber-500/30 rounded px-1.5 py-0.5">
                   live odds unavailable
                 </span>
               )}
             </div>
-            {allH2h.length === 0 ? (
-              <div className="text-sm text-slate-500 text-center py-8">
-                Loading odds…
+            {h2h ? (
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: `1 · ${(match?.homeName ?? HOME_HINT).split(" ")[0]}`, val: h2h.home },
+                  { label: "X · Draw", val: h2h.draw },
+                  { label: `2 · ${(match?.awayName ?? AWAY_HINT).split(" ")[0]}`, val: h2h.away },
+                ].map(({ label, val }) => (
+                  <div key={label} className="flex flex-col items-center gap-1 rounded-xl py-5 px-2 bg-[#1e293b]">
+                    <span className="text-xs text-slate-400 font-medium text-center">{label}</span>
+                    <span className="text-3xl font-black tabular-nums text-blue-400">{val.toFixed(2)}</span>
+                  </div>
+                ))}
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-xs text-slate-500 uppercase tracking-wider border-b border-slate-800">
-                      <th className="pb-2 pr-4 font-semibold">Bookmaker</th>
-                      <th className="pb-2 pr-4 font-semibold text-right">
-                        1 · {(match?.homeName ?? HOME_HINT).split(" ")[0]}
-                      </th>
-                      <th className="pb-2 pr-4 font-semibold text-right">
-                        X · Draw
-                      </th>
-                      <th className="pb-2 font-semibold text-right">
-                        2 · {(match?.awayName ?? AWAY_HINT).split(" ")[0]}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {allH2h.map((row, i) => {
-                      const isHomeBest = row.home === h2h?.home;
-                      const isDrawBest = row.draw === h2h?.draw;
-                      const isAwayBest = row.away === h2h?.away;
-                      return (
-                        <tr
-                          key={i}
-                          className="border-b border-slate-800/50 hover:bg-white/[0.02]"
-                        >
-                          <td className="py-2.5 pr-4 text-slate-300">
-                            {row.bookmaker}
-                          </td>
-                          <td
-                            className={`py-2.5 pr-4 text-right font-bold tabular-nums ${isHomeBest ? "text-green-400" : "text-blue-400"}`}
-                          >
-                            {row.home.toFixed(2)}
-                          </td>
-                          <td
-                            className={`py-2.5 pr-4 text-right font-bold tabular-nums ${isDrawBest ? "text-green-400" : "text-blue-400"}`}
-                          >
-                            {row.draw.toFixed(2)}
-                          </td>
-                          <td
-                            className={`py-2.5 text-right font-bold tabular-nums ${isAwayBest ? "text-green-400" : "text-blue-400"}`}
-                          >
-                            {row.away.toFixed(2)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  {h2h && (
-                    <tfoot>
-                      <tr className="text-green-400 font-black text-sm">
-                        <td className="pt-3 text-slate-400 font-semibold text-xs uppercase">
-                          Best
-                        </td>
-                        <td className="pt-3 text-right text-green-400">
-                          {h2h.home.toFixed(2)}
-                        </td>
-                        <td className="pt-3 text-right text-green-400">
-                          {h2h.draw.toFixed(2)}
-                        </td>
-                        <td className="pt-3 text-right text-green-400">
-                          {h2h.away.toFixed(2)}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
-              </div>
+              <div className="text-sm text-slate-500 text-center py-8">Loading odds…</div>
             )}
+            <p className="text-[11px] text-slate-600 mt-3 text-right">Source: Betfair Exchange · updated every 5 min</p>
           </div>
         )}
 
