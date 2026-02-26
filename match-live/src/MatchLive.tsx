@@ -59,30 +59,30 @@ const SCORER_ODDS: { name: string; team: "home" | "away"; odds: number }[] = [
 
 // 3rd goalscorer odds — Czech bookie snapshot at 1-1, 2nd half (26 Feb 2026)
 // Players not shown in bookie list retain their previous odds
-const SCORER_ODDS_2ND: { name: string; team: "home" | "away"; odds: number }[] =
+const SCORER_ODDS_3RD: { name: string; team: "home" | "away"; odds: number }[] =
   [
     // Plzeň
-    { name: "Ladra Tomáš", team: "home", odds: 7.70 },
-    { name: "Lawal Salim Fago", team: "home", odds: 8.40 },
-    { name: "Višinský Denis", team: "home", odds: 9.30 },
-    { name: "Memic Amar", team: "home", odds: 13.00 },
-    { name: "Souare Cheick Oumar", team: "home", odds: 13.00 },
-    { name: "Hrošovský Patrik", team: "home", odds: 13.00 },
-    { name: "Červ Lukáš", team: "home", odds: 15.00 },
-    { name: "Dweh Sampson", team: "home", odds: 17.00 },
-    { name: "Špačil Karel", team: "home", odds: 17.00 },
+    { name: "Ladra Tomáš", team: "home", odds: 7.7 },
+    { name: "Lawal Salim Fago", team: "home", odds: 8.4 },
+    { name: "Višinský Denis", team: "home", odds: 9.3 },
+    { name: "Memic Amar", team: "home", odds: 13.0 },
+    { name: "Souare Cheick Oumar", team: "home", odds: 13.0 },
+    { name: "Hrošovský Patrik", team: "home", odds: 13.0 },
+    { name: "Červ Lukáš", team: "home", odds: 15.0 },
+    { name: "Dweh Sampson", team: "home", odds: 17.0 },
+    { name: "Špačil Karel", team: "home", odds: 17.0 },
     { name: "Jemelka Václav", team: "home", odds: 30.0 },
     // Panathinaikos
-    { name: "Tetteh Andreas", team: "away", odds: 7.70 },
+    { name: "Tetteh Andreas", team: "away", odds: 7.7 },
     { name: "Taborda Vicente", team: "away", odds: 11.5 },
     { name: "Zaroury Anass", team: "away", odds: 11.5 },
-    { name: "Bakasetas Anastasios", team: "away", odds: 11.50 },
-    { name: "Sanches Renato", team: "away", odds: 17.00 },
-    { name: "Calabria Davide", team: "away", odds: 21.00 },
-    { name: "Kyriakopoulos Georgios", team: "away", odds: 21.00 },
-    { name: "Ingason Sverrir Ingi", team: "away", odds: 28.00 },
-    { name: "Katris Georgios", team: "away", odds: 28.00 },
-    { name: "Touba Ahmed", team: "away", odds: 28.00 },
+    { name: "Bakasetas Anastasios", team: "away", odds: 11.5 },
+    { name: "Sanches Renato", team: "away", odds: 17.0 },
+    { name: "Calabria Davide", team: "away", odds: 21.0 },
+    { name: "Kyriakopoulos Georgios", team: "away", odds: 21.0 },
+    { name: "Ingason Sverrir Ingi", team: "away", odds: 28.0 },
+    { name: "Katris Georgios", team: "away", odds: 28.0 },
+    { name: "Touba Ahmed", team: "away", odds: 28.0 },
   ];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -175,7 +175,7 @@ export default function MatchLive() {
   const [match, setMatch] = useState<MatchData | null>(null);
   const [h2h, setH2h] = useState<H2HOdds | null>(FALLBACK_H2H);
   const [oddsCached, setOddsCached] = useState(true);
-  const [tab, setTab] = useState<"lineups" | "odds" | "scorers" | "scorers2nd">(
+  const [tab, setTab] = useState<"lineups" | "odds" | "scorers" | "scorers3rd">(
     "lineups",
   );
   const [error, setError] = useState("");
@@ -422,10 +422,10 @@ export default function MatchLive() {
   const awayScorerOdds = SCORER_ODDS.filter((s) => s.team === "away").sort(
     (a, b) => a.odds - b.odds,
   );
-  const homeScorerOdds2nd = SCORER_ODDS_2ND.filter(
+  const homeScorerOdds3rd = SCORER_ODDS_3RD.filter(
     (s) => s.team === "home",
   ).sort((a, b) => a.odds - b.odds);
-  const awayScorerOdds2nd = SCORER_ODDS_2ND.filter(
+  const awayScorerOdds3rd = SCORER_ODDS_3RD.filter(
     (s) => s.team === "away",
   ).sort((a, b) => a.odds - b.odds);
 
@@ -604,7 +604,7 @@ export default function MatchLive() {
 
         {/* ── Tabs ── */}
         <div className="border-b border-slate-800 flex gap-1">
-          {(["lineups", "odds", "scorers", "scorers2nd"] as const).map((t) => (
+          {(["lineups", "odds", "scorers", "scorers3rd"] as const).map((t) => (
             <button
               key={t}
               className={`tab-btn ${tab === t ? "active" : ""}`}
@@ -616,7 +616,7 @@ export default function MatchLive() {
                   ? "Betfair Odds"
                   : t === "scorers"
                     ? "1st Scorer"
-                    : "2nd Scorer"}
+                    : "3rd Scorer"}
             </button>
           ))}
         </div>
@@ -852,11 +852,11 @@ export default function MatchLive() {
           </div>
         )}
 
-        {/* ── 2nd Scorer tab ── */}
-        {tab === "scorers2nd" && (
+        {/* ── 3rd Scorer tab ── */}
+        {tab === "scorers3rd" && (
           <div className="fade-in">
             <div className="text-xs uppercase tracking-widest text-slate-500 mb-3 font-semibold px-1">
-              2nd Goalscorer — Pre-Match Odds (incl. extra time)
+              3rd Goalscorer — Live Odds (26 Feb 2026, 1-1)
             </div>
             <div className="grid md:grid-cols-2 gap-4">
               {/* Home */}
@@ -867,7 +867,7 @@ export default function MatchLive() {
                   </div>
                   <span className="font-bold text-sm">{HOME_HINT}</span>
                 </div>
-                {homeScorerOdds2nd.map((s, i) => (
+                {homeScorerOdds3rd.map((s, i) => (
                   <div key={i} className="player-row">
                     <span className="text-sm">{s.name}</span>
                     <span
@@ -887,7 +887,7 @@ export default function MatchLive() {
                   </div>
                   <span className="font-bold text-sm">{AWAY_HINT}</span>
                 </div>
-                {awayScorerOdds2nd.map((s, i) => (
+                {awayScorerOdds3rd.map((s, i) => (
                   <div key={i} className="player-row">
                     <span className="text-sm">{s.name}</span>
                     <span
