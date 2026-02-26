@@ -299,10 +299,15 @@
         chrome.storage.local.remove("matchKey", () => render());
       });
 
-      // Load current selection on open
+      // Render immediately so cards are visible even before storage resolves
+      render();
+
+      // Then update the active selection from stored state
       chrome.storage.local.get("matchKey", (result) => {
-        activeKey = result.matchKey || null;
-        render();
+        if (result.matchKey && result.matchKey !== activeKey) {
+          activeKey = result.matchKey;
+          render();
+        }
       });
     </script>
   </body>
