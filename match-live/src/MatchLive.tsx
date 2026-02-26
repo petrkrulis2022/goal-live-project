@@ -9,12 +9,13 @@ const MATCH_STATIC_ID = _sp.get("goalserveStaticId") ?? "3826786";
 const ODDS_EVENT_ID =
   _sp.get("oddsEventId") ?? "551f9026650eeec36791c0482c8b97d9";
 const ODDS_SPORT = _sp.get("sport") ?? "soccer_uefa_europa_league";
-const ODDS_API_KEY = "284c2661be564a872e91d8a4bb885ac9";
+const ODDS_API_KEY = "069be437bad9795678cdc1c1cee711c3";
 const HOME_HINT = _sp.get("home") ?? "Viktoria Plzeň";
 const AWAY_HINT = _sp.get("away") ?? "Panathinaikos FC";
 const COMPETITION_LABEL = _sp.get("competition") ?? "UEFA Europa League";
 const KICKOFF_LABEL = _sp.get("kickoff") ?? "18:45 CET";
-const POLL_INTERVAL = 30_000; // 30 s
+const POLL_INTERVAL = 30_000; // Goalserve: every 30 s
+const ODDS_POLL_INTERVAL = 300_000; // Odds API:  every 5 min (1 credit/call, 500 credits/month)
 
 /** 2-3 char abbreviation: "FC Lausanne-Sport" → "FLS", "Sigma Olomouc" → "SO" */
 function teamAbbrev(name: string): string {
@@ -158,13 +159,34 @@ function parseGoals(teamSummary: any): GoalEvent[] {
   }));
 }
 
+// ─── Fallback odds (kick-off snapshot captured 26 Feb 2026) ────────────────────
+// Used when The Odds API quota is exhausted so the tab is never blank.
+const FALLBACK_H2H: H2HOdds = {
+  home: 5.1,
+  draw: 3.1,
+  away: 1.78,
+  bookmaker: "Betclic",
+};
+const FALLBACK_ALL: {
+  bookmaker: string;
+  home: number;
+  draw: number;
+  away: number;
+}[] = [
+  { bookmaker: "Betclic", home: 5.1, draw: 3.15, away: 1.68 },
+  { bookmaker: "Winamax", home: 4.9, draw: 3.1, away: 1.78 },
+  { bookmaker: "Winamax FR", home: 4.6, draw: 2.85, away: 1.68 },
+];
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function MatchLive() {
   const [match, setMatch] = useState<MatchData | null>(null);
-  const [h2h, setH2h] = useState<H2HOdds | null>(null);
-  const [allH2h, setAllH2h] = useState<
-    { bookmaker: string; home: number; draw: number; away: number }[]
-  >([]);
+  const [h2h, setH2h] = useState<H2HOdds | null>(FALLBACK_H2H);
+  const [allH2h, setAllH2h] =
+    useState<{ bookmaker: string; home: number; draw: number; away: number }[]>(
+      FALLBACK_ALL,
+    );
+  const [oddsCached, setOddsCached] = useState(true);
   const [tab, setTab] = useState<"lineups" | "odds" | "scorers" | "scorers2nd">(
     "lineups",
   );
@@ -330,10 +352,14 @@ export default function MatchLive() {
   async function fetchOdds() {
     try {
       const res = await fetch(
-        `/api/odds/sports/${ODDS_SPORT}/events/${ODDS_EVENT_ID}/odds/?apiKey=${ODDS_API_KEY}&markets=h2h,totals,btts&regions=eu`,
+        `/api/odds/sports/${ODDS_SPORT}/events/${ODDS_EVENT_ID}/odds/?apiKey=${ODDS_API_KEY}&markets=h2h&regions=eu`,
       );
       const data = await res.json();
-      if (data.message) return;
+      if (data.message) {
+        // Quota exhausted or other API error — keep current (cached) odds
+        setOddsCached(true);
+        return;
+      }
 
       const rows: typeof allH2h = [];
       let bestHome = 0,
@@ -386,6 +412,7 @@ export default function MatchLive() {
       }
       prevH2h.current = newH2h;
       setH2h(newH2h);
+      setOddsCached(false);
       setLastOddsPoll(new Date());
     } catch (_) {
       /* silent */
@@ -398,7 +425,7 @@ export default function MatchLive() {
     // Match data: poll every 15s for live, 30s otherwise
     const matchIv = setInterval(fetchMatch, 15_000);
     // Odds: poll every 60s (The Odds API rate limit is generous but no need to hammer it)
-    const oddsIv = setInterval(fetchOdds, 60_000);
+    const oddsIv = setInterval(fetchOdds, ODDS_POLL_INTERVAL);
     return () => {
       clearInterval(matchIv);
       clearInterval(oddsIv);
@@ -545,8 +572,13 @@ export default function MatchLive() {
         {/* ── 1X2 best odds strip ── */}
         {h2h && (
           <div className="section-card">
-            <div className="text-xs uppercase tracking-widest text-slate-500 mb-3 font-semibold">
-              Match Result — Best Available Odds
+            <div className="text-xs uppercase tracking-widest text-slate-500 mb-3 font-semibold flex items-center justify-between">
+              <span>Match Result — Best Available Odds</span>
+              {oddsCached && (
+                <span className="text-amber-500/80 normal-case tracking-normal text-[10px] font-normal border border-amber-500/30 rounded px-1.5 py-0.5">
+                  live odds unavailable
+                </span>
+              )}
             </div>
             <div className="grid grid-cols-3 gap-3">
               {(
@@ -750,8 +782,13 @@ export default function MatchLive() {
         {/* ── All Odds tab ── */}
         {tab === "odds" && (
           <div className="section-card fade-in">
-            <div className="text-xs uppercase tracking-widest text-slate-500 mb-4 font-semibold">
-              1X2 Odds · All Bookmakers
+            <div className="text-xs uppercase tracking-widest text-slate-500 mb-4 font-semibold flex items-center justify-between">
+              <span>1X2 Odds · All Bookmakers</span>
+              {oddsCached && (
+                <span className="text-amber-500/80 normal-case tracking-normal text-[10px] font-normal border border-amber-500/30 rounded px-1.5 py-0.5">
+                  live odds unavailable
+                </span>
+              )}
             </div>
             {allH2h.length === 0 ? (
               <div className="text-sm text-slate-500 text-center py-8">
@@ -932,7 +969,7 @@ export default function MatchLive() {
 
         {/* ── Footer ── */}
         <div className="text-xs text-slate-700 text-center pb-4">
-          Live data: Goalserve · Odds: The Odds API · Auto-refresh every 30s
+          Live data: Goalserve every 30s · Odds: The Odds API every 5min
         </div>
       </div>
     </div>
