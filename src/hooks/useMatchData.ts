@@ -1,12 +1,16 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { services } from "../services";
 import { mockBettingService } from "../services/mock/mockBettingService";
-import { mockDataService } from "../services/mock/mockDataService";
+import {
+  mockDataService,
+  createDataService,
+} from "../services/mock/mockDataService";
 import type { Match, Player, MatchWinnerOdds } from "../types";
 import type { MatchWinnerOutcome } from "../types";
 import { MATCH_ID } from "../data/matchData";
+import { MATCH_REGISTRY } from "../data/matchRegistry";
 
-export function useMatchData() {
+export function useMatchData(matchKey?: string) {
   const [match, setMatch] = useState<Match | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [mwOdds, setMwOdds] = useState<MatchWinnerOdds>({
@@ -17,16 +21,31 @@ export function useMatchData() {
   const [loading, setLoading] = useState(true);
   const goalWindowRef = useRef(0);
 
+  // When a matchKey is provided (extension picker), create a dedicated service
+  // instance for that config. Otherwise fall back to the global services.data.
+  const { dataService, activeMatchId } = useMemo(() => {
+    if (matchKey) {
+      const config = MATCH_REGISTRY[matchKey];
+      if (config) {
+        return {
+          dataService: createDataService(config),
+          activeMatchId: config.matchId,
+        };
+      }
+    }
+    return { dataService: services.data, activeMatchId: MATCH_ID };
+  }, [matchKey]);
+
   useEffect(() => {
     let cancelled = false;
-    const matchId = MATCH_ID;
+    const matchId = activeMatchId;
 
     async function init() {
       try {
         const [m, p, mw] = await Promise.all([
-          services.data.getMatch(matchId),
-          services.data.getPlayers(matchId),
-          services.data.getMatchWinnerOdds(matchId),
+          dataService.getMatch(matchId),
+          dataService.getPlayers(matchId),
+          dataService.getMatchWinnerOdds(matchId),
         ]);
         if (cancelled) return;
         setMatch(m);
@@ -41,7 +60,7 @@ export function useMatchData() {
 
     init();
 
-    const unsub = services.data.subscribeToMatch(matchId, {
+    const unsub = dataService.subscribeToMatch(matchId, {
       onMinuteTick: (minute) => {
         setMatch((prev) => (prev ? { ...prev, currentMinute: minute } : prev));
       },
@@ -88,25 +107,30 @@ export function useMatchData() {
       cancelled = true;
       unsub();
     };
-  }, []);
+  }, [dataService, activeMatchId]);
+
+  // Use the cast-to-MockDataService for simulation controls; falls back gracefully
+  const localMockService = dataService as typeof mockDataService;
 
   const startSimulation = useCallback(() => {
-    mockDataService.startSimulation(MATCH_ID);
-  }, []);
+    localMockService.startSimulation?.(activeMatchId);
+  }, [localMockService, activeMatchId]);
 
   const resetSimulation = useCallback(() => {
     goalWindowRef.current = 0;
-    mockDataService.resetSimulation(MATCH_ID);
+    localMockService.resetSimulation?.(activeMatchId);
     mockBettingService.reset();
-    // Re-fetch initial state
-    services.data.getMatch(MATCH_ID).then(setMatch);
-    services.data.getPlayers(MATCH_ID).then(setPlayers);
-    services.data.getMatchWinnerOdds(MATCH_ID).then(setMwOdds);
-  }, []);
+    dataService.getMatch(activeMatchId).then(setMatch);
+    dataService.getPlayers(activeMatchId).then(setPlayers);
+    dataService.getMatchWinnerOdds(activeMatchId).then(setMwOdds);
+  }, [localMockService, dataService, activeMatchId]);
 
-  const triggerGoal = useCallback((playerId: string) => {
-    mockDataService.triggerGoal?.(MATCH_ID, playerId);
-  }, []);
+  const triggerGoal = useCallback(
+    (playerId: string) => {
+      localMockService.triggerGoal?.(activeMatchId, playerId);
+    },
+    [localMockService, activeMatchId],
+  );
 
   return {
     match,

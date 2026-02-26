@@ -41,7 +41,9 @@ const MW_OUTCOMES: Array<{ outcome: MatchWinnerOutcome; label: string }> = [
   { outcome: "away", label: "Away" },
 ];
 
-export const BettingOverlay: React.FC = () => {
+export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
+  matchKey,
+}) => {
   const { wallet, connect, topUp, withdraw, setPlayerAddress, refreshBalance } =
     useWallet();
   const {
@@ -52,7 +54,7 @@ export const BettingOverlay: React.FC = () => {
     startSimulation,
     resetSimulation,
     currentGoalWindow,
-  } = useMatchData();
+  } = useMatchData(matchKey);
   const { bets, balance, placeBet, changeBet, refresh } = useBetting(
     wallet?.address ?? null,
   );

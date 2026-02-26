@@ -5,6 +5,7 @@
 // ─────────────────────────────────────────────
 import type { IDataService, MatchCallbacks } from "../../types/services.types";
 import type { Match, Player, MatchWinnerOdds } from "../../types";
+import type { MatchConfig } from "../../data/matchRegistry";
 import {
   CURRENT_MATCH,
   MATCH_ID,
@@ -52,24 +53,54 @@ function tryGetVideoMinute(): number | null {
 // ─────────────────────────────────────────────
 
 class MockDataService implements IDataService {
-  private match: Match = { ...CURRENT_MATCH };
-  private players: Player[] = STARTING_XI.map((p) => ({ ...p }));
-  private mwOdds: MatchWinnerOdds = { ...INITIAL_MW_ODDS };
+  private matchId: string;
+  private cfg: {
+    currentMatch: Match;
+    startingXI: Player[];
+    initialMWOdds: MatchWinnerOdds;
+    goalScript: MatchConfig["goalScript"];
+  };
+  private match: Match;
+  private players: Player[];
+  private mwOdds: MatchWinnerOdds;
   private goalWindow = 0;
   private nextGoalIdx = 0;
   private tickHandle: ReturnType<typeof setInterval> | null = null;
   private subscribers: Map<string, MatchCallbacks> = new Map();
   private useVideoSync = false;
 
+  constructor(config?: MatchConfig) {
+    if (config) {
+      this.matchId = config.matchId;
+      this.cfg = {
+        currentMatch: config.currentMatch,
+        startingXI: config.startingXI,
+        initialMWOdds: config.initialMWOdds,
+        goalScript: config.goalScript,
+      };
+    } else {
+      this.matchId = MATCH_ID;
+      this.cfg = {
+        currentMatch: CURRENT_MATCH,
+        startingXI: STARTING_XI,
+        initialMWOdds: INITIAL_MW_ODDS,
+        goalScript: GOAL_SCRIPT,
+      };
+    }
+    this.match = { ...this.cfg.currentMatch };
+    this.players = this.cfg.startingXI.map((p) => ({ ...p }));
+    this.mwOdds = { ...this.cfg.initialMWOdds };
+  }
+
   // ── Public interface ─────────────────────────
 
   async getMatch(matchId: string): Promise<Match> {
-    if (matchId !== MATCH_ID) throw new Error(`Unknown match ${matchId}`);
+    if (matchId !== this.matchId) throw new Error(`Unknown match ${matchId}`);
     return { ...this.match };
   }
 
   async getPlayers(matchId: string): Promise<Player[]> {
-    if (matchId !== MATCH_ID) throw new Error(`Unknown match ${matchId}`);
+    if (matchId !== this.matchId) throw new Error(`Unknown match ${matchId}`);
     return this.players.map((p) => ({ ...p }));
   }
 
@@ -85,7 +116,7 @@ class MockDataService implements IDataService {
   }
 
   startSimulation(matchId: string): void {
-    if (matchId !== MATCH_ID) return;
+    if (matchId !== this.matchId) return;
     if (this.tickHandle) return; // already running
 
     // Try video sync on first tick; fall back gracefully
@@ -106,11 +137,11 @@ class MockDataService implements IDataService {
   }
 
   resetSimulation(matchId: string): void {
-    if (matchId !== MATCH_ID) return;
+    if (matchId !== this.matchId) return;
     this.stopTick();
-    this.match = { ...CURRENT_MATCH };
-    this.players = STARTING_XI.map((p) => ({ ...p }));
-    this.mwOdds = { ...INITIAL_MW_ODDS };
+    this.match = { ...this.cfg.currentMatch };
+    this.players = this.cfg.startingXI.map((p) => ({ ...p }));
+    this.mwOdds = { ...this.cfg.initialMWOdds };
     this.goalWindow = 0;
     this.nextGoalIdx = 0;
     this.useVideoSync = false;
@@ -169,10 +200,10 @@ class MockDataService implements IDataService {
 
     // Check scripted goals
     while (
-      this.nextGoalIdx < GOAL_SCRIPT.length &&
-      GOAL_SCRIPT[this.nextGoalIdx].minute <= minute
+      this.nextGoalIdx < this.cfg.goalScript.length &&
+      this.cfg.goalScript[this.nextGoalIdx].minute <= minute
     ) {
-      const g = GOAL_SCRIPT[this.nextGoalIdx];
+      const g = this.cfg.goalScript[this.nextGoalIdx];
       const player = this.players.find((p) => p.id === g.playerId);
       if (player) this.fireGoal(player, g.minute);
       this.nextGoalIdx++;
@@ -247,3 +278,8 @@ class MockDataService implements IDataService {
 }
 
 export const mockDataService = new MockDataService();
+
+/** Create a service pre-loaded with a specific match config (used by the extension match picker) */
+export function createDataService(config: MatchConfig): MockDataService {
+  return new MockDataService(config);
+}

@@ -18,24 +18,24 @@ export const CURRENT_MATCH: Match = {
 };
 
 export const INITIAL_MW_ODDS: MatchWinnerOdds = {
-  home: 3.00, // Plzeň to win — Betfair Exchange at 1-1
-  away: 5.30, // Panathinaikos to win
+  home: 3.0, // Plzeň to win — Betfair Exchange at 1-1
+  away: 5.3, // Panathinaikos to win
   draw: 2.02, // Draw
 };
 
 // ── Viktoria Plzeň (home) — Confirmed XI from Goalserve, Feb 26 2026 ──
 // ── Panathinaikos FC (away) — Confirmed XI from Goalserve, Feb 26 2026 ─
-// odds = estimated 2nd-half NGS market (update from bookie screenshots)
+// odds = 3rd-goalscorer market, Czech bookie snapshot at 1-1 2nd half
 export const STARTING_XI: Player[] = [
   // ── Plzeň (home) — shown on RIGHT by default ─────────────────────────
-  // Plzeň 4-5-1: Wiegele; Jemelka Spáčil Dweh Memić; Souaré Červ Hrošovský Ladra Višinský; Fago Lawal
+  // 4-5-1: Wiegele; Jemelka Spáčil Dweh Memić; Souaré Červ Hrošovský Ladra Višinský; Fago Lawal
   {
     id: "plzen_f1",
     name: "Fago Lawal Salim",
     team: "home",
     number: 23,
     position: "FW",
-    odds: 4.5,
+    odds: 8.4,
   },
   {
     id: "plzen_m1",
@@ -43,7 +43,7 @@ export const STARTING_XI: Player[] = [
     team: "home",
     number: 11,
     position: "AM",
-    odds: 7.0,
+    odds: 7.7,
   },
   {
     id: "plzen_m2",
@@ -51,7 +51,7 @@ export const STARTING_XI: Player[] = [
     team: "home",
     number: 22,
     position: "AM",
-    odds: 8.0,
+    odds: 9.3,
   },
   {
     id: "plzen_m3",
@@ -59,7 +59,7 @@ export const STARTING_XI: Player[] = [
     team: "home",
     number: 8,
     position: "CM",
-    odds: 9.0,
+    odds: 13.0,
   },
   {
     id: "plzen_m4",
@@ -67,7 +67,7 @@ export const STARTING_XI: Player[] = [
     team: "home",
     number: 19,
     position: "CM",
-    odds: 12.0,
+    odds: 15.0,
   },
   {
     id: "plzen_m5",
@@ -75,7 +75,7 @@ export const STARTING_XI: Player[] = [
     team: "home",
     number: 6,
     position: "DM",
-    odds: 15.0,
+    odds: 13.0,
   },
   {
     id: "plzen_d1",
@@ -83,7 +83,7 @@ export const STARTING_XI: Player[] = [
     team: "home",
     number: 13,
     position: "RB",
-    odds: 20.0,
+    odds: 30.0,
   },
   {
     id: "plzen_d2",
@@ -91,7 +91,7 @@ export const STARTING_XI: Player[] = [
     team: "home",
     number: 4,
     position: "CB",
-    odds: 20.0,
+    odds: 17.0,
   },
   {
     id: "plzen_d3",
@@ -99,7 +99,7 @@ export const STARTING_XI: Player[] = [
     team: "home",
     number: 5,
     position: "CB",
-    odds: 22.0,
+    odds: 17.0,
   },
   {
     id: "plzen_d4",
@@ -107,7 +107,7 @@ export const STARTING_XI: Player[] = [
     team: "home",
     number: 24,
     position: "LB",
-    odds: 22.0,
+    odds: 13.0,
   },
   {
     id: "plzen_gk",
@@ -126,7 +126,7 @@ export const STARTING_XI: Player[] = [
     team: "away",
     number: 37,
     position: "LW",
-    odds: 3.5,
+    odds: 11.5,
   },
   {
     id: "panat_f2",
@@ -134,7 +134,7 @@ export const STARTING_XI: Player[] = [
     team: "away",
     number: 20,
     position: "FW",
-    odds: 4.0,
+    odds: 7.7,
   },
   {
     id: "panat_f3",
@@ -142,7 +142,7 @@ export const STARTING_XI: Player[] = [
     team: "away",
     number: 9,
     position: "CF",
-    odds: 4.5,
+    odds: 11.5,
   },
   {
     id: "panat_m1",
@@ -150,7 +150,7 @@ export const STARTING_XI: Player[] = [
     team: "away",
     number: 10,
     position: "CAM",
-    odds: 6.0,
+    odds: 11.5,
   },
   {
     id: "panat_m2",
@@ -158,7 +158,7 @@ export const STARTING_XI: Player[] = [
     team: "away",
     number: 35,
     position: "CM",
-    odds: 8.0,
+    odds: 17.0,
   },
   {
     id: "panat_m3",
@@ -166,7 +166,7 @@ export const STARTING_XI: Player[] = [
     team: "away",
     number: 2,
     position: "RM",
-    odds: 10.0,
+    odds: 21.0,
   },
   {
     id: "panat_m4",
@@ -174,7 +174,7 @@ export const STARTING_XI: Player[] = [
     team: "away",
     number: 3,
     position: "LM",
-    odds: 10.0,
+    odds: 21.0,
   },
   {
     id: "panat_d1",
@@ -182,7 +182,7 @@ export const STARTING_XI: Player[] = [
     team: "away",
     number: 16,
     position: "RB",
-    odds: 18.0,
+    odds: 28.0,
   },
   {
     id: "panat_d2",
@@ -190,7 +190,7 @@ export const STARTING_XI: Player[] = [
     team: "away",
     number: 5,
     position: "CB",
-    odds: 20.0,
+    odds: 28.0,
   },
   {
     id: "panat_d3",
@@ -198,7 +198,7 @@ export const STARTING_XI: Player[] = [
     team: "away",
     number: 22,
     position: "CB",
-    odds: 20.0,
+    odds: 28.0,
   },
   {
     id: "panat_gk",
