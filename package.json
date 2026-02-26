@@ -9,6 +9,8 @@
     "build:ext": "vite build --config vite.extension.config.ts && cp dist-content/content-script.js dist/content-script.js",
     "dev:admin": "vite --config vite.admin.config.ts",
     "build:admin": "tsc -b && vite build --config vite.admin.config.ts",
+    "dev:matchlive": "vite --config vite.matchlive.config.ts",
+    "dev:matchlive2": "vite --config vite.matchlive2.config.ts",
     "preview": "vite preview",
     "lint": "eslint ."
   },

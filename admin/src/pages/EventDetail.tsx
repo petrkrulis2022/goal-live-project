@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@shared/lib/supabase";
 import type {
@@ -7,7 +7,7 @@ import type {
   DbBet,
   DbGoalEvent,
 } from "@shared/lib/supabase";
-import { contractService } from "../services/contractService"
+import { contractService } from "../services/contractService";
 
 type Tab = "overview" | "players" | "bets" | "goals" | "oracle";
 
@@ -23,10 +23,37 @@ export default function EventDetail() {
   const [loading, setLoading] = useState(true);
 
   // Oracle panel state
-  const [goalForm, setGoalForm] = useState({ playerId: "", playerName: "", team: "home" as "home" | "away", minute: 1 });
+  const [goalForm, setGoalForm] = useState({
+    playerId: "",
+    playerName: "",
+    team: "home" as "home" | "away",
+    minute: 1,
+  });
   const [oracleBusy, setOracleBusy] = useState(false);
   const [oracleTx, setOracleTx] = useState<string | null>(null);
   const [oracleError, setOracleError] = useState<string | null>(null);
+
+  // Toast notifications
+  const [toasts, setToasts] = useState<
+    { id: number; msg: string; color: string }[]
+  >([]);
+  const toastIdRef = useRef(0);
+  function showToast(msg: string, color = "green") {
+    const id = ++toastIdRef.current;
+    setToasts((t) => [...t, { id, msg, color }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 5000);
+  }
+
+  // Goal flash alert (big overlay for ~3 s)
+  const [goalFlash, setGoalFlash] = useState<{
+    name: string;
+    minute: number;
+    team: string;
+  } | null>(null);
+  function flashGoal(name: string, minute: number, team: string) {
+    setGoalFlash({ name, minute, team });
+    setTimeout(() => setGoalFlash(null), 3500);
+  }
 
   useEffect(() => {
     if (!matchId) return;
@@ -60,6 +87,59 @@ export default function EventDetail() {
         setBets(b ?? []);
         setGoals(g ?? []);
         setLoading(false);
+
+        // Real-time subscription — goal_events + matches live updates
+        const matchId = m.id;
+        const ch = supabase
+          .channel(`match-${matchId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "goal_events",
+              filter: `match_id=eq.${matchId}`,
+            },
+            (payload) => {
+              const g = payload.new as DbGoalEvent;
+              setGoals((gs) => {
+                if (gs.find((x) => x.id === g.id)) return gs;
+                return [...gs, g].sort((a, b) => a.minute - b.minute);
+              });
+            },
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "goal_events",
+              filter: `match_id=eq.${matchId}`,
+            },
+            (payload) => {
+              setGoals((gs) =>
+                gs.map((x) =>
+                  x.id === payload.new.id ? (payload.new as DbGoalEvent) : x,
+                ),
+              );
+            },
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "matches",
+              filter: `id=eq.${matchId}`,
+            },
+            (payload) => {
+              setMatch(payload.new as DbMatch);
+            },
+          )
+          .subscribe();
+        return () => {
+          supabase.removeChannel(ch);
+        };
       });
     });
   }, [matchId]);
@@ -77,6 +157,15 @@ export default function EventDetail() {
       .update({ score_home: home, score_away: away })
       .eq("id", match.id);
     setMatch((m) => (m ? { ...m, score_home: home, score_away: away } : m));
+  }
+
+  async function updateMinute(minute: number) {
+    if (!match) return;
+    await supabase
+      .from("matches")
+      .update({ current_minute: minute })
+      .eq("id", match.id);
+    setMatch((m) => (m ? { ...m, current_minute: minute } : m));
   }
 
   async function refreshGoals() {
@@ -117,10 +206,19 @@ export default function EventDetail() {
       if (error) throw new Error(error.message);
       await refreshGoals();
       // Bump score in DB + local state
-      const newHome = goalForm.team === "home" ? (match.score_home ?? 0) + 1 : (match.score_home ?? 0);
-      const newAway = goalForm.team === "away" ? (match.score_away ?? 0) + 1 : (match.score_away ?? 0);
+      const newHome =
+        goalForm.team === "home"
+          ? (match.score_home ?? 0) + 1
+          : (match.score_home ?? 0);
+      const newAway =
+        goalForm.team === "away"
+          ? (match.score_away ?? 0) + 1
+          : (match.score_away ?? 0);
       await updateScore(newHome, newAway);
       setOracleTx(txHash);
+      // Flash the goal alert
+      flashGoal(goalForm.playerName, goalForm.minute, goalForm.team);
+      showToast(`⚽ GOAL! ${goalForm.playerName} ${goalForm.minute}'`, "green");
     } catch (e) {
       setOracleError(String(e));
     } finally {
@@ -130,7 +228,9 @@ export default function EventDetail() {
 
   async function handleConfirmGoal(goalId: string, confirmed: boolean) {
     await supabase.from("goal_events").update({ confirmed }).eq("id", goalId);
-    setGoals((gs) => gs.map((g) => (g.id === goalId ? { ...g, confirmed } : g)));
+    setGoals((gs) =>
+      gs.map((g) => (g.id === goalId ? { ...g, confirmed } : g)),
+    );
   }
 
   async function handleSettleMatch() {
@@ -139,7 +239,9 @@ export default function EventDetail() {
       .filter((g) => g.event_type !== "VAR_OVERTURNED" && g.confirmed)
       .map((g) => g.player_id);
     if (activeScorers.length === 0) {
-      setOracleError("No confirmed goals yet. Confirm at least one goal before settling.");
+      setOracleError(
+        "No confirmed goals yet. Confirm at least one goal before settling.",
+      );
       return;
     }
     setOracleBusy(true);
@@ -169,9 +271,13 @@ export default function EventDetail() {
         console.warn("settle-match edge fn unreachable:", edgeErr);
       }
       // 3. Update local match status
-      await supabase.from("matches").update({ status: "finished" }).eq("id", match.id);
+      await supabase
+        .from("matches")
+        .update({ status: "finished" })
+        .eq("id", match.id);
       setMatch((m) => (m ? { ...m, status: "finished" } : m));
       setOracleTx(txHash);
+      showToast("🏁 Match settled on-chain", "orange");
     } catch (e) {
       setOracleError(String(e));
     } finally {
@@ -204,7 +310,50 @@ export default function EventDetail() {
   const activeBets = bets.filter((b) => b.status === "active").length;
 
   return (
-    <div>
+    <div className="relative">
+      {/* ── Goal flash overlay ─────────────────────────────────────────── */}
+      {goalFlash && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div
+            className={`animate-bounce-in px-12 py-8 rounded-3xl shadow-2xl border-2 text-center ${
+              goalFlash.team === "home"
+                ? "bg-blue-950 border-blue-400 shadow-blue-500/30"
+                : "bg-red-950 border-red-400 shadow-red-500/30"
+            }`}
+          >
+            <div className="text-6xl mb-2">⚽</div>
+            <div className="text-3xl font-black text-white tracking-tight">
+              {goalFlash.name}
+            </div>
+            <div
+              className={`text-lg font-bold mt-1 ${
+                goalFlash.team === "home" ? "text-blue-300" : "text-red-300"
+              }`}
+            >
+              {goalFlash.minute}' —{" "}
+              {goalFlash.team === "home" ? match?.home_team : match?.away_team}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Toast stack (top-right) ────────────────────────────────────── */}
+      <div className="fixed top-4 right-4 z-40 flex flex-col gap-2 pointer-events-none">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={`px-4 py-2.5 rounded-xl text-sm font-semibold border shadow-lg ${
+              t.color === "green"
+                ? "bg-green-950 border-green-500/40 text-green-300"
+                : t.color === "orange"
+                  ? "bg-orange-950 border-orange-500/40 text-orange-300"
+                  : "bg-gray-900 border-white/10 text-gray-300"
+            }`}
+          >
+            {t.msg}
+          </div>
+        ))}
+      </div>
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -278,11 +427,18 @@ export default function EventDetail() {
             ▶ Set Live
           </Btn>
         )}
-        {match.status === "live" && (
+        {match.status === "finished" && (
+          <Btn onClick={() => updateStatus("live")} color="blue">
+            ↺ Reopen (set Live)
+          </Btn>
+        )}
+        {(match.status === "live" || match.status === "finished") && (
           <>
-            <Btn onClick={() => updateStatus("finished")} color="gray">
-              ■ Set Finished
-            </Btn>
+            {match.status === "live" && (
+              <Btn onClick={() => updateStatus("finished")} color="gray">
+                ■ Set Finished
+              </Btn>
+            )}
             <Btn
               onClick={() =>
                 updateScore((match.score_home ?? 0) + 1, match.score_away ?? 0)
@@ -301,6 +457,20 @@ export default function EventDetail() {
             </Btn>
           </>
         )}
+        {/* Minute control */}
+        <div className="flex items-center gap-2 ml-2">
+          <span className="text-[11px] text-gray-600 uppercase tracking-wider">
+            Min:
+          </span>
+          <input
+            type="number"
+            min={0}
+            max={120}
+            value={match.current_minute ?? 0}
+            onChange={(e) => updateMinute(Number(e.target.value))}
+            className="w-14 bg-gray-800 border border-white/8 rounded-lg px-2 py-1 text-sm text-gray-200 text-center focus:outline-none focus:border-green-500/40 tabular-nums"
+          />
+        </div>
         <div className="ml-auto">
           {match.contract_address ? (
             <span className="px-3 py-1.5 text-[11px] bg-gray-900 border border-white/5 text-gray-500 rounded-lg font-mono">
@@ -317,19 +487,21 @@ export default function EventDetail() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-900/60 border border-white/5 rounded-xl p-1 mb-6 w-fit">
-        {(["overview", "players", "bets", "goals", "oracle"] as Tab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all capitalize ${
-              tab === t
-                ? "bg-gray-800 text-white shadow-sm"
-                : "text-gray-500 hover:text-gray-300"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
+        {(["overview", "players", "bets", "goals", "oracle"] as Tab[]).map(
+          (t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all capitalize ${
+                tab === t
+                  ? "bg-gray-800 text-white shadow-sm"
+                  : "text-gray-500 hover:text-gray-300"
+              }`}
+            >
+              {t}
+            </button>
+          ),
+        )}
       </div>
 
       {/* Tab content */}
@@ -504,13 +676,13 @@ export default function EventDetail() {
 
       {tab === "oracle" && (
         <div className="space-y-5">
-
           {/* Note banner */}
           <div className="flex items-start gap-3 bg-blue-500/6 border border-blue-500/15 rounded-xl px-4 py-3 text-sm">
             <span className="text-blue-400 mt-0.5">ℹ️</span>
             <div className="text-gray-400">
-              <span className="text-blue-400 font-medium">MockOracle</span> — Phase 3 only.
-              In Phase 4, Chainlink CRE detects goals automatically; this panel is replaced by read-only oracle status.
+              <span className="text-blue-400 font-medium">MockOracle</span> —
+              Phase 3 only. In Phase 4, Chainlink CRE detects goals
+              automatically; this panel is replaced by read-only oracle status.
               {match.oracle_address && (
                 <span className="block mt-1 font-mono text-[11px] text-gray-600">
                   Oracle: {match.oracle_address}
@@ -521,16 +693,22 @@ export default function EventDetail() {
 
           {/* Emit Goal form */}
           <div className="bg-gray-900/70 border border-white/5 rounded-xl p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-white">⚽ Emit Goal via MockOracle</h3>
+            <h3 className="text-sm font-semibold text-white">
+              ⚽ Emit Goal via MockOracle
+            </h3>
 
             <div className="grid grid-cols-3 gap-3">
               {/* Player select */}
               <div className="col-span-2 flex flex-col gap-1">
-                <label className="text-[10px] text-gray-600 uppercase tracking-wider font-medium">Player</label>
+                <label className="text-[10px] text-gray-600 uppercase tracking-wider font-medium">
+                  Player
+                </label>
                 <select
                   value={goalForm.playerId}
                   onChange={(e) => {
-                    const p = players.find((pl) => pl.external_player_id === e.target.value);
+                    const p = players.find(
+                      (pl) => pl.external_player_id === e.target.value,
+                    );
                     setGoalForm((f) => ({
                       ...f,
                       playerId: e.target.value,
@@ -542,7 +720,14 @@ export default function EventDetail() {
                 >
                   <option value="">— select player —</option>
                   {["home", "away"].map((side) => (
-                    <optgroup key={side} label={side === "home" ? `🔵 ${match.home_team}` : `🔴 ${match.away_team}`}>
+                    <optgroup
+                      key={side}
+                      label={
+                        side === "home"
+                          ? `🔵 ${match.home_team}`
+                          : `🔴 ${match.away_team}`
+                      }
+                    >
                       {players
                         .filter((p) => p.team === side)
                         .map((p) => (
@@ -557,13 +742,20 @@ export default function EventDetail() {
 
               {/* Minute */}
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] text-gray-600 uppercase tracking-wider font-medium">Minute</label>
+                <label className="text-[10px] text-gray-600 uppercase tracking-wider font-medium">
+                  Minute
+                </label>
                 <input
                   type="number"
                   min={1}
                   max={120}
                   value={goalForm.minute}
-                  onChange={(e) => setGoalForm((f) => ({ ...f, minute: Number(e.target.value) }))}
+                  onChange={(e) =>
+                    setGoalForm((f) => ({
+                      ...f,
+                      minute: Number(e.target.value),
+                    }))
+                  }
                   className="bg-gray-800 border border-white/8 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-green-500/40 tabular-nums"
                 />
               </div>
@@ -593,25 +785,44 @@ export default function EventDetail() {
           {/* Goal event list with confirm toggles */}
           <div className="bg-gray-900/70 border border-white/5 rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
-              <span className="text-sm font-semibold text-white">Goal Events</span>
-              <span className="text-[11px] text-gray-600">{goals.length} recorded</span>
+              <span className="text-sm font-semibold text-white">
+                Goal Events
+              </span>
+              <span className="text-[11px] text-gray-600">
+                {goals.length} recorded
+              </span>
             </div>
             {goals.length === 0 ? (
-              <div className="text-center py-8 text-sm text-gray-600">No goals emitted yet.</div>
+              <div className="text-center py-8 text-sm text-gray-600">
+                No goals emitted yet.
+              </div>
             ) : (
               <div className="divide-y divide-white/4">
                 {goals.map((g) => (
-                  <div key={g.id} className="px-4 py-3 flex items-center justify-between text-sm">
+                  <div
+                    key={g.id}
+                    className="px-4 py-3 flex items-center justify-between text-sm"
+                  >
                     <div className="flex items-center gap-2">
-                      <span>{g.event_type === "VAR_OVERTURNED" ? "🟥" : "⚽"}</span>
-                      <span className="font-medium text-gray-200">{g.player_name}</span>
+                      <span>
+                        {g.event_type === "VAR_OVERTURNED" ? "🟥" : "⚽"}
+                      </span>
+                      <span className="font-medium text-gray-200">
+                        {g.player_name}
+                      </span>
                       <span className="text-gray-600">{g.minute}'</span>
-                      <span className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${
-                        g.team === "home" ? "text-blue-400" : "text-red-400"
-                      }`}>{g.team}</span>
+                      <span
+                        className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${
+                          g.team === "home" ? "text-blue-400" : "text-red-400"
+                        }`}
+                      >
+                        {g.team}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-mono text-gray-600">{g.source}</span>
+                      <span className="text-[11px] font-mono text-gray-600">
+                        {g.source}
+                      </span>
                       <button
                         onClick={() => handleConfirmGoal(g.id, !g.confirmed)}
                         className={`text-[11px] px-2 py-0.5 rounded-full border font-medium transition-colors ${
@@ -631,23 +842,40 @@ export default function EventDetail() {
 
           {/* Settle Match */}
           <div className="bg-gray-900/70 border border-white/5 rounded-xl p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-white">🏁 Settle Match On-Chain</h3>
+            <h3 className="text-sm font-semibold text-white">
+              🏁 Settle Match On-Chain
+            </h3>
             <p className="text-xs text-gray-500">
-              Calls <span className="font-mono text-gray-400">GoalLiveBetting.settleMatch()</span> with all <strong className="text-white">confirmed</strong> goal scorers,
-              then triggers the <span className="font-mono text-gray-400">settle-match</span> Edge Function to close out bets in Supabase.
+              Calls{" "}
+              <span className="font-mono text-gray-400">
+                GoalLiveBetting.settleMatch()
+              </span>{" "}
+              with all <strong className="text-white">confirmed</strong> goal
+              scorers, then triggers the{" "}
+              <span className="font-mono text-gray-400">settle-match</span> Edge
+              Function to close out bets in Supabase.
             </p>
-            {goals.filter((g) => g.confirmed && g.event_type !== "VAR_OVERTURNED").length > 0 ? (
+            {goals.filter(
+              (g) => g.confirmed && g.event_type !== "VAR_OVERTURNED",
+            ).length > 0 ? (
               <div className="flex flex-wrap gap-2 mb-1">
                 {goals
-                  .filter((g) => g.confirmed && g.event_type !== "VAR_OVERTURNED")
+                  .filter(
+                    (g) => g.confirmed && g.event_type !== "VAR_OVERTURNED",
+                  )
                   .map((g) => (
-                    <span key={g.id} className="text-[11px] px-2 py-0.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded-full font-medium">
+                    <span
+                      key={g.id}
+                      className="text-[11px] px-2 py-0.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded-full font-medium"
+                    >
                       {g.player_name} {g.minute}'
                     </span>
                   ))}
               </div>
             ) : (
-              <p className="text-[11px] text-yellow-500">⚠ No confirmed goals. Confirm goals above first.</p>
+              <p className="text-[11px] text-yellow-500">
+                ⚠ No confirmed goals. Confirm goals above first.
+              </p>
             )}
             <button
               onClick={handleSettleMatch}
@@ -661,7 +889,6 @@ export default function EventDetail() {
                   : "🏁 Settle Match"}
             </button>
           </div>
-
         </div>
       )}
     </div>
@@ -697,7 +924,8 @@ function Btn({
   children: React.ReactNode;
 }) {
   const styles = {
-    green: "bg-green-500/10 text-green-400 hover:bg-green-500/20 border-green-500/20",
+    green:
+      "bg-green-500/10 text-green-400 hover:bg-green-500/20 border-green-500/20",
     gray: "bg-gray-800/80 text-gray-400 hover:bg-gray-700 border-white/5",
     red: "bg-red-500/10 text-red-400 hover:bg-red-500/20 border-red-500/20",
     blue: "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border-blue-500/20",

@@ -1,18 +1,19 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { resolve } from "path";
+import path from "path";
 
-// Standalone admin SPA — builds to dist-admin/
 export default defineConfig({
   plugins: [react()],
-  root: resolve(__dirname, "admin"),
-  envDir: resolve(__dirname), // load .env from project root, not admin/
+  root: path.resolve(__dirname, "match-live"),
   build: {
-    outDir: resolve(__dirname, "dist-admin"),
+    outDir: path.resolve(__dirname, "dist-matchlive"),
     emptyOutDir: true,
   },
+  css: {
+    postcss: path.resolve(__dirname, "postcss.config.js"),
+  },
   server: {
-    port: 5174,
+    port: 5175,
     proxy: {
       "/api/goalserve": {
         target: "http://www.goalserve.com",
@@ -29,12 +30,6 @@ export default defineConfig({
         secure: false,
         rewrite: (p) => p.replace("/api/odds", "/v4"),
       },
-    },
-  },
-  resolve: {
-    alias: {
-      "@": resolve(__dirname, "admin/src"),
-      "@shared": resolve(__dirname, "src"),
     },
   },
 });
