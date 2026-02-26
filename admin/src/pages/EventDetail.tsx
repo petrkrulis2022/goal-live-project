@@ -7,8 +7,9 @@ import type {
   DbBet,
   DbGoalEvent,
 } from "@shared/lib/supabase";
+import { contractService } from "../services/contractService"
 
-type Tab = "overview" | "players" | "bets" | "goals";
+type Tab = "overview" | "players" | "bets" | "goals" | "oracle";
 
 export default function EventDetail() {
   const { matchId } = useParams<{ matchId: string }>();
@@ -20,6 +21,12 @@ export default function EventDetail() {
   const [goals, setGoals] = useState<DbGoalEvent[]>([]);
   const [tab, setTab] = useState<Tab>("overview");
   const [loading, setLoading] = useState(true);
+
+  // Oracle panel state
+  const [goalForm, setGoalForm] = useState({ playerId: "", playerName: "", team: "home" as "home" | "away", minute: 1 });
+  const [oracleBusy, setOracleBusy] = useState(false);
+  const [oracleTx, setOracleTx] = useState<string | null>(null);
+  const [oracleError, setOracleError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!matchId) return;
@@ -70,6 +77,106 @@ export default function EventDetail() {
       .update({ score_home: home, score_away: away })
       .eq("id", match.id);
     setMatch((m) => (m ? { ...m, score_home: home, score_away: away } : m));
+  }
+
+  async function refreshGoals() {
+    if (!match) return;
+    const { data } = await supabase
+      .from("goal_events")
+      .select("*")
+      .eq("match_id", match.id)
+      .order("minute");
+    setGoals(data ?? []);
+  }
+
+  async function handleEmitGoal() {
+    if (!match || !goalForm.playerId) return;
+    setOracleBusy(true);
+    setOracleError(null);
+    setOracleTx(null);
+    try {
+      // 1. Call MockOracle on-chain (or simulate in SIMULATION_MODE)
+      const txHash = await contractService.emitGoal(
+        match.oracle_address ?? "simulation",
+        match.external_match_id,
+        goalForm.playerId,
+        goalForm.minute,
+      );
+      // 2. Write goal_event to Supabase so DB stays in sync
+      const { error } = await supabase.from("goal_events").insert({
+        match_id: match.id,
+        player_id: goalForm.playerId,
+        player_name: goalForm.playerName,
+        team: goalForm.team,
+        minute: goalForm.minute,
+        event_type: "GOAL",
+        confirmed: false, // admin confirms manually or via VAR
+        source: "mock_oracle",
+        raw_payload: { tx: txHash },
+      });
+      if (error) throw new Error(error.message);
+      await refreshGoals();
+      // Bump score in DB + local state
+      const newHome = goalForm.team === "home" ? (match.score_home ?? 0) + 1 : (match.score_home ?? 0);
+      const newAway = goalForm.team === "away" ? (match.score_away ?? 0) + 1 : (match.score_away ?? 0);
+      await updateScore(newHome, newAway);
+      setOracleTx(txHash);
+    } catch (e) {
+      setOracleError(String(e));
+    } finally {
+      setOracleBusy(false);
+    }
+  }
+
+  async function handleConfirmGoal(goalId: string, confirmed: boolean) {
+    await supabase.from("goal_events").update({ confirmed }).eq("id", goalId);
+    setGoals((gs) => gs.map((g) => (g.id === goalId ? { ...g, confirmed } : g)));
+  }
+
+  async function handleSettleMatch() {
+    if (!match) return;
+    const activeScorers = goals
+      .filter((g) => g.event_type !== "VAR_OVERTURNED" && g.confirmed)
+      .map((g) => g.player_id);
+    if (activeScorers.length === 0) {
+      setOracleError("No confirmed goals yet. Confirm at least one goal before settling.");
+      return;
+    }
+    setOracleBusy(true);
+    setOracleError(null);
+    setOracleTx(null);
+    try {
+      // 1. Call GoalLiveBetting.settleMatch on-chain (or simulate)
+      const txHash = await contractService.settleMatchOnChain(
+        match.contract_address ?? "simulation",
+        match.external_match_id,
+        activeScorers,
+      );
+      // 2. Trigger settle-match Edge Function to settle bets in Supabase
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+      try {
+        const res = await fetch(`${supabaseUrl}/functions/v1/settle-match`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${anonKey}`,
+          },
+          body: JSON.stringify({ match_id: match.id }),
+        });
+        if (!res.ok) console.warn("settle-match edge fn:", await res.text());
+      } catch (edgeErr) {
+        console.warn("settle-match edge fn unreachable:", edgeErr);
+      }
+      // 3. Update local match status
+      await supabase.from("matches").update({ status: "finished" }).eq("id", match.id);
+      setMatch((m) => (m ? { ...m, status: "finished" } : m));
+      setOracleTx(txHash);
+    } catch (e) {
+      setOracleError(String(e));
+    } finally {
+      setOracleBusy(false);
+    }
   }
 
   if (loading)
@@ -210,7 +317,7 @@ export default function EventDetail() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-900/60 border border-white/5 rounded-xl p-1 mb-6 w-fit">
-        {(["overview", "players", "bets", "goals"] as Tab[]).map((t) => (
+        {(["overview", "players", "bets", "goals", "oracle"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -394,6 +501,169 @@ export default function EventDetail() {
           ))}
         </div>
       )}
+
+      {tab === "oracle" && (
+        <div className="space-y-5">
+
+          {/* Note banner */}
+          <div className="flex items-start gap-3 bg-blue-500/6 border border-blue-500/15 rounded-xl px-4 py-3 text-sm">
+            <span className="text-blue-400 mt-0.5">ℹ️</span>
+            <div className="text-gray-400">
+              <span className="text-blue-400 font-medium">MockOracle</span> — Phase 3 only.
+              In Phase 4, Chainlink CRE detects goals automatically; this panel is replaced by read-only oracle status.
+              {match.oracle_address && (
+                <span className="block mt-1 font-mono text-[11px] text-gray-600">
+                  Oracle: {match.oracle_address}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Emit Goal form */}
+          <div className="bg-gray-900/70 border border-white/5 rounded-xl p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-white">⚽ Emit Goal via MockOracle</h3>
+
+            <div className="grid grid-cols-3 gap-3">
+              {/* Player select */}
+              <div className="col-span-2 flex flex-col gap-1">
+                <label className="text-[10px] text-gray-600 uppercase tracking-wider font-medium">Player</label>
+                <select
+                  value={goalForm.playerId}
+                  onChange={(e) => {
+                    const p = players.find((pl) => pl.external_player_id === e.target.value);
+                    setGoalForm((f) => ({
+                      ...f,
+                      playerId: e.target.value,
+                      playerName: p?.name ?? "",
+                      team: (p?.team as "home" | "away") ?? "home",
+                    }));
+                  }}
+                  className="bg-gray-800 border border-white/8 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-green-500/40"
+                >
+                  <option value="">— select player —</option>
+                  {["home", "away"].map((side) => (
+                    <optgroup key={side} label={side === "home" ? `🔵 ${match.home_team}` : `🔴 ${match.away_team}`}>
+                      {players
+                        .filter((p) => p.team === side)
+                        .map((p) => (
+                          <option key={p.id} value={p.external_player_id}>
+                            {p.name} ({p.odds}x)
+                          </option>
+                        ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+
+              {/* Minute */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-gray-600 uppercase tracking-wider font-medium">Minute</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={120}
+                  value={goalForm.minute}
+                  onChange={(e) => setGoalForm((f) => ({ ...f, minute: Number(e.target.value) }))}
+                  className="bg-gray-800 border border-white/8 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-green-500/40 tabular-nums"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleEmitGoal}
+              disabled={oracleBusy || !goalForm.playerId}
+              className="w-full py-2.5 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/25"
+            >
+              {oracleBusy ? "Sending…" : "⚽ Emit Goal"}
+            </button>
+
+            {/* Tx feedback */}
+            {oracleTx && (
+              <div className="bg-green-500/8 border border-green-500/20 rounded-lg px-3 py-2 text-[11px] font-mono text-green-400 break-all">
+                ✅ tx: {oracleTx}
+              </div>
+            )}
+            {oracleError && (
+              <div className="bg-red-500/8 border border-red-500/20 rounded-lg px-3 py-2 text-[11px] text-red-400">
+                ⚠ {oracleError}
+              </div>
+            )}
+          </div>
+
+          {/* Goal event list with confirm toggles */}
+          <div className="bg-gray-900/70 border border-white/5 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+              <span className="text-sm font-semibold text-white">Goal Events</span>
+              <span className="text-[11px] text-gray-600">{goals.length} recorded</span>
+            </div>
+            {goals.length === 0 ? (
+              <div className="text-center py-8 text-sm text-gray-600">No goals emitted yet.</div>
+            ) : (
+              <div className="divide-y divide-white/4">
+                {goals.map((g) => (
+                  <div key={g.id} className="px-4 py-3 flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span>{g.event_type === "VAR_OVERTURNED" ? "🟥" : "⚽"}</span>
+                      <span className="font-medium text-gray-200">{g.player_name}</span>
+                      <span className="text-gray-600">{g.minute}'</span>
+                      <span className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${
+                        g.team === "home" ? "text-blue-400" : "text-red-400"
+                      }`}>{g.team}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-mono text-gray-600">{g.source}</span>
+                      <button
+                        onClick={() => handleConfirmGoal(g.id, !g.confirmed)}
+                        className={`text-[11px] px-2 py-0.5 rounded-full border font-medium transition-colors ${
+                          g.confirmed
+                            ? "bg-green-500/10 text-green-400 border-green-500/20 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20"
+                            : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20 hover:bg-green-500/10 hover:text-green-400 hover:border-green-500/20"
+                        }`}
+                      >
+                        {g.confirmed ? "confirmed" : "confirm?"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Settle Match */}
+          <div className="bg-gray-900/70 border border-white/5 rounded-xl p-5 space-y-3">
+            <h3 className="text-sm font-semibold text-white">🏁 Settle Match On-Chain</h3>
+            <p className="text-xs text-gray-500">
+              Calls <span className="font-mono text-gray-400">GoalLiveBetting.settleMatch()</span> with all <strong className="text-white">confirmed</strong> goal scorers,
+              then triggers the <span className="font-mono text-gray-400">settle-match</span> Edge Function to close out bets in Supabase.
+            </p>
+            {goals.filter((g) => g.confirmed && g.event_type !== "VAR_OVERTURNED").length > 0 ? (
+              <div className="flex flex-wrap gap-2 mb-1">
+                {goals
+                  .filter((g) => g.confirmed && g.event_type !== "VAR_OVERTURNED")
+                  .map((g) => (
+                    <span key={g.id} className="text-[11px] px-2 py-0.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded-full font-medium">
+                      {g.player_name} {g.minute}'
+                    </span>
+                  ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-yellow-500">⚠ No confirmed goals. Confirm goals above first.</p>
+            )}
+            <button
+              onClick={handleSettleMatch}
+              disabled={oracleBusy || match.status === "finished"}
+              className="w-full py-2.5 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed bg-orange-500/12 text-orange-400 hover:bg-orange-500/22 border border-orange-500/25"
+            >
+              {match.status === "finished"
+                ? "✅ Match already settled"
+                : oracleBusy
+                  ? "Settling…"
+                  : "🏁 Settle Match"}
+            </button>
+          </div>
+
+        </div>
+      )}
     </div>
   );
 }
@@ -423,17 +693,19 @@ function Btn({
   children,
 }: {
   onClick: () => void;
-  color: "green" | "gray";
+  color: "green" | "gray" | "red" | "blue";
   children: React.ReactNode;
 }) {
+  const styles = {
+    green: "bg-green-500/10 text-green-400 hover:bg-green-500/20 border-green-500/20",
+    gray: "bg-gray-800/80 text-gray-400 hover:bg-gray-700 border-white/5",
+    red: "bg-red-500/10 text-red-400 hover:bg-red-500/20 border-red-500/20",
+    blue: "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border-blue-500/20",
+  };
   return (
     <button
       onClick={onClick}
-      className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-all active:scale-[0.97] border ${
-        color === "green"
-          ? "bg-green-500/10 text-green-400 hover:bg-green-500/20 border-green-500/20"
-          : "bg-gray-800/80 text-gray-400 hover:bg-gray-700 border-white/5"
-      }`}
+      className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-all active:scale-[0.97] border ${styles[color]}`}
     >
       {children}
     </button>

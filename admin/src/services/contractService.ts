@@ -18,6 +18,43 @@ const CONTRACT_ABI: unknown[] = [
 ];
 const CONTRACT_BYTECODE = "0x"; // TODO: paste compiled bytecode
 const USDC_ADDRESS = "0x"; // TODO: USDC contract on target network
+
+// MockOracle ABI — emitGoal + settleMatch (filled in after Phase 3 deploy)
+const MOCK_ORACLE_ABI = [
+  {
+    name: "emitGoal",
+    type: "function",
+    inputs: [
+      { name: "matchId", type: "string" },
+      { name: "playerId", type: "string" },
+      { name: "minute", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    name: "endMatch",
+    type: "function",
+    inputs: [{ name: "matchId", type: "string" }],
+    outputs: [],
+  },
+];
+
+// GoalLiveBetting.settleMatch ABI fragment
+const SETTLE_MATCH_ABI = [
+  {
+    name: "settleMatch",
+    type: "function",
+    inputs: [
+      { name: "matchId", type: "string" },
+      { name: "goalScorers", type: "string[]" },
+    ],
+    outputs: [],
+  },
+];
+
+void MOCK_ORACLE_ABI;
+void SETTLE_MATCH_ABI;
+
 const ERC20_APPROVE_ABI = [
   {
     name: "approve",
@@ -242,6 +279,88 @@ export const contractService = {
 
     throw new Error(
       "setOracle: set SIMULATION_MODE=false and add ABI/bytecode (Phase 3)",
+    );
+  },
+
+  /**
+   * Emit a goal event via MockOracle.emitGoal().
+   *
+   * Simulation mode: opens MetaMask for auth, simulates the tx.
+   * Real mode: calls MockOracle.emitGoal(matchId, playerId, minute) via MetaMask.
+   *
+   * Phase 4: this whole flow is replaced by Chainlink CRE — no admin action needed.
+   */
+  async emitGoal(
+    oracleAddress: string,
+    matchId: string,
+    playerId: string,
+    minute: number,
+  ): Promise<string> {
+    const _signer = await getSigner();
+    console.log("[contractService] emitGoal", {
+      oracleAddress,
+      matchId,
+      playerId,
+      minute,
+      signer: _signer,
+    });
+
+    if (SIMULATION_MODE) {
+      await new Promise((r) => setTimeout(r, 900));
+      const hash = mockTxHash();
+      console.log("[SIMULATION] emitGoal tx", hash);
+      return hash;
+    }
+
+    // ── Real implementation (Phase 3) ────────────────────────────────────────
+    // const provider = new ethers.BrowserProvider(window.ethereum!);
+    // const signer = await provider.getSigner();
+    // const oracle = new ethers.Contract(oracleAddress, MOCK_ORACLE_ABI, signer);
+    // const tx = await oracle.emitGoal(matchId, playerId, BigInt(minute));
+    // await tx.wait();
+    // return tx.hash;
+    throw new Error(
+      "emitGoal: set SIMULATION_MODE=false and provide oracle ABI + address (Phase 3)",
+    );
+  },
+
+  /**
+   * Settle all bets via GoalLiveBetting.settleMatch().
+   *
+   * Passes the array of player IDs who scored (confirmed goal_events).
+   * Simulation mode: opens MetaMask for auth, simulates the tx.
+   *
+   * Phase 4: called automatically by Chainlink CRE oracle — not by admin.
+   */
+  async settleMatchOnChain(
+    contractAddress: string,
+    matchId: string,
+    scorerPlayerIds: string[],
+  ): Promise<string> {
+    const _signer = await getSigner();
+    console.log("[contractService] settleMatchOnChain", {
+      contractAddress,
+      matchId,
+      scorerPlayerIds,
+      signer: _signer,
+    });
+
+    if (SIMULATION_MODE) {
+      await new Promise((r) => setTimeout(r, 1200));
+      const hash = mockTxHash();
+      console.log("[SIMULATION] settleMatchOnChain tx", hash);
+      return hash;
+    }
+
+    // ── Real implementation (Phase 3) ────────────────────────────────────────
+    // const provider = new ethers.BrowserProvider(window.ethereum!);
+    // const signer = await provider.getSigner();
+    // const contract = new ethers.Contract(contractAddress, SETTLE_MATCH_ABI, signer);
+    // const tx = await contract.settleMatch(matchId, scorerPlayerIds);
+    // await tx.wait();
+    // return tx.hash;
+    throw new Error(
+      "settleMatchOnChain: set SIMULATION_MODE=false and add ABI/address (Phase 3)",
     );
   },
 };
