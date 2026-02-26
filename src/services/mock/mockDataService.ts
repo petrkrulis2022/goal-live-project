@@ -1,16 +1,17 @@
 // ─────────────────────────────────────────────
-//  Mock Data Service  —  10× synthetic simulation
-//  Best-effort video sync (tvgo / YouTube)
+//  Match Simulation Service  —  10× synthetic simulation
+//  Drives the odds-fluctuation engine and scripted goal events.
+//  Video sync: best-effort alignment with tvgo / YouTube stream.
 // ─────────────────────────────────────────────
 import type { IDataService, MatchCallbacks } from "../../types/services.types";
 import type { Match, Player, MatchWinnerOdds } from "../../types";
 import {
-  MOCK_MATCH,
-  MOCK_MATCH_ID,
-  MOCK_PLAYERS,
-  MOCK_MATCH_WINNER_ODDS,
-  MOCK_GOAL_SCRIPT,
-} from "../../data/mockMatchData";
+  CURRENT_MATCH,
+  MATCH_ID,
+  STARTING_XI,
+  INITIAL_MW_ODDS,
+  GOAL_SCRIPT,
+} from "../../data/matchData";
 
 const SPEED_MULTIPLIER = 10; // 10× real-time
 const TICK_INTERVAL_MS = (60 / SPEED_MULTIPLIER) * 1000; // 6 000 ms per simulated minute
@@ -51,9 +52,9 @@ function tryGetVideoMinute(): number | null {
 // ─────────────────────────────────────────────
 
 class MockDataService implements IDataService {
-  private match: Match = { ...MOCK_MATCH };
-  private players: Player[] = MOCK_PLAYERS.map((p) => ({ ...p }));
-  private mwOdds: MatchWinnerOdds = { ...MOCK_MATCH_WINNER_ODDS };
+  private match: Match = { ...CURRENT_MATCH };
+  private players: Player[] = STARTING_XI.map((p) => ({ ...p }));
+  private mwOdds: MatchWinnerOdds = { ...INITIAL_MW_ODDS };
   private goalWindow = 0;
   private nextGoalIdx = 0;
   private tickHandle: ReturnType<typeof setInterval> | null = null;
@@ -63,12 +64,12 @@ class MockDataService implements IDataService {
   // ── Public interface ─────────────────────────
 
   async getMatch(matchId: string): Promise<Match> {
-    if (matchId !== MOCK_MATCH_ID) throw new Error(`Unknown match ${matchId}`);
+    if (matchId !== MATCH_ID) throw new Error(`Unknown match ${matchId}`);
     return { ...this.match };
   }
 
   async getPlayers(matchId: string): Promise<Player[]> {
-    if (matchId !== MOCK_MATCH_ID) throw new Error(`Unknown match ${matchId}`);
+    if (matchId !== MATCH_ID) throw new Error(`Unknown match ${matchId}`);
     return this.players.map((p) => ({ ...p }));
   }
 
@@ -84,7 +85,7 @@ class MockDataService implements IDataService {
   }
 
   startSimulation(matchId: string): void {
-    if (matchId !== MOCK_MATCH_ID) return;
+    if (matchId !== MATCH_ID) return;
     if (this.tickHandle) return; // already running
 
     // Try video sync on first tick; fall back gracefully
@@ -105,11 +106,11 @@ class MockDataService implements IDataService {
   }
 
   resetSimulation(matchId: string): void {
-    if (matchId !== MOCK_MATCH_ID) return;
+    if (matchId !== MATCH_ID) return;
     this.stopTick();
-    this.match = { ...MOCK_MATCH };
-    this.players = MOCK_PLAYERS.map((p) => ({ ...p }));
-    this.mwOdds = { ...MOCK_MATCH_WINNER_ODDS };
+    this.match = { ...CURRENT_MATCH };
+    this.players = STARTING_XI.map((p) => ({ ...p }));
+    this.mwOdds = { ...INITIAL_MW_ODDS };
     this.goalWindow = 0;
     this.nextGoalIdx = 0;
     this.useVideoSync = false;
@@ -168,10 +169,10 @@ class MockDataService implements IDataService {
 
     // Check scripted goals
     while (
-      this.nextGoalIdx < MOCK_GOAL_SCRIPT.length &&
-      MOCK_GOAL_SCRIPT[this.nextGoalIdx].minute <= minute
+      this.nextGoalIdx < GOAL_SCRIPT.length &&
+      GOAL_SCRIPT[this.nextGoalIdx].minute <= minute
     ) {
-      const g = MOCK_GOAL_SCRIPT[this.nextGoalIdx];
+      const g = GOAL_SCRIPT[this.nextGoalIdx];
       const player = this.players.find((p) => p.id === g.playerId);
       if (player) this.fireGoal(player, g.minute);
       this.nextGoalIdx++;

@@ -4,7 +4,7 @@ import { mockBettingService } from "../services/mock/mockBettingService";
 import { mockDataService } from "../services/mock/mockDataService";
 import type { Match, Player, MatchWinnerOdds } from "../types";
 import type { MatchWinnerOutcome } from "../types";
-import { MOCK_MATCH_ID } from "../data/mockMatchData";
+import { MATCH_ID } from "../data/matchData";
 
 export function useMatchData() {
   const [match, setMatch] = useState<Match | null>(null);
@@ -19,7 +19,7 @@ export function useMatchData() {
 
   useEffect(() => {
     let cancelled = false;
-    const matchId = MOCK_MATCH_ID;
+    const matchId = MATCH_ID;
 
     async function init() {
       try {
@@ -91,21 +91,21 @@ export function useMatchData() {
   }, []);
 
   const startSimulation = useCallback(() => {
-    mockDataService.startSimulation(MOCK_MATCH_ID);
+    mockDataService.startSimulation(MATCH_ID);
   }, []);
 
   const resetSimulation = useCallback(() => {
     goalWindowRef.current = 0;
-    mockDataService.resetSimulation(MOCK_MATCH_ID);
+    mockDataService.resetSimulation(MATCH_ID);
     mockBettingService.reset();
     // Re-fetch initial state
-    services.data.getMatch(MOCK_MATCH_ID).then(setMatch);
-    services.data.getPlayers(MOCK_MATCH_ID).then(setPlayers);
-    services.data.getMatchWinnerOdds(MOCK_MATCH_ID).then(setMwOdds);
+    services.data.getMatch(MATCH_ID).then(setMatch);
+    services.data.getPlayers(MATCH_ID).then(setPlayers);
+    services.data.getMatchWinnerOdds(MATCH_ID).then(setMwOdds);
   }, []);
 
   const triggerGoal = useCallback((playerId: string) => {
-    mockDataService.triggerGoal?.(MOCK_MATCH_ID, playerId);
+    mockDataService.triggerGoal?.(MATCH_ID, playerId);
   }, []);
 
   return {
