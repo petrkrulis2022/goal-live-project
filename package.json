@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build && vite build --config vite.extension.config.ts && cp dist-content/content-script.js dist/content-script.js",
-    "build:ext": "vite build --config vite.extension.config.ts && cp dist-content/content-script.js dist/content-script.js",
+    "build:ext": "vite build --config vite.extension.config.ts && cp dist-content/content-script.js dist/content-script.js && cp dist-content/content-script.css dist/content-styles.css",
     "dev:admin": "vite --config vite.admin.config.ts",
     "build:admin": "tsc -b && vite build --config vite.admin.config.ts",
     "dev:matchlive": "vite --config vite.matchlive.config.ts",
