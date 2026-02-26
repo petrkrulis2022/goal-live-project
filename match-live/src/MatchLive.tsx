@@ -396,14 +396,12 @@ export default function MatchLive() {
 
   useEffect(() => {
     fetchMatch();
-    fetchOdds();
+    // fetchOdds(); // DISABLED — re-enable when match is live to avoid wasting API credits
     // Match data: poll every 15s for live, 30s otherwise
     const matchIv = setInterval(fetchMatch, 15_000);
-    // Odds: poll every 60s (The Odds API rate limit is generous but no need to hammer it)
-    const oddsIv = setInterval(fetchOdds, ODDS_POLL_INTERVAL);
+    // const oddsIv = setInterval(fetchOdds, ODDS_POLL_INTERVAL); // DISABLED
     return () => {
       clearInterval(matchIv);
-      clearInterval(oddsIv);
     };
   }, []);
 
