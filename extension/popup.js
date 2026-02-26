@@ -45,7 +45,7 @@ function render() {
         <div class="match-actions">
           <span class="match-minute">${m.minute}</span>
           <button class="btn-select ${isActive ? "selected" : ""}" data-key="${m.matchKey}">
-            ${isActive ? "✓ Selected" : "Select"}
+            ${isActive ? "Selected" : "Select"}
           </button>
         </div>
       </div>
@@ -54,7 +54,9 @@ function render() {
 
   clearBar.className = "clear-bar" + (activeKey ? " show" : "");
 
-  document.querySelectorAll(".btn-select:not(.selected)").forEach((btn) => {
+  // Attach click listeners to ALL select buttons (including already-selected)
+  // so re-clicking forces re-injection via message even when storage key is unchanged
+  document.querySelectorAll(".btn-select").forEach((btn) => {
     btn.addEventListener("click", () => selectMatch(btn.dataset.key));
   });
 }
@@ -66,7 +68,10 @@ function selectMatch(key) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]?.id) {
         chrome.tabs
-          .sendMessage(tabs[0].id, { type: "GOAL_LIVE_MATCH_SELECTED", matchKey: key })
+          .sendMessage(tabs[0].id, {
+            type: "GOAL_LIVE_MATCH_SELECTED",
+            matchKey: key,
+          })
           .catch(() => {});
       }
     });

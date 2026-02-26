@@ -9,6 +9,47 @@ import "../src/styles/global.css";
 const CONTAINER_ID = "goal-live-extension";
 let currentRoot: ReturnType<typeof ReactDOM.createRoot> | null = null;
 
+// Minimal error boundary so React crashes surface visibly instead of blank screen
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(e: Error) {
+    return { error: e };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div
+          style={{
+            position: "fixed",
+            top: 12,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "#450a0a",
+            border: "1px solid #ef4444",
+            borderRadius: 8,
+            padding: "10px 18px",
+            zIndex: 2147483647,
+            fontFamily: "system-ui,sans-serif",
+            color: "#fca5a5",
+            fontSize: 12,
+            maxWidth: 400,
+          }}
+        >
+          <strong style={{ color: "#ef4444" }}>goal.live error: </strong>
+          {this.state.error.message}
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // Inject page-world MetaMask bridge so walletBridgeService can reach window.ethereum
 function injectEthBridge() {
   const existing = document.getElementById("gl-eth-bridge");
@@ -71,9 +112,11 @@ function injectApp(matchKey?: string) {
   }
 
   currentRoot.render(
-    <QueryClientProvider client={queryClient}>
-      <BettingOverlay matchKey={matchKey} />
-    </QueryClientProvider>,
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BettingOverlay matchKey={matchKey} />
+      </QueryClientProvider>
+    </ErrorBoundary>,
   );
 
   console.info(`✅ goal.live loaded [${matchKey}]`);
@@ -86,11 +129,19 @@ function boot() {
   });
 }
 
-// Re-inject when popup writes a new matchKey
+// Re-inject when popup writes a new matchKey (fires only if value changed)
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && changes.matchKey) {
     const newKey = changes.matchKey.newValue as string | undefined;
     injectApp(newKey);
+  }
+});
+
+// Direct message from popup — fires even when matchKey value is unchanged
+// (storage.onChanged won't fire if the same key is already stored)
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === "GOAL_LIVE_MATCH_SELECTED") {
+    injectApp(message.matchKey as string | undefined);
   }
 });
 
