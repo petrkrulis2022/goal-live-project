@@ -410,18 +410,16 @@ export default function MatchLive() {
 
   useEffect(() => {
     fetchMatch();
-    fetchOdds();
-    fetchScorerOdds();
+    // fetchOdds();    // DISABLED — re-enable on match day to avoid wasting API credits
+    // fetchScorerOdds(); // DISABLED — re-enable on match day
     const matchIv = setInterval(fetchMatch, 15_000);
-    const oddsIv = setInterval(fetchOdds, ODDS_POLL_INTERVAL);
-    const scorerIv = setInterval(
-      () => fetchScorerOdds(prevMatchRef.current),
-      ODDS_POLL_INTERVAL,
-    );
+    // const oddsIv = setInterval(fetchOdds, ODDS_POLL_INTERVAL);       // DISABLED
+    // const scorerIv = setInterval(                                      // DISABLED
+    //   () => fetchScorerOdds(prevMatchRef.current),
+    //   ODDS_POLL_INTERVAL,
+    // );
     return () => {
       clearInterval(matchIv);
-      clearInterval(oddsIv);
-      clearInterval(scorerIv);
     };
   }, []);
 
