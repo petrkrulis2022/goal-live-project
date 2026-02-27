@@ -681,166 +681,18 @@ export default function EventDetail() {
             <span className="text-blue-400 mt-0.5">ℹ️</span>
             <div className="text-gray-400">
               Goals are recorded in{" "}
-              <span className="text-blue-400 font-medium">Supabase only</span>{" "}
-              — no on-chain call. Live odds update in the frontend (off-chain).
+              <span className="text-blue-400 font-medium">Supabase only</span> —
+              no on-chain call. Live odds update in the frontend (off-chain).
               Settlement happens <span className="text-white">once at FT</span>{" "}
-              via <code className="text-green-400 text-[11px]">settleMatch()</code> below,
-              passing confirmed scorers + final score.
+              via{" "}
+              <code className="text-green-400 text-[11px]">settleMatch()</code>{" "}
+              below, passing confirmed scorers + final score.
               {match.oracle_address && (
                 <span className="block mt-1 font-mono text-[11px] text-gray-600">
                   Oracle address (settleMatch signer): {match.oracle_address}
                 </span>
               )}
             </div>
-          </div>
-
-          {/* Record Goal form */}
-          <div className="bg-gray-900/70 border border-white/5 rounded-xl p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-white">
-              ⚽ Record Goal Event
-            </h3>
-
-            <div className="grid grid-cols-3 gap-3">
-              {/* Player select */}
-              <div className="col-span-2 flex flex-col gap-1">
-                <label className="text-[10px] text-gray-600 uppercase tracking-wider font-medium">
-                  Player
-                </label>
-                <select
-                  value={goalForm.playerId}
-                  onChange={(e) => {
-                    const p = players.find(
-                      (pl) => pl.external_player_id === e.target.value,
-                    );
-                    setGoalForm((f) => ({
-                      ...f,
-                      playerId: e.target.value,
-                      playerName: p?.name ?? "",
-                      team: (p?.team as "home" | "away") ?? "home",
-                    }));
-                  }}
-                  className="bg-gray-800 border border-white/8 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-green-500/40"
-                >
-                  <option value="">— select player —</option>
-                  {["home", "away"].map((side) => (
-                    <optgroup
-                      key={side}
-                      label={
-                        side === "home"
-                          ? `🔵 ${match.home_team}`
-                          : `🔴 ${match.away_team}`
-                      }
-                    >
-                      {players
-                        .filter((p) => p.team === side)
-                        .map((p) => (
-                          <option key={p.id} value={p.external_player_id}>
-                            {p.name} ({p.odds}x)
-                          </option>
-                        ))}
-                    </optgroup>
-                  ))}
-                </select>
-              </div>
-
-              {/* Minute */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] text-gray-600 uppercase tracking-wider font-medium">
-                  Minute
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={120}
-                  value={goalForm.minute}
-                  onChange={(e) =>
-                    setGoalForm((f) => ({
-                      ...f,
-                      minute: Number(e.target.value),
-                    }))
-                  }
-                  className="bg-gray-800 border border-white/8 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-green-500/40 tabular-nums"
-                />
-              </div>
-            </div>
-
-            <button
-              onClick={handleEmitGoal}
-              disabled={oracleBusy || !goalForm.playerId}
-              className="w-full py-2.5 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/25"
-            >
-              {oracleBusy ? "Saving…" : "⚽ Record Goal"}
-            </button>
-
-            {/* Tx feedback */}
-            {oracleTx && (
-              <div className="bg-green-500/8 border border-green-500/20 rounded-lg px-3 py-2 text-[11px] font-mono text-green-400 break-all">
-                ✅ Goal saved to Supabase — confirm it below before settling
-              </div>
-            )}
-            {oracleError && (
-              <div className="bg-red-500/8 border border-red-500/20 rounded-lg px-3 py-2 text-[11px] text-red-400">
-                ⚠ {oracleError}
-              </div>
-            )}
-          </div>
-
-          {/* Goal event list with confirm toggles */}
-          <div className="bg-gray-900/70 border border-white/5 rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
-              <span className="text-sm font-semibold text-white">
-                Goal Events
-              </span>
-              <span className="text-[11px] text-gray-600">
-                {goals.length} recorded
-              </span>
-            </div>
-            {goals.length === 0 ? (
-              <div className="text-center py-8 text-sm text-gray-600">
-                No goals emitted yet.
-              </div>
-            ) : (
-              <div className="divide-y divide-white/4">
-                {goals.map((g) => (
-                  <div
-                    key={g.id}
-                    className="px-4 py-3 flex items-center justify-between text-sm"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>
-                        {g.event_type === "VAR_OVERTURNED" ? "🟥" : "⚽"}
-                      </span>
-                      <span className="font-medium text-gray-200">
-                        {g.player_name}
-                      </span>
-                      <span className="text-gray-600">{g.minute}'</span>
-                      <span
-                        className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${
-                          g.team === "home" ? "text-blue-400" : "text-red-400"
-                        }`}
-                      >
-                        {g.team}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-mono text-gray-600">
-                        {g.source}
-                      </span>
-                      <button
-                        onClick={() => handleConfirmGoal(g.id, !g.confirmed)}
-                        className={`text-[11px] px-2 py-0.5 rounded-full border font-medium transition-colors ${
-                          g.confirmed
-                            ? "bg-green-500/10 text-green-400 border-green-500/20 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20"
-                            : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20 hover:bg-green-500/10 hover:text-green-400 hover:border-green-500/20"
-                        }`}
-                      >
-                        {g.confirmed ? "confirmed" : "confirm?"}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Settle Match */}
@@ -877,7 +729,7 @@ export default function EventDetail() {
               </div>
             ) : (
               <p className="text-[11px] text-yellow-500">
-                ⚠ No confirmed goals. Confirm goals above first.
+                ⚠ No confirmed goals. Go to the <strong>Goals</strong> tab and confirm scorers first.
               </p>
             )}
             <button
