@@ -1,4 +1,5 @@
 # WorldCoin / World ID — Sepolia Investigation Notes
+
 _Last updated: Feb 27, 2026 | Author: goal.live team_
 
 > **Scope:** Research only. No World ID code will be written until these questions are resolved.
@@ -17,13 +18,14 @@ Portal does not issue Sepolia test proofs, the whole integration cannot be built
 
 ## 2. Contract Deployment Status (to research)
 
-| Contract | Expected Address on Sepolia | Verified? |
-|---|---|---|
-| `WorldIDRouter` | TBD — check worldcoin.org/developer | ❓ |
-| `WorldIDIdentityManager` | TBD | ❓ |
-| `OpWorldID` proxy (if OP stack) | Not applicable (Sepolia is L1) | N/A |
+| Contract                        | Expected Address on Sepolia         | Verified? |
+| ------------------------------- | ----------------------------------- | --------- |
+| `WorldIDRouter`                 | TBD — check worldcoin.org/developer | ❓        |
+| `WorldIDIdentityManager`        | TBD                                 | ❓        |
+| `OpWorldID` proxy (if OP stack) | Not applicable (Sepolia is L1)      | N/A       |
 
 **Research tasks:**
+
 - Check [https://docs.worldcoin.org/reference/address-book](https://docs.worldcoin.org/reference/address-book) for Sepolia entries
 - Check Etherscan Sepolia for `WorldIDRouter` bytecode
 - Look for `WorldIDRouterABI.json` in `@worldcoin/world-id-contracts` npm package
@@ -43,6 +45,7 @@ Portal does not issue Sepolia test proofs, the whole integration cannot be built
 Current version in npm registry: check at research time.
 
 Questions:
+
 - Is `IDKitWidget` the correct component for Web3 dApps (vs. WLD wallet flow)?
 - Does `idkit` support a `action` string and `signal` (which we'd set to the bettor's address)?
 - What does the proof payload look like: `(root, nullifierHash, proof[8])`?
@@ -79,6 +82,7 @@ modifier onlyVerifiedHuman(
 ```
 
 Questions:
+
 - Is `IWorldID` interface in `@worldcoin/world-id-contracts` v1 or v2?
 - What is the correct `hashToField` helper — is it in `ByteHasher.sol`?
 - Should `nullifierHash` be stored on-chain to prevent replay, or does the Router handle this?
@@ -89,6 +93,7 @@ Questions:
 ## 6. UX Impact
 
 If the user has not verified with WorldCoin:
+
 - Option A: Block the "Place Bet" button entirely with a "Verify with World ID" prompt
 - Option B: Allow the bet to be submitted, but the chain call reverts with a clear error message
 - Option C: World ID verification is optional (gating is off in MVP, enabled in v2)
@@ -110,12 +115,12 @@ If the user has not verified with WorldCoin:
 
 ## 8. Decision Gate
 
-| Finding | Action |
-|---|---|
+| Finding                                              | Action                                         |
+| ---------------------------------------------------- | ---------------------------------------------- |
 | WorldIDRouter deployed on Sepolia + test proofs work | Implement World ID in Track E (future session) |
-| Only Optimism/Polygon mainnet supported | Defer to mainnet phase; use gasless relayer |
-| Staging environment uses Sepolia | Use staging environment for MVP testnet |
-| No testnet support at all | Remove World ID from MVP scope; revisit in v2 |
+| Only Optimism/Polygon mainnet supported              | Defer to mainnet phase; use gasless relayer    |
+| Staging environment uses Sepolia                     | Use staging environment for MVP testnet        |
+| No testnet support at all                            | Remove World ID from MVP scope; revisit in v2  |
 
 ---
 

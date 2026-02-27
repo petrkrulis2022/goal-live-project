@@ -25,3 +25,14 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Foundry
+out/
+cache/
+cache-foundry/
+broadcast/
+lib/
+deployments/
+
+# Supabase local temp
+supabase/.temp/

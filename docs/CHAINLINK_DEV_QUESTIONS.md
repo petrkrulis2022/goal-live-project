@@ -1,4 +1,5 @@
 # Chainlink Dev Session — Open Questions
+
 _Last updated: Feb 27, 2026 | Author: goal.live team_
 
 These questions will be answered during a dedicated Chainlink integration session
@@ -8,12 +9,12 @@ before implementing on-chain automation. No Chainlink code has been written yet.
 
 ## 1. CRE (Chainlink Runtime Environment) — Basic Availability
 
-| Question | Status |
-|---|---|
-| Is CRE HTTP adapter available on Sepolia testnet (chain 11155111)? | ❓ |
-| Is CRE Cron adapter available on Sepolia testnet? | ❓ |
-| Which CRE version is current stable (`cre-cli` tag)? | ❓ |
-| Is there a public CRE Sepolia node operator endpoint for testnet usage? | ❓ |
+| Question                                                                | Status |
+| ----------------------------------------------------------------------- | ------ |
+| Is CRE HTTP adapter available on Sepolia testnet (chain 11155111)?      | ❓     |
+| Is CRE Cron adapter available on Sepolia testnet?                       | ❓     |
+| Which CRE version is current stable (`cre-cli` tag)?                    | ❓     |
+| Is there a public CRE Sepolia node operator endpoint for testnet usage? | ❓     |
 
 ---
 
@@ -34,6 +35,7 @@ before implementing on-chain automation. No Chainlink code has been written yet.
 Current plan (no Chainlink): admin presses **Settle** button in the admin panel → calls `settleMatch()` directly via MetaMask.
 
 Proposed Chainlink path:
+
 ```
 Goalserve final score event
     → CRE HTTP / Cron job picks up final result
@@ -41,6 +43,7 @@ Goalserve final score event
 ```
 
 Questions:
+
 - Does the Chainlink node wallet need to be the `oracle` address in the contract, or should we use Chainlink's Forwarder contract pattern?
 - What LINK fee is required for a single Sepolia call of this type?
 - How do we test this end-to-end on Sepolia without a real CRE node? Is there a mock CRE harness?
@@ -68,6 +71,7 @@ Questions:
 ## 6. Recommended Testnet Topology for goal.live MVP
 
 Proposed minimal topology:
+
 ```
 [Our Backend (Supabase Edge Fn)]
     │ HTTP POST final score
@@ -82,6 +86,7 @@ Proposed minimal topology:
 ```
 
 Questions:
+
 - Is this topology correct and feasible with CRE on Sepolia?
 - Is there a hosted test CRE node for developers (like the Chainlink Faucet node for LINK)?
 - Do we need to run our own Chainlink node, or can we use a third-party operator?

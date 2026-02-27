@@ -12,7 +12,13 @@
     "dev:matchlive": "vite --config vite.matchlive.config.ts",
     "dev:matchlive2": "vite --config vite.matchlive2.config.ts",
     "preview": "vite preview",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:contracts": "forge test -vv",
+    "test:contracts:v": "forge test -vvvv",
+    "compile:contracts": "forge build",
+    "deploy:local": "forge script script/Deploy.s.sol --rpc-url http://localhost:8545 --broadcast",
+    "deploy:sepolia": "forge script script/Deploy.s.sol --rpc-url $VITE_SEPOLIA_RPC_URL --broadcast --verify",
+    "anvil": "anvil --chain-id 31337"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.97.0",
@@ -24,6 +30,7 @@
     "react-router-dom": "^7.13.1"
   },
   "devDependencies": {
+    "@openzeppelin/contracts": "^5.4.0",
     "@types/chrome": "^0.0.287",
     "@types/node": "^22.13.9",
     "@types/react": "^18.3.18",
