@@ -9,6 +9,8 @@ import type {
 } from "@shared/lib/supabase";
 import { contractService } from "../services/contractService";
 
+const ODDS_API_KEY = "069be437bad9795678cdc1c1cee711c3";
+
 type Tab = "overview" | "players" | "bets" | "goals" | "oracle";
 
 export default function EventDetail() {
@@ -22,6 +24,10 @@ export default function EventDetail() {
   const [tab, setTab] = useState<Tab>("overview");
   const [loading, setLoading] = useState(true);
 
+  // NGS odds fetch state
+  const [fetchingNGS, setFetchingNGS] = useState(false);
+  const [ngsOddsStatus, setNgsOddsStatus] = useState<string | null>(null);
+
   // Oracle panel state
   const [goalForm, setGoalForm] = useState({
     playerId: "",
@@ -32,6 +38,81 @@ export default function EventDetail() {
   const [oracleBusy, setOracleBusy] = useState(false);
   const [oracleTx, setOracleTx] = useState<string | null>(null);
   const [oracleError, setOracleError] = useState<string | null>(null);
+
+  async function fetchNGSOdds() {
+    if (!match) return;
+    setFetchingNGS(true);
+    setNgsOddsStatus(null);
+    try {
+      const sport =
+        (match.odds_api_config as Record<string, string>)?.sport ??
+        "soccer_epl";
+      const eventId = match.external_match_id;
+      const res = await fetch(
+        `/api/odds/sports/${sport}/events/${eventId}/odds?apiKey=${ODDS_API_KEY}&markets=player_first_goal_scorer&regions=us&oddsFormat=decimal`,
+      );
+      if (!res.ok) throw new Error(`Odds API ${res.status}: ${await res.text()}`);
+      const data = await res.json();
+
+      // Collect unique player prices across all bookmakers
+      const priceMap = new Map<string, number>();
+      for (const bm of data.bookmakers ?? []) {
+        const mkt = (bm.markets ?? []).find(
+          (m: { key: string }) => m.key === "player_first_goal_scorer",
+        );
+        if (!mkt) continue;
+        for (const o of mkt.outcomes ?? []) {
+          const pName: string = (o.description ?? o.name ?? "").trim();
+          if (pName && o.price && !priceMap.has(pName))
+            priceMap.set(pName, o.price);
+        }
+      }
+
+      if (priceMap.size === 0) {
+        setNgsOddsStatus(
+          "No first goalscorer odds returned — market may not be open yet or no US bookmakers covering this event.",
+        );
+        return;
+      }
+
+      // Match to DB players by name (case-insensitive)
+      let updated = 0;
+      for (const [oddsName, price] of priceMap) {
+        const dbPlayer = players.find(
+          (p) =>
+            p.name.toLowerCase().trim() === oddsName.toLowerCase().trim(),
+        );
+        if (dbPlayer) {
+          await supabase
+            .from("players")
+            .update({ odds: price })
+            .eq("id", dbPlayer.id);
+          updated++;
+        }
+      }
+
+      // Re-fetch players
+      const { data: fresh } = await supabase
+        .from("players")
+        .select("*")
+        .eq("match_id", match.id)
+        .order("odds");
+      if (fresh) setPlayers(fresh as DbPlayer[]);
+
+      const msg = `Updated ${updated} / ${priceMap.size} players from first goalscorer market (used as NGS odds for testing).`;
+      setNgsOddsStatus(msg);
+      showToast(
+        `NGS odds fetched — ${updated} players updated`,
+        updated > 0 ? "green" : "yellow",
+      );
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setNgsOddsStatus("Error: " + msg);
+      showToast("Failed to fetch NGS odds: " + msg, "red");
+    } finally {
+      setFetchingNGS(false);
+    }
+  }
 
   // Toast notifications
   const [toasts, setToasts] = useState<
@@ -533,7 +614,31 @@ export default function EventDetail() {
       )}
 
       {tab === "players" && (
-        <div className="bg-gray-900/60 border border-white/5 rounded-xl overflow-hidden">
+        <div className="space-y-3">
+          {/* NGS Odds Fetch */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              onClick={fetchNGSOdds}
+              disabled={fetchingNGS}
+              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-wait text-sm font-medium text-white transition-colors"
+            >
+              {fetchingNGS ? "Fetching…" : "⚡ Fetch NGS Odds (First Goalscorer)"}
+            </button>
+            {ngsOddsStatus && (
+              <span
+                className={`text-xs px-3 py-1.5 rounded-lg border ${
+                  ngsOddsStatus.startsWith("Error")
+                    ? "bg-red-500/10 border-red-500/20 text-red-400"
+                    : ngsOddsStatus.includes("No first")
+                      ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-400"
+                      : "bg-green-500/10 border-green-500/20 text-green-400"
+                }`}
+              >
+                {ngsOddsStatus}
+              </span>
+            )}
+          </div>
+          <div className="bg-gray-900/60 border border-white/5 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-[10px] text-gray-600 uppercase tracking-wider border-b border-white/5 bg-gray-950/40">
@@ -570,6 +675,7 @@ export default function EventDetail() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -729,7 +835,8 @@ export default function EventDetail() {
               </div>
             ) : (
               <p className="text-[11px] text-yellow-500">
-                ⚠ No confirmed goals. Go to the <strong>Goals</strong> tab and confirm scorers first.
+                ⚠ No confirmed goals. Go to the <strong>Goals</strong> tab and
+                confirm scorers first.
               </p>
             )}
             <button
