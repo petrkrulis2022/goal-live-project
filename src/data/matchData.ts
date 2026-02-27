@@ -11,7 +11,7 @@ export const CURRENT_MATCH: Match = {
   id: MATCH_ID,
   homeTeam: "Viktoria Plzeň",
   awayTeam: "Panathinaikos FC",
-  status: "in-progress",
+  status: "pre-match",
   currentMinute: 0,
   score: { home: 0, away: 0 },
   half: 1,

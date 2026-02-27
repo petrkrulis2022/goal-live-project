@@ -28,7 +28,7 @@ export default function FundPool() {
     setFunding(true);
     try {
       const tx = await contractService.fundPool(
-        match.contract_address!,
+        match.external_match_id,
         parseFloat(amount),
       );
       setTxHash(tx);
@@ -161,8 +161,8 @@ export default function FundPool() {
             fundPool()
           </code>{" "}
           on the deployed escrow contract. The contract holds USDC until bets
-          are settled. Admin wallet must be approved as operator. Contract
-          deployment requires Hardhat or direct RPC — available in Phase 3.
+          are settled. Admin wallet must have sufficient Sepolia USDC. Deploy
+          via the admin UI using MetaMask (Foundry artifact embedded).
         </p>
       </div>
     </div>

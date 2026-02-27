@@ -248,11 +248,17 @@ export default function EventDetail() {
     setOracleError(null);
     setOracleTx(null);
     try {
-      // 1. Call GoalLiveBetting.settleMatch on-chain (or simulate)
+      // 1. Call GoalLiveBetting.settleMatch on-chain
+      const homeGoals = match.score_home ?? 0;
+      const awayGoals = match.score_away ?? 0;
+      const winner = homeGoals > awayGoals ? 0 : homeGoals < awayGoals ? 2 : 1;
       const txHash = await contractService.settleMatchOnChain(
-        match.contract_address ?? "simulation",
+        match.contract_address ?? "",
         match.external_match_id,
         activeScorers,
+        winner as 0 | 1 | 2,
+        homeGoals,
+        awayGoals,
       );
       // 2. Trigger settle-match Edge Function to settle bets in Supabase
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
