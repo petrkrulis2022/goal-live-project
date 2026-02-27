@@ -1,7 +1,7 @@
 import type { Player, Match, MatchWinnerOdds } from "../types";
 
-//  LIVE Feb 26 2026 — Viktoria Plzeň (home) vs Panathinaikos FC (away)
-//  UEFA Europa Conference League — 2nd half, score 1-1
+//  REPLAY — Viktoria Plzeň (home) vs Panathinaikos FC (away)
+//  UEFA Europa Conference League — reset to minute 0, score 0-0 for full replay
 //  Lineups from Goalserve commentaries (static_id=3826786)
 //  MW odds from Betfair Exchange at 1-1 (2nd half)
 
@@ -12,9 +12,9 @@ export const CURRENT_MATCH: Match = {
   homeTeam: "Viktoria Plzeň",
   awayTeam: "Panathinaikos FC",
   status: "in-progress",
-  currentMinute: 60,
-  score: { home: 1, away: 1 },
-  half: 2,
+  currentMinute: 0,
+  score: { home: 0, away: 0 },
+  half: 1,
 };
 
 export const INITIAL_MW_ODDS: MatchWinnerOdds = {

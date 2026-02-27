@@ -32,6 +32,8 @@ export interface MatchConfig {
     playerName: string;
     team: "home" | "away";
   }>;
+  /** When true, odds do not fluctuate during replay — useful for UI/UX testing */
+  steadyOdds?: boolean;
 }
 
 // ── Plzeň vs Panathinaikos, UECL Feb 26 2026 ─────────────────────────────────
@@ -46,6 +48,7 @@ const PLZEN_PANAT: MatchConfig = {
   startingXI: STARTING_XI,
   initialMWOdds: INITIAL_MW_ODDS,
   goalScript: GOAL_SCRIPT,
+  steadyOdds: true,
 };
 
 // ── Registry ──────────────────────────────────────────────────────────────────

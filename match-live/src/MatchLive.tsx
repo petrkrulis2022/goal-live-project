@@ -504,13 +504,16 @@ export default function MatchLive() {
                   {match?.awayScore ?? "0"}
                 </span>
               </div>
-              <div className="text-sm font-semibold text-slate-400">
-                {isLive && match?.timer
-                  ? `${match.timer}'`
-                  : isFT
-                    ? "FT"
-                    : KICKOFF_LABEL}
-              </div>
+              {isLive && match?.timer ? (
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-green-600 text-white text-xs font-mono font-semibold">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                  {match.timer}&apos;
+                </div>
+              ) : (
+                <div className="text-sm font-semibold text-slate-400">
+                  {isFT ? "FT" : KICKOFF_LABEL}
+                </div>
+              )}
               {/* goal events mini-list */}
               {allGoals.length > 0 && (
                 <div className="mt-2 space-y-0.5 text-center">

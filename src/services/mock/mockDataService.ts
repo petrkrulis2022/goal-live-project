@@ -68,6 +68,7 @@ class MockDataService implements IDataService {
   private tickHandle: ReturnType<typeof setInterval> | null = null;
   private subscribers: Map<string, MatchCallbacks> = new Map();
   private useVideoSync = false;
+  private steadyOdds = false;
 
   constructor(config?: MatchConfig) {
     if (config) {
@@ -78,6 +79,7 @@ class MockDataService implements IDataService {
         initialMWOdds: config.initialMWOdds,
         goalScript: config.goalScript,
       };
+      this.steadyOdds = config.steadyOdds ?? false;
     } else {
       this.matchId = MATCH_ID;
       this.cfg = {
@@ -209,8 +211,8 @@ class MockDataService implements IDataService {
       this.nextGoalIdx++;
     }
 
-    // Odds fluctuation every 3 minutes
-    if (minute % 3 === 0) {
+    // Odds fluctuation every 3 minutes (skip in steadyOdds / replay mode)
+    if (!this.steadyOdds && minute % 3 === 0) {
       this.players = fluctuatePlayers(this.players);
       this.mwOdds = fluctuateMW(this.mwOdds);
       this.broadcast(
