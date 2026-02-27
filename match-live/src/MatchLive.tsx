@@ -31,59 +31,7 @@ function teamAbbrev(name: string): string {
     .toUpperCase();
 }
 
-// ─── Static first-goalscorer odds (from bookie screenshot) ───────────────────
-const SCORER_ODDS: { name: string; team: "home" | "away"; odds: number }[] = [
-  // Plzeň
-  { name: "Ladra Tomáš", team: "home", odds: 7.4 },
-  { name: "Lawal Salim Fago", team: "home", odds: 7.4 },
-  { name: "Višinský Denis", team: "home", odds: 9.4 },
-  { name: "Memic Amar", team: "home", odds: 14.5 },
-  { name: "Souare Cheick Oumar", team: "home", odds: 14.5 },
-  { name: "Hrošovský Patrik", team: "home", odds: 16.0 },
-  { name: "Červ Lukáš", team: "home", odds: 18.0 },
-  { name: "Dweh Sampson", team: "home", odds: 25.0 },
-  { name: "Špačil Karel", team: "home", odds: 25.0 },
-  { name: "Jemelka Václav", team: "home", odds: 30.0 },
-  // Panathinaikos
-  { name: "Tetteh Andreas", team: "away", odds: 7.2 },
-  { name: "Taborda Vicente", team: "away", odds: 10.0 },
-  { name: "Zaroury Anass", team: "away", odds: 10.0 },
-  { name: "Bakasetas Anastasios", team: "away", odds: 11.5 },
-  { name: "Sanches Renato", team: "away", odds: 25.0 },
-  { name: "Calabria Davide", team: "away", odds: 30.0 },
-  { name: "Kyriakopoulos Georgios", team: "away", odds: 35.0 },
-  { name: "Ingason Sverrir Ingi", team: "away", odds: 50.0 },
-  { name: "Katris Georgios", team: "away", odds: 60.0 },
-  { name: "Touba Ahmed", team: "away", odds: 60.0 },
-];
-
-// 3rd goalscorer odds — Czech bookie snapshot at 1-1, 2nd half (26 Feb 2026)
-// Players not shown in bookie list retain their previous odds
-const SCORER_ODDS_3RD: { name: string; team: "home" | "away"; odds: number }[] =
-  [
-    // Plzeň
-    { name: "Ladra Tomáš", team: "home", odds: 7.7 },
-    { name: "Lawal Salim Fago", team: "home", odds: 8.4 },
-    { name: "Višinský Denis", team: "home", odds: 9.3 },
-    { name: "Memic Amar", team: "home", odds: 13.0 },
-    { name: "Souare Cheick Oumar", team: "home", odds: 13.0 },
-    { name: "Hrošovský Patrik", team: "home", odds: 13.0 },
-    { name: "Červ Lukáš", team: "home", odds: 15.0 },
-    { name: "Dweh Sampson", team: "home", odds: 17.0 },
-    { name: "Špačil Karel", team: "home", odds: 17.0 },
-    { name: "Jemelka Václav", team: "home", odds: 30.0 },
-    // Panathinaikos
-    { name: "Tetteh Andreas", team: "away", odds: 7.7 },
-    { name: "Taborda Vicente", team: "away", odds: 11.5 },
-    { name: "Zaroury Anass", team: "away", odds: 11.5 },
-    { name: "Bakasetas Anastasios", team: "away", odds: 11.5 },
-    { name: "Sanches Renato", team: "away", odds: 17.0 },
-    { name: "Calabria Davide", team: "away", odds: 21.0 },
-    { name: "Kyriakopoulos Georgios", team: "away", odds: 21.0 },
-    { name: "Ingason Sverrir Ingi", team: "away", odds: 28.0 },
-    { name: "Katris Georgios", team: "away", odds: 28.0 },
-    { name: "Touba Ahmed", team: "away", odds: 28.0 },
-  ];
+// scorer odds are fetched live from The Odds API — see fetchScorerOdds()
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface GoalEvent {
@@ -171,13 +119,19 @@ const FALLBACK_H2H: H2HOdds = {
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
+interface ScorerOdd {
+  name: string;
+  team: "home" | "away" | "unknown";
+  odds: number;
+}
+
 export default function MatchLive() {
   const [match, setMatch] = useState<MatchData | null>(null);
   const [h2h, setH2h] = useState<H2HOdds | null>(FALLBACK_H2H);
   const [oddsCached, setOddsCached] = useState(true);
-  const [tab, setTab] = useState<"lineups" | "odds" | "scorers" | "scorers3rd">(
-    "lineups",
-  );
+  const [scorerOdds, setScorerOdds] = useState<ScorerOdd[]>([]);
+  const [lastScorerPoll, setLastScorerPoll] = useState<Date | null>(null);
+  const [tab, setTab] = useState<"lineups" | "odds" | "scorers">("lineups");
   const [error, setError] = useState("");
   const [lastPoll, setLastPoll] = useState<Date | null>(null);
   const [lastOddsPoll, setLastOddsPoll] = useState<Date | null>(null);
@@ -394,16 +348,95 @@ export default function MatchLive() {
     }
   }
 
+  // ── Fetch first-goalscorer odds from The Odds API ────────────────────────
+  async function fetchScorerOdds(currentMatch?: MatchData | null) {
+    try {
+      const res = await fetch(
+        `/api/odds/sports/${ODDS_SPORT}/events/${ODDS_EVENT_ID}/odds?apiKey=${ODDS_API_KEY}&markets=player_first_goal_scorer&regions=us,uk,eu&oddsFormat=decimal`,
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.message) return; // quota exhausted
+
+      // Collect best price per player name across all bookmakers
+      const priceMap = new Map<string, number>();
+      for (const bm of data.bookmakers ?? []) {
+        const mkt = (bm.markets ?? []).find(
+          (mk: { key: string }) => mk.key === "player_first_goal_scorer",
+        );
+        if (!mkt) continue;
+        for (const o of mkt.outcomes ?? []) {
+          const name: string = (o.description ?? o.name ?? "").trim();
+          if (name && o.price && !priceMap.has(name))
+            priceMap.set(name, o.price);
+        }
+      }
+      if (priceMap.size === 0) return;
+
+      // Assign home/away by cross-referencing Goalserve lineup (already fetched)
+      const m = currentMatch;
+      const homePlayers = [
+        ...(m?.homePlayers ?? []),
+        ...(m?.homeSubstitutes ?? []),
+      ].map((p) => p.name.toLowerCase());
+      const awayPlayers = [
+        ...(m?.awayPlayers ?? []),
+        ...(m?.awaySubstitutes ?? []),
+      ].map((p) => p.name.toLowerCase());
+
+      function assignTeam(oddsName: string): "home" | "away" | "unknown" {
+        const needle = oddsName.toLowerCase();
+        // exact match first
+        if (homePlayers.some((n) => n === needle)) return "home";
+        if (awayPlayers.some((n) => n === needle)) return "away";
+        // partial match (last name token)
+        const lastName = needle.split(" ").pop() ?? needle;
+        if (homePlayers.some((n) => n.includes(lastName))) return "home";
+        if (awayPlayers.some((n) => n.includes(lastName))) return "away";
+        return "unknown";
+      }
+
+      const result: ScorerOdd[] = Array.from(priceMap.entries())
+        .filter(([name]) => name.toLowerCase() !== "no scorer")
+        .map(([name, odds]) => ({ name, odds, team: assignTeam(name) }))
+        .sort((a, b) => a.odds - b.odds);
+
+      setScorerOdds(result);
+      setLastScorerPoll(new Date());
+    } catch {
+      /* silent */
+    }
+  }
+
   useEffect(() => {
     fetchMatch();
-    // fetchOdds(); // DISABLED — re-enable when match is live to avoid wasting API credits
-    // Match data: poll every 15s for live, 30s otherwise
+    fetchOdds();
+    fetchScorerOdds();
     const matchIv = setInterval(fetchMatch, 15_000);
-    // const oddsIv = setInterval(fetchOdds, ODDS_POLL_INTERVAL); // DISABLED
+    const oddsIv = setInterval(fetchOdds, ODDS_POLL_INTERVAL);
+    const scorerIv = setInterval(
+      () => fetchScorerOdds(prevMatchRef.current),
+      ODDS_POLL_INTERVAL,
+    );
     return () => {
       clearInterval(matchIv);
+      clearInterval(oddsIv);
+      clearInterval(scorerIv);
     };
   }, []);
+
+  // Re-run scorer team assignment whenever Goalserve lineup arrives
+  const prevMatchRef = useRef<MatchData | null>(null);
+  useEffect(() => {
+    if (!match) return;
+    const hadLineup = (prevMatchRef.current?.homePlayers.length ?? 0) > 0;
+    const hasLineup = match.homePlayers.length > 0;
+    if (!hadLineup && hasLineup) {
+      // Lineup just arrived — re-assign teams for existing scorer odds
+      fetchScorerOdds(match);
+    }
+    prevMatchRef.current = match;
+  }, [match]);
 
   // ─── Status helpers ────────────────────────────────────────────────────────
   const isLive =
@@ -414,18 +447,9 @@ export default function MatchLive() {
     ...(match?.awayGoals ?? []).map((g) => ({ ...g, team: "away" as const })),
   ].sort((a, b) => Number(a.minute) - Number(b.minute));
 
-  const homeScorerOdds = SCORER_ODDS.filter((s) => s.team === "home").sort(
-    (a, b) => a.odds - b.odds,
-  );
-  const awayScorerOdds = SCORER_ODDS.filter((s) => s.team === "away").sort(
-    (a, b) => a.odds - b.odds,
-  );
-  const homeScorerOdds3rd = SCORER_ODDS_3RD.filter(
-    (s) => s.team === "home",
-  ).sort((a, b) => a.odds - b.odds);
-  const awayScorerOdds3rd = SCORER_ODDS_3RD.filter(
-    (s) => s.team === "away",
-  ).sort((a, b) => a.odds - b.odds);
+  const homeScorerOdds = scorerOdds.filter((s) => s.team === "home");
+  const awayScorerOdds = scorerOdds.filter((s) => s.team === "away");
+  const unknownScorerOdds = scorerOdds.filter((s) => s.team === "unknown");
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
@@ -446,6 +470,11 @@ export default function MatchLive() {
             {lastOddsPoll && (
               <div className="text-xs text-slate-600">
                 📊 Odds: {lastOddsPoll.toLocaleTimeString()}
+              </div>
+            )}
+            {lastScorerPoll && (
+              <div className="text-xs text-slate-600">
+                🎯 Scorers: {lastScorerPoll.toLocaleTimeString()}
               </div>
             )}
           </div>
@@ -605,7 +634,7 @@ export default function MatchLive() {
 
         {/* ── Tabs ── */}
         <div className="border-b border-slate-800 flex gap-1">
-          {(["lineups", "odds", "scorers", "scorers3rd"] as const).map((t) => (
+          {(["lineups", "odds", "scorers"] as const).map((t) => (
             <button
               key={t}
               className={`tab-btn ${tab === t ? "active" : ""}`}
@@ -615,9 +644,7 @@ export default function MatchLive() {
                 ? "Lineups"
                 : t === "odds"
                   ? "Betfair Odds"
-                  : t === "scorers"
-                    ? "1st Scorer"
-                    : "3rd Scorer"}
+                  : `1st Scorer${scorerOdds.length ? ` (${scorerOdds.length})` : ""}`}
             </button>
           ))}
         </div>
@@ -806,106 +833,107 @@ export default function MatchLive() {
         {/* ── First Scorer tab ── */}
         {tab === "scorers" && (
           <div className="fade-in">
-            <div className="text-xs uppercase tracking-widest text-slate-500 mb-3 font-semibold px-1">
-              First Goalscorer — Pre-Match Odds (incl. extra time)
+            <div className="text-xs uppercase tracking-widest text-slate-500 mb-3 font-semibold px-1 flex items-center justify-between">
+              <span>First Goalscorer · The Odds API (best price)</span>
+              {lastScorerPoll && (
+                <span className="normal-case tracking-normal font-normal text-[10px]">
+                  updated {lastScorerPoll.toLocaleTimeString()}
+                </span>
+              )}
             </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              {/* Home */}
-              <div className="section-card">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-5 h-5 rounded-full bg-blue-700 text-[10px] font-black flex items-center justify-center">
-                    {teamAbbrev(HOME_HINT)}
-                  </div>
-                  <span className="font-bold text-sm">{HOME_HINT}</span>
-                </div>
-                {homeScorerOdds.map((s, i) => (
-                  <div key={i} className="player-row">
-                    <span className="text-sm">{s.name}</span>
-                    <span
-                      className={`odds-badge ${s.odds <= 10 ? "best" : ""}`}
-                    >
-                      {s.odds.toFixed(2)}
-                    </span>
-                  </div>
-                ))}
-              </div>
 
-              {/* Away */}
-              <div className="section-card">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-5 h-5 rounded-full bg-green-700 text-[10px] font-black flex items-center justify-center">
-                    {teamAbbrev(AWAY_HINT)}
-                  </div>
-                  <span className="font-bold text-sm">{AWAY_HINT}</span>
-                </div>
-                {awayScorerOdds.map((s, i) => (
-                  <div key={i} className="player-row">
-                    <span className="text-sm">{s.name}</span>
-                    <span
-                      className={`odds-badge ${s.odds <= 10 ? "best" : ""}`}
-                    >
-                      {s.odds.toFixed(2)}
+            {scorerOdds.length === 0 ? (
+              <div className="text-sm text-slate-500 text-center py-10 section-card">
+                Fetching first goalscorer odds…
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-4">
+                {/* Home */}
+                <div className="section-card">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-5 h-5 rounded-full bg-blue-700 text-[10px] font-black flex items-center justify-center">
+                      {teamAbbrev(match?.homeName ?? HOME_HINT)}
+                    </div>
+                    <span className="font-bold text-sm">
+                      {match?.homeName ?? HOME_HINT}
                     </span>
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+                  {homeScorerOdds.length > 0 ? (
+                    homeScorerOdds.map((s, i) => (
+                      <div key={i} className="player-row">
+                        <span className="text-sm">{s.name}</span>
+                        <span
+                          className={`odds-badge ${s.odds <= 10 ? "best" : ""}`}
+                        >
+                          {s.odds.toFixed(2)}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-xs text-slate-600 px-4 py-4">
+                      Waiting for lineup to assign teams…
+                    </div>
+                  )}
+                </div>
 
-        {/* ── 3rd Scorer tab ── */}
-        {tab === "scorers3rd" && (
-          <div className="fade-in">
-            <div className="text-xs uppercase tracking-widest text-slate-500 mb-3 font-semibold px-1">
-              3rd Goalscorer — Live Odds (26 Feb 2026, 1-1)
-            </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              {/* Home */}
-              <div className="section-card">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-5 h-5 rounded-full bg-blue-700 text-[10px] font-black flex items-center justify-center">
-                    {teamAbbrev(HOME_HINT)}
-                  </div>
-                  <span className="font-bold text-sm">{HOME_HINT}</span>
-                </div>
-                {homeScorerOdds3rd.map((s, i) => (
-                  <div key={i} className="player-row">
-                    <span className="text-sm">{s.name}</span>
-                    <span
-                      className={`odds-badge ${s.odds <= 10 ? "best" : ""}`}
-                    >
-                      {s.odds.toFixed(2)}
+                {/* Away */}
+                <div className="section-card">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-5 h-5 rounded-full bg-green-700 text-[10px] font-black flex items-center justify-center">
+                      {teamAbbrev(match?.awayName ?? AWAY_HINT)}
+                    </div>
+                    <span className="font-bold text-sm">
+                      {match?.awayName ?? AWAY_HINT}
                     </span>
                   </div>
-                ))}
-              </div>
+                  {awayScorerOdds.length > 0 ? (
+                    awayScorerOdds.map((s, i) => (
+                      <div key={i} className="player-row">
+                        <span className="text-sm">{s.name}</span>
+                        <span
+                          className={`odds-badge ${s.odds <= 10 ? "best" : ""}`}
+                        >
+                          {s.odds.toFixed(2)}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-xs text-slate-600 px-4 py-4">
+                      Waiting for lineup to assign teams…
+                    </div>
+                  )}
+                </div>
 
-              {/* Away */}
-              <div className="section-card">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-5 h-5 rounded-full bg-green-700 text-[10px] font-black flex items-center justify-center">
-                    {teamAbbrev(AWAY_HINT)}
+                {/* Unknown team — show until Goalserve lineup arrives */}
+                {unknownScorerOdds.length > 0 && (
+                  <div className="section-card md:col-span-2">
+                    <div className="text-xs text-slate-600 mb-2">
+                      Team unconfirmed (lineup pending) — will auto-assign when
+                      Goalserve publishes the lineup
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-x-6">
+                      {unknownScorerOdds.map((s, i) => (
+                        <div key={i} className="player-row">
+                          <span className="text-sm text-slate-400">
+                            {s.name}
+                          </span>
+                          <span className="odds-badge">
+                            {s.odds.toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <span className="font-bold text-sm">{AWAY_HINT}</span>
-                </div>
-                {awayScorerOdds3rd.map((s, i) => (
-                  <div key={i} className="player-row">
-                    <span className="text-sm">{s.name}</span>
-                    <span
-                      className={`odds-badge ${s.odds <= 10 ? "best" : ""}`}
-                    >
-                      {s.odds.toFixed(2)}
-                    </span>
-                  </div>
-                ))}
+                )}
               </div>
-            </div>
+            )}
           </div>
         )}
 
         {/* ── Footer ── */}
         <div className="text-xs text-slate-700 text-center pb-4">
-          Live data: Goalserve every 30s · Odds: The Odds API every 5min
+          Live data: Goalserve every 15s · 1X2 + Scorer odds: The Odds API every
+          5min
         </div>
       </div>
     </div>
