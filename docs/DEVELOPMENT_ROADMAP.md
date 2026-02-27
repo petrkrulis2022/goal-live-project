@@ -2,24 +2,25 @@
 
 **Last Updated:** February 27, 2026
 **Status:** Phase 1 ✅ · Phase 2 ✅ · Phase 2.5 ✅ Live session infra · **Phase 3 smart contracts in progress**
-**Repo:** `petrkrulis2022/goal-live-project` · branch `main` · last commit `8da24da`
+**Repo:** `petrkrulis2022/goal-live-project` · branch `main` · last commit `1407f01`
 **Uncommitted local:** none — all pushed
 
 ---
 
-> ## ▶ RESUME HERE — Track E: Chainlink / Sepolia Deploy
+> ## ▶ RESUME HERE — Sepolia Deploy Test (Wolves vs Aston Villa)
 >
-> **Last completed:** Tracks 0–D done. Foundry contracts + 31 tests + EXACT_GOALS UI + replay mode.
+> **Last completed:** Track E ✅ (`f3edab2`) · EPL + CreateEvent ✅ (`0fda507`) · emergencyWithdrawPool ✅ (`1407f01`)
 >
-> **Commits:** `78aaee2` (Track 0) → `d45c919` (Track A) → `c0ec412` (Track B+C) → `14bb97b` (Track D)
+> **Commits:** `78aaee2` (Track 0) → `d45c919` (Track A) → `c0ec412` (Track B+C) → `14bb97b` (Track D) → `f3edab2` (Track E) → `0fda507` (EPL) → `1407f01` (emergency withdraw)
 >
 > **Immediate next tasks (in order):**
 >
-> 1. **Track E** — Chainlink dev session: `docs/CHAINLINK_DEV_QUESTIONS.md` ✅ done
-> 2. **Track F** — WorldCoin Sepolia investigation: `docs/WORLDCOIN_SEPOLIA_NOTES.md` ✅ done
-> 3. **Sepolia deploy** — `npm run deploy:sepolia` (requires `PRIVATE_KEY` + `VITE_SEPOLIA_RPC_URL` in `.env.local`)
-> 4. **contractService.ts** — Wire real ABI (`out/GoalLiveBetting.sol/GoalLiveBetting.json`) + `SIMULATION_MODE = false`
-> 5. **bettingService.ts** — Connect `lockBetNGS` / `lockBetMW` / `lockBetEG` / `changeBet` / `claimPayout`
+> 1. **Start admin** — `npm run dev:admin` (port 5174), MetaMask on Sepolia (chainId 11155111)
+> 2. **Create Event** — click "Wolverhampton vs Aston Villa" → enter pool amount → Create Event
+> 3. **MetaMask** — confirm deploy tx → confirm USDC approve → confirm fundPool tx
+> 4. **Save address** — copy deployed contract address → `VITE_CONTRACT_ADDRESS=<addr>` in `.env.local`
+> 5. **Test recovery** — FundPool page Danger Zone → Withdraw Pool → confirm → verify USDC returned
+> 6. **After FT** — EventDetail → Oracle tab → Settle Match (enter scorers + final score)
 
 ---
 
@@ -160,39 +161,35 @@ enum BetType { NEXT_GOAL_SCORER, MATCH_WINNER, EXACT_GOALS }
 enum Outcome { HOME, DRAW, AWAY }   // only used for MATCH_WINNER
 
 // ── Admin / operator ────────────────────────────────────────────────────────
-function createMatch(string matchId, uint256 kickoffTime) external onlyOwner;
-function setOracle(address oracle) external onlyOwner;
-function fundPool(uint256 amount) external onlyOwner;           // USDC approve + transfer in
-function withdrawPlatformFees() external onlyOwner;
-function emergencyWithdraw() external onlyOwner;
+// ── Singleton model: ONE contract deployment for ALL matches ──────────────────
+// Contract address stored in localStorage['gl_contract_address'] or VITE_CONTRACT_ADDRESS
 
-// ── User flow (called by admin/backend per player action) ───────────────────
-// BetType.NEXT_GOAL_SCORER: outcomeOrTarget = playerId hash
-// BetType.MATCH_WINNER:     outcomeOrTarget = uint8(Outcome.HOME/DRAW/AWAY)
-// BetType.EXACT_GOALS:      outcomeOrTarget = total goals uint (0–99)
-function lockBet(
-    bytes32 betId, address bettor, BetType betType,
-    bytes32 outcomeOrTarget, uint256 amount, uint256 oddsBps
-) external;
-function changeBet(bytes32 betId, bytes32 newOutcomeOrTarget, uint256 penaltyAmount) external;
+// ── Admin / operator ────────────────────────────────────────────────────────
+function createMatch(string calldata matchId) external onlyOwner;
+function setOracle(address oracle) external onlyOwner;
+function fundPool(string calldata matchId, uint256 amount) external;  // USDC approve first
+function withdrawFees(address to) external onlyOwner;
+function emergencyWithdrawPool(string calldata matchId, address to) external onlyOwner; // drains pool, sets isActive=false
+
+// ── Bet locking (called by admin/backend per player action) ─────────────────
+function lockBetNGS(string calldata matchId, uint256 betId, uint256 playerId, uint256 amount) external;
+function lockBetMW(string calldata matchId, MatchOutcome outcome, uint256 betId, uint256 amount) external;
+function lockBetEG(string calldata matchId, uint8 exactGoals, uint256 betId, uint256 amount) external;
 
 // ── Oracle / admin settlement ────────────────────────────────────────────────
 // Called by admin from EventDetail → Oracle tab (Phase 3)
 // Called by Chainlink CRE DON (Phase 4)
 function settleMatch(
-    string matchId,
-    string[] scorerIds,          // for NGS resolution
-    Outcome winner,              // for MATCH_WINNER resolution
-    uint8 homeGoals,             // for EXACT_GOALS resolution
+    string calldata matchId,
+    uint256[] calldata scorerIds,  // for NGS resolution
+    MatchOutcome winner,           // 0=HOME, 1=DRAW, 2=AWAY
+    uint8 homeGoals,               // for EXACT_GOALS resolution
     uint8 awayGoals
 ) external onlyOracle;
 
-function recordGoal(string calldata scorerId, uint256 minute) external onlyOracle; // provisional NGS
-
 // ── Views ────────────────────────────────────────────────────────────────────
-function getPoolStats() external view returns (uint256 totalBalance, uint256 totalLocked, uint256 available, uint256 fees);
-function getBet(bytes32 betId) external view returns (Bet memory);
-function claimPayout(bytes32 betId) external nonReentrant; // player pulls winnings
+function getMatchPool(string calldata matchId) external view returns (uint256 poolSize, bool isActive, bool isSettled);
+function claimPayout(string calldata matchId, uint256 betId) external nonReentrant;
 ```
 
 ### Penalty formula (must match frontend)
@@ -429,13 +426,31 @@ interface PredictResponse {
 - [x] `mockBettingService.settleBets`: resolve EXACT_GOALS bets (5+ = ≥5)
 - [x] `GoalLiveBetting.sol`: EXACT_GOALS already handled in `settleMatch` (Track A)
 
-**Track E — Chainlink prep**
+**Track E — contractService real ethers v6** ✅ `f3edab2`
 
-- [x] `docs/CHAINLINK_DEV_QUESTIONS.md` created
+- [x] ~~`admin/src/services/glb.artifact.ts` — generated from `forge build --force`, 52 ABI entries, bytecode 23404 chars~~
+- [x] ~~`contractService.ts` — full ethers v6 rewrite (BrowserProvider + JsonRpcSigner), singleton deploy model~~
+- [x] ~~`deployContract(externalMatchId)` — factory.deploy singleton + createMatch in one tx~~
+- [x] ~~`fundPool(matchId, amountUsdc)` — USDC.approve + contract.fundPool~~
+- [x] ~~`settleMatchOnChain(_, matchId, scorers[], winner, homeGoals, awayGoals)`~~
+- [x] ~~`FundPool.tsx` — `fundPool(match.external_match_id, ...)` (was passing contract_address)~~
+- [x] ~~`EventDetail.tsx` — `settleMatchOnChain` gets winner/homeGoals/awayGoals from match score~~
+- [x] ~~`matchData.ts` — fixed `"in-progress"` → `"pre-match"`~~
+- [x] ~~`docs/CHAINLINK_DEV_QUESTIONS.md` — 6 sharp questions for CRE dev session~~
+- [x] ~~`docs/WORLDCOIN_SEPOLIA_NOTES.md` — WorldCoin Sepolia investigation~~
 
-**Track F — WorldCoin investigation**
+**Track F — EPL support + Wolves/Villa** ✅ `0fda507`
 
-- [x] `docs/WORLDCOIN_SEPOLIA_NOTES.md` created
+- [x] ~~`CreateEvent.tsx` — `soccer_epl` + `soccer_uefa_europa_league` + `soccer_uefa_europa_conference_league`, 7-day window, purple EPL badge~~
+- [x] ~~`matchRegistry.ts` — `WOLVES_VILLA` entry (Odds API ID: `b9ade3f715e4c344543f672014bc2188`, KO 2026-02-27T20:00 UTC)~~
+- [x] ~~`popup.js` — Wolves/Villa pre-match card, `m.score ?? "vs"` null-safe display~~
+
+**Track G — emergencyWithdrawPool** ✅ `1407f01`
+
+- [x] ~~`GoalLiveBetting.sol` — `emergencyWithdrawPool(matchId, to)` owner-only, drains pool, sets `isActive=false`, emits `PoolEmergencyWithdrawn`~~
+- [x] ~~`glb.artifact.ts` regenerated after emergencyWithdraw added (52 entries, 23404 chars)~~
+- [x] ~~`contractService.ts` — `emergencyWithdrawPool(matchId, to?)` method~~
+- [x] ~~`FundPool.tsx` — Danger Zone section: two-step confirm, clears Supabase `contract_address=null` on success~~
 
 - [ ] `npm run build:all` script
 
