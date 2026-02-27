@@ -146,6 +146,11 @@ contract GoalLiveBetting is ReentrancyGuard, Ownable {
     event OracleUpdated(address indexed oldOracle, address indexed newOracle);
     event FeeRateUpdated(uint256 oldRate, uint256 newRate);
     event FeesWithdrawn(address indexed to, uint256 amount);
+    event PoolEmergencyWithdrawn(
+        string indexed matchId,
+        address indexed to,
+        uint256 amount
+    );
 
     // ─────────────────────────────────────────────────────────────
     //  Modifiers
@@ -460,6 +465,36 @@ contract GoalLiveBetting is ReentrancyGuard, Ownable {
         collectedFees = 0;
         usdc.safeTransfer(to, amount);
         emit FeesWithdrawn(to, amount);
+    }
+
+    /**
+     * @notice Emergency withdraw: drain a match pool back to `to`.
+     *         Only callable by owner (admin) and only when the match is
+     *         NOT yet settled.  Cancels all active bets (status → Cancelled)
+     *         so bettors can see their bets were voided.
+     * @dev    Use only for testing or genuine emergency.  Once a match has
+     *         live (user) bets this should never be called in production.
+     * @param matchId  The match whose pool is being drained.
+     * @param to       Recipient of the recovered USDC.
+     */
+    function emergencyWithdrawPool(
+        string calldata matchId,
+        address to
+    ) external onlyOwner nonReentrant {
+        Match storage m = matches[matchId];
+        require(m.isActive, "GLB: match not active");
+        require(!m.isSettled, "GLB: already settled");
+        require(to != address(0), "GLB: zero address");
+
+        uint256 amount = m.poolSize;
+        require(amount > 0, "GLB: empty pool");
+
+        // Zero the pool so double-withdraw is impossible
+        m.poolSize = 0;
+        m.isActive = false;
+
+        usdc.safeTransfer(to, amount);
+        emit PoolEmergencyWithdrawn(matchId, to, amount);
     }
 
     // ─────────────────────────────────────────────────────────────

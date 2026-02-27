@@ -255,6 +255,29 @@ export const contractService = {
   },
 
   /**
+   * Emergency drain: withdraw the entire pool for a match back to `to`.
+   * Calls emergencyWithdrawPool(matchId, to) on-chain (owner only).
+   *
+   * Safe to use during testing.  In production, only call this before any
+   * user bets have been placed — the contract marks the match as inactive
+   * and all active bets would be unclaimable.
+   *
+   * @param matchId   The match whose pool is being drained.
+   * @param to        Recipient (defaults to connected wallet).
+   */
+  async emergencyWithdrawPool(matchId: string, to?: string): Promise<string> {
+    const address = getStoredContractAddress();
+    if (!address) throw new Error("Contract not deployed yet.");
+    const signer = await getSigner();
+    const dest = to ?? (await signer.getAddress());
+    const contract = getContract(address, signer);
+    console.log("[contractService] emergencyWithdrawPool", matchId, "->", dest);
+    const tx = await contract.emergencyWithdrawPool(matchId, dest);
+    await tx.wait();
+    return tx.hash as string;
+  },
+
+  /**
    * emitGoal — goals are now tracked in Supabase and passed to settleMatch at FT.
    * This method only authenticates via MetaMask (no on-chain call).
    * Returns a zero hash.

@@ -11,6 +11,9 @@ export default function FundPool() {
   const [funding, setFunding] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawTx, setWithdrawTx] = useState<string | null>(null);
+  const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false);
 
   useEffect(() => {
     if (!matchId) return;
@@ -36,6 +39,31 @@ export default function FundPool() {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setFunding(false);
+    }
+  }
+
+  async function handleWithdrawPool() {
+    if (!match) return;
+    setError(null);
+    setWithdrawing(true);
+    setShowWithdrawConfirm(false);
+    try {
+      const tx = await contractService.emergencyWithdrawPool(
+        match.external_match_id,
+      );
+      setWithdrawTx(tx);
+      // Clear contract address in Supabase — pool is now empty and match deactivated
+      await supabase
+        .from("matches")
+        .update({ contract_address: null, status: "cancelled" })
+        .eq("id", match.id);
+      setMatch((m) =>
+        m ? { ...m, contract_address: null, status: "cancelled" } : m,
+      );
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setWithdrawing(false);
     }
   }
 
@@ -165,6 +193,54 @@ export default function FundPool() {
           via the admin UI using MetaMask (Foundry artifact embedded).
         </p>
       </div>
+
+      {/* Danger zone — emergency withdraw */}
+      {match.contract_address && match.status !== "cancelled" && (
+        <div className="mt-6 border border-red-500/15 rounded-xl p-4">
+          <p className="text-xs font-semibold text-red-400/70 uppercase tracking-wider mb-2">
+            Danger Zone
+          </p>
+          <p className="text-xs text-gray-600 mb-3">
+            Drain the entire pool back to your wallet and deactivate this match.
+            Only use this before any user bets are placed.
+          </p>
+
+          {!showWithdrawConfirm ? (
+            <button
+              onClick={() => setShowWithdrawConfirm(true)}
+              disabled={withdrawing || funding}
+              className="px-4 py-2 text-xs font-semibold bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors disabled:opacity-40"
+            >
+              Withdraw Pool
+            </button>
+          ) : (
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-red-400 font-medium">
+                Are you sure? This cannot be undone.
+              </span>
+              <button
+                onClick={handleWithdrawPool}
+                disabled={withdrawing}
+                className="px-4 py-2 text-xs font-bold bg-red-500 text-white rounded-lg hover:bg-red-400 disabled:opacity-50 transition-colors"
+              >
+                {withdrawing ? "Withdrawing…" : "Confirm Withdraw"}
+              </button>
+              <button
+                onClick={() => setShowWithdrawConfirm(false)}
+                className="px-3 py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {withdrawTx && (
+            <div className="mt-3 text-xs text-red-400/70 font-mono break-all bg-red-500/5 border border-red-500/15 rounded-lg px-3 py-2">
+              Withdrawn · {withdrawTx.slice(0, 18)}…{withdrawTx.slice(-6)}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
