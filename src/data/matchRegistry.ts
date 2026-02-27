@@ -51,9 +51,35 @@ const PLZEN_PANAT: MatchConfig = {
   steadyOdds: true,
 };
 
+// ── Wolverhampton vs Aston Villa, EPL Feb 27 2026 ────────────────────────────
+// Odds API event ID: b9ade3f715e4c344543f672014bc2188 (KO 21:00 CET)
+// startingXI populated at ~20:00 CET when lineups confirmed
+const WOLVES_VILLA: MatchConfig = {
+  matchKey: "wolves_villa_20260227",
+  label: "Wolverhampton vs Aston Villa",
+  league: "EPL",
+  goalserveStaticId: "0", // update once Goalserve confirms match ID
+  goalserveLeague: "1204",
+  matchId: "wolves_villa_20260227",
+  currentMatch: {
+    id: "wolves_villa_20260227",
+    homeTeam: "Wolverhampton Wanderers",
+    awayTeam: "Aston Villa",
+    status: "pre-match",
+    currentMinute: 0,
+    score: { home: 0, away: 0 },
+    half: 1,
+  },
+  startingXI: [], // populated at lineup confirmation
+  initialMWOdds: { home: 3.5, draw: 3.4, away: 2.1 }, // pre-match estimate
+  goalScript: [], // live match — no replay script
+  steadyOdds: false, // use live Odds API feed
+};
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 export const MATCH_REGISTRY: Record<string, MatchConfig> = {
   [PLZEN_PANAT.matchKey]: PLZEN_PANAT,
+  [WOLVES_VILLA.matchKey]: WOLVES_VILLA,
 };
 
 export const DEFAULT_MATCH_KEY = PLZEN_PANAT.matchKey;

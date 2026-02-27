@@ -8,16 +8,21 @@ const ODDS_API_KEY = "069be437bad9795678cdc1c1cee711c3";
 
 /** Goalserve league ID for each Odds API sport_key */
 const SPORT_TO_GS_LEAGUE: Record<string, string> = {
+  soccer_epl: "1204",
   soccer_uefa_europa_league: "1007",
   soccer_uefa_europa_conference_league: "1009",
 };
 
 const SPORT_LABELS: Record<string, string> = {
+  soccer_epl: "Premier League",
   soccer_uefa_europa_league: "UEFA Europa League",
   soccer_uefa_europa_conference_league: "UEFA Europa Conference League",
 };
 
 const SPORT_COLOR: Record<string, { badge: string }> = {
+  soccer_epl: {
+    badge: "bg-purple-400/15 text-purple-400 border-purple-400/25",
+  },
   soccer_uefa_europa_league: {
     badge: "bg-orange-400/15 text-orange-400 border-orange-400/25",
   },
@@ -43,9 +48,10 @@ function formatLocalDateTime(utcIso: string): string {
 function kickoffLabel(utcIso: string): string {
   const d = new Date(utcIso);
   const pad = (n: number) => String(n).padStart(2, "0");
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   // CET = UTC+1 (valid for Feb/March)
   const cetH = (d.getUTCHours() + 1) % 24;
-  return `${pad(cetH)}:${pad(d.getUTCMinutes())} CET`;
+  return `${days[d.getDay()]} ${pad(d.getDate())}/${pad(d.getMonth() + 1)} · ${pad(cetH)}:${pad(d.getUTCMinutes())} CET`;
 }
 
 function buildViewerUrl(evt: OddsEvent): string {
@@ -102,13 +108,16 @@ export default function CreateEvent() {
   const [selectedEvent, setSelectedEvent] = useState<OddsEvent | null>(null);
 
   useEffect(() => {
-    async function fetchTonightGames() {
+    async function fetchUpcomingGames() {
       try {
         const sports = [
+          "soccer_epl",
           "soccer_uefa_europa_league",
           "soccer_uefa_europa_conference_league",
         ];
-        const today = new Date().toISOString().slice(0, 10);
+        const now = Date.now();
+        // show games starting from now up to 7 days ahead
+        const windowEnd = now + 7 * 24 * 60 * 60 * 1000;
 
         const results = await Promise.all(
           sports.map((sport) =>
@@ -122,9 +131,9 @@ export default function CreateEvent() {
           .flat()
           .filter((e: any) => {
             if (!e?.commence_time) return false;
-            const d = new Date(e.commence_time);
-            // today + kick-off at or after 19:30 UTC (= 8:30pm CET, catches 9pm batch)
-            return e.commence_time.startsWith(today) && d.getUTCHours() >= 19;
+            const t = new Date(e.commence_time).getTime();
+            // upcoming: starts from now (allow 2hr grace for live games) to +7 days
+            return t >= now - 2 * 60 * 60 * 1000 && t <= windowEnd;
           })
           .sort(
             (a: OddsEvent, b: OddsEvent) =>
@@ -134,12 +143,12 @@ export default function CreateEvent() {
 
         setTonightEvents(all);
       } catch (e: any) {
-        setEventsError("Failed to fetch tonight's games: " + e.message);
+        setEventsError("Failed to fetch upcoming games: " + e.message);
       } finally {
         setEventsLoading(false);
       }
     }
-    fetchTonightGames();
+    fetchUpcomingGames();
   }, []);
 
   function pickEvent(evt: OddsEvent) {
@@ -210,7 +219,7 @@ export default function CreateEvent() {
       // ── Step 3: Fund the pool (MetaMask) ───────────────────────────────────
       setStep({ id: "fund", label: "Funding pool… (confirm in MetaMask)" });
       const txHash = await contractService.fundPool(
-        contractAddress,
+        form.externalMatchId,
         poolAmount,
       );
 
@@ -239,18 +248,16 @@ export default function CreateEvent() {
       <div className="bg-gray-900 border border-white/5 rounded-2xl p-5 mb-5 shadow-xl">
         <div className="flex items-center gap-2 mb-4">
           <span className="text-base">🏆</span>
-          <h2 className="text-sm font-bold text-white">
-            Tonight's Europa Matches
-          </h2>
+          <h2 className="text-sm font-bold text-white">Upcoming Fixtures</h2>
           <span className="ml-auto text-[10px] text-gray-500 uppercase tracking-wider font-medium">
-            21:00 CET · auto-loaded
+            EPL · UEL · UECL · next 7 days
           </span>
         </div>
 
         {eventsLoading && (
           <div className="flex items-center gap-2 text-gray-500 text-sm py-4 justify-center">
             <span className="w-3.5 h-3.5 border-2 border-gray-600 border-t-gray-400 rounded-full animate-spin" />
-            Loading tonight's games…
+            Loading upcoming fixtures…
           </div>
         )}
 
@@ -262,7 +269,7 @@ export default function CreateEvent() {
 
         {!eventsLoading && !eventsError && tonightEvents.length === 0 && (
           <div className="text-gray-600 text-sm text-center py-4">
-            No evening Europa matches found for today.
+            No upcoming fixtures found in the next 7 days.
           </div>
         )}
 

@@ -34,12 +34,14 @@ function render() {
           ${
             m.status === "live"
               ? `<span class="match-status"><span class="live-dot"></span>LIVE</span>`
-              : `<span class="match-status" style="color:#6b7280">Pre-match</span>`
+              : m.status === "ft"
+                ? `<span class="match-status" style="color:#9ca3af">Full Time</span>`
+                : `<span class="match-status" style="color:#6b7280">Pre-match</span>`
           }
         </div>
         <div class="match-teams">
           <span class="team-name" style="text-align:right">${m.home}</span>
-          <span class="score">${m.score}</span>
+          <span class="score">${m.score ?? "vs"}</span>
           <span class="team-name">${m.away}</span>
         </div>
         <div class="match-actions">
