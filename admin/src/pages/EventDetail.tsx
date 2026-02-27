@@ -24,10 +24,6 @@ export default function EventDetail() {
   const [tab, setTab] = useState<Tab>("overview");
   const [loading, setLoading] = useState(true);
 
-  // NGS odds fetch state
-  const [fetchingNGS, setFetchingNGS] = useState(false);
-  const [ngsOddsStatus, setNgsOddsStatus] = useState<string | null>(null);
-
   // Oracle panel state
   const [goalForm, setGoalForm] = useState({
     playerId: "",
@@ -39,26 +35,22 @@ export default function EventDetail() {
   const [oracleTx, setOracleTx] = useState<string | null>(null);
   const [oracleError, setOracleError] = useState<string | null>(null);
 
-  async function fetchNGSOdds() {
-    if (!match) return;
-    setFetchingNGS(true);
-    setNgsOddsStatus(null);
+  async function fetchNGSOdds(m: DbMatch, p: DbPlayer[]) {
     try {
       const sport =
-        (match.odds_api_config as Record<string, string>)?.sport ??
-        "soccer_epl";
-      const eventId = match.external_match_id;
+        (m.odds_api_config as Record<string, string>)?.sport ?? "soccer_epl";
+      const eventId = m.external_match_id;
       const res = await fetch(
-        `/api/odds/sports/${sport}/events/${eventId}/odds?apiKey=${ODDS_API_KEY}&markets=player_first_goal_scorer&regions=us&oddsFormat=decimal`,
+        `/api/odds/sports/${sport}/events/${eventId}/odds?apiKey=${ODDS_API_KEY}&markets=player_first_goal_scorer&regions=us,uk,eu&oddsFormat=decimal`,
       );
-      if (!res.ok) throw new Error(`Odds API ${res.status}: ${await res.text()}`);
+      if (!res.ok) return; // silent — no odds yet is fine
       const data = await res.json();
 
-      // Collect unique player prices across all bookmakers
+      // Collect best price per player across all bookmakers
       const priceMap = new Map<string, number>();
       for (const bm of data.bookmakers ?? []) {
         const mkt = (bm.markets ?? []).find(
-          (m: { key: string }) => m.key === "player_first_goal_scorer",
+          (mk: { key: string }) => mk.key === "player_first_goal_scorer",
         );
         if (!mkt) continue;
         for (const o of mkt.outcomes ?? []) {
@@ -68,49 +60,37 @@ export default function EventDetail() {
         }
       }
 
-      if (priceMap.size === 0) {
-        setNgsOddsStatus(
-          "No first goalscorer odds returned — market may not be open yet or no US bookmakers covering this event.",
-        );
-        return;
-      }
+      if (priceMap.size === 0) return; // market not open yet
 
       // Match to DB players by name (case-insensitive)
       let updated = 0;
+      const toUpdate: { id: string; price: number }[] = [];
       for (const [oddsName, price] of priceMap) {
-        const dbPlayer = players.find(
-          (p) =>
-            p.name.toLowerCase().trim() === oddsName.toLowerCase().trim(),
+        const dbPlayer = p.find(
+          (pl) =>
+            pl.name.toLowerCase().trim() === oddsName.toLowerCase().trim(),
         );
-        if (dbPlayer) {
-          await supabase
-            .from("players")
-            .update({ odds: price })
-            .eq("id", dbPlayer.id);
-          updated++;
-        }
+        if (dbPlayer) toUpdate.push({ id: dbPlayer.id, price });
       }
+      if (toUpdate.length === 0) return;
+      await Promise.all(
+        toUpdate.map(({ id, price }) =>
+          supabase.from("players").update({ odds: price }).eq("id", id),
+        ),
+      );
+      updated = toUpdate.length;
 
-      // Re-fetch players
+      // Re-fetch players sorted by odds
       const { data: fresh } = await supabase
         .from("players")
         .select("*")
-        .eq("match_id", match.id)
+        .eq("match_id", m.id)
         .order("odds");
       if (fresh) setPlayers(fresh as DbPlayer[]);
 
-      const msg = `Updated ${updated} / ${priceMap.size} players from first goalscorer market (used as NGS odds for testing).`;
-      setNgsOddsStatus(msg);
-      showToast(
-        `NGS odds fetched — ${updated} players updated`,
-        updated > 0 ? "green" : "yellow",
-      );
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setNgsOddsStatus("Error: " + msg);
-      showToast("Failed to fetch NGS odds: " + msg, "red");
-    } finally {
-      setFetchingNGS(false);
+      showToast(`NGS odds synced — ${updated} players updated`, "green");
+    } catch {
+      // silent fail
     }
   }
 
@@ -164,10 +144,14 @@ export default function EventDetail() {
           .eq("match_id", m.id)
           .order("minute"),
       ]).then(([{ data: p }, { data: b }, { data: g }]) => {
-        setPlayers(p ?? []);
+        const players = (p ?? []) as DbPlayer[];
+        setPlayers(players);
         setBets(b ?? []);
         setGoals(g ?? []);
         setLoading(false);
+
+        // Auto-fetch NGS odds from first goalscorer market
+        fetchNGSOdds(m as DbMatch, players);
 
         // Real-time subscription — goal_events + matches live updates
         const matchId = m.id;
@@ -614,68 +598,43 @@ export default function EventDetail() {
       )}
 
       {tab === "players" && (
-        <div className="space-y-3">
-          {/* NGS Odds Fetch */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <button
-              onClick={fetchNGSOdds}
-              disabled={fetchingNGS}
-              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-wait text-sm font-medium text-white transition-colors"
-            >
-              {fetchingNGS ? "Fetching…" : "⚡ Fetch NGS Odds (First Goalscorer)"}
-            </button>
-            {ngsOddsStatus && (
-              <span
-                className={`text-xs px-3 py-1.5 rounded-lg border ${
-                  ngsOddsStatus.startsWith("Error")
-                    ? "bg-red-500/10 border-red-500/20 text-red-400"
-                    : ngsOddsStatus.includes("No first")
-                      ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-400"
-                      : "bg-green-500/10 border-green-500/20 text-green-400"
-                }`}
-              >
-                {ngsOddsStatus}
-              </span>
-            )}
-          </div>
-          <div className="bg-gray-900/60 border border-white/5 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-[10px] text-gray-600 uppercase tracking-wider border-b border-white/5 bg-gray-950/40">
-                <th className="px-4 py-3 font-medium">#</th>
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Team</th>
-                <th className="px-4 py-3 font-medium">Odds</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/4">
-              {players.map((p) => (
-                <tr key={p.id} className="hover:bg-white/2 transition-colors">
-                  <td className="px-4 py-3 text-gray-600 font-mono text-xs">
-                    {p.jersey_number}
-                  </td>
-                  <td className="px-4 py-3 font-medium text-gray-200">
-                    {p.name}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
-                        p.team === "home"
-                          ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                          : "bg-red-500/10 text-red-400 border border-red-500/20"
-                      }`}
-                    >
-                      {p.team}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 font-mono font-bold text-green-400">
-                    {p.odds}x
-                  </td>
+        <div className="bg-gray-900/60 border border-white/5 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[10px] text-gray-600 uppercase tracking-wider border-b border-white/5 bg-gray-950/40">
+                  <th className="px-4 py-3 font-medium">#</th>
+                  <th className="px-4 py-3 font-medium">Name</th>
+                  <th className="px-4 py-3 font-medium">Team</th>
+                  <th className="px-4 py-3 font-medium">Odds</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+              </thead>
+              <tbody className="divide-y divide-white/4">
+                {players.map((p) => (
+                  <tr key={p.id} className="hover:bg-white/2 transition-colors">
+                    <td className="px-4 py-3 text-gray-600 font-mono text-xs">
+                      {p.jersey_number}
+                    </td>
+                    <td className="px-4 py-3 font-medium text-gray-200">
+                      {p.name}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                          p.team === "home"
+                            ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                            : "bg-red-500/10 text-red-400 border border-red-500/20"
+                        }`}
+                      >
+                        {p.team}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-mono font-bold text-green-400">
+                      {p.odds}x
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
         </div>
       )}
 
