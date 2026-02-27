@@ -50,6 +50,7 @@ export interface PlaceBetParams {
   betType: BetType;
   playerId?: string; // NEXT_GOAL_SCORER
   outcome?: MatchWinnerOutcome; // MATCH_WINNER
+  goalsTarget?: number; // EXACT_GOALS
   amount: number;
   odds: number;
   currentMinute: number;

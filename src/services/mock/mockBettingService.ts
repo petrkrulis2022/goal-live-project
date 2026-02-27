@@ -104,6 +104,7 @@ class MockBettingService implements IBettingService {
       betType,
       playerId,
       outcome,
+      goalsTarget,
       amount,
       odds,
       currentMinute,
@@ -128,6 +129,12 @@ class MockBettingService implements IBettingService {
         success: false,
         bet: null as unknown as Bet,
         error: "outcome required for MATCH_WINNER",
+      };
+    if (betType === "EXACT_GOALS" && goalsTarget === undefined)
+      return {
+        success: false,
+        bet: null as unknown as Bet,
+        error: "goalsTarget required for EXACT_GOALS",
       };
 
     // ── Only one active NGS bet at a time ─────────
@@ -157,6 +164,7 @@ class MockBettingService implements IBettingService {
       original_player_id: playerId ?? outcome ?? "",
       current_player_id: playerId ?? outcome ?? "",
       outcome: betType === "MATCH_WINNER" ? outcome : undefined,
+      goalsTarget: betType === "EXACT_GOALS" ? goalsTarget : undefined,
       original_amount: amount,
       current_amount: amount,
       total_penalties: 0,
@@ -291,6 +299,23 @@ class MockBettingService implements IBettingService {
           totalPayout += payout;
           bet.status = "settled_won";
           console.info(`[goal.live] MW Settled WON +$${payout.toFixed(2)}`);
+        } else {
+          bet.status = "settled_lost";
+        }
+      } else if (bet.betType === "EXACT_GOALS") {
+        const totalGoals = finalScore.home + finalScore.away;
+        // goalsTarget === 5 means "5 or more" (the catch-all upper band)
+        const won =
+          bet.goalsTarget === 5
+            ? totalGoals >= 5
+            : totalGoals === bet.goalsTarget;
+        if (won) {
+          const payout = bet.current_amount * bet.odds;
+          totalPayout += payout;
+          bet.status = "settled_won";
+          console.info(
+            `[goal.live] EG Settled WON (${totalGoals} goals) +$${payout.toFixed(2)}`,
+          );
         } else {
           bet.status = "settled_lost";
         }

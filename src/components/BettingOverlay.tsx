@@ -30,6 +30,7 @@ import { tryUnmuteVideo } from "../utils/videoUtils";
 type ModalState =
   | { type: "player"; player: Player }
   | { type: "mw"; outcome: MatchWinnerOutcome }
+  | { type: "eg"; goals: number }
   | { type: "change"; bet: Bet; toPlayer?: Player }
   | { type: "topup" }
   | { type: "withdraw" }
@@ -40,6 +41,16 @@ const MW_OUTCOMES: Array<{ outcome: MatchWinnerOutcome; label: string }> = [
   { outcome: "draw", label: "Draw" },
   { outcome: "away", label: "Away" },
 ];
+
+/** Exact Goals — total goals targets with fixed odds (last entry = 5+ means ≥5) */
+const EG_TARGETS = [
+  { goals: 0, label: "0", odds: 12.0 },
+  { goals: 1, label: "1", odds: 7.5 },
+  { goals: 2, label: "2", odds: 4.5 },
+  { goals: 3, label: "3", odds: 5.5 },
+  { goals: 4, label: "4", odds: 9.0 },
+  { goals: 5, label: "5+", odds: 15.0 },
+] as const;
 
 export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
   matchKey,
@@ -92,6 +103,17 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
         (b) =>
           b.betType === "MATCH_WINNER" &&
           b.outcome === outcome &&
+          b.status === "active",
+      ) ?? null,
+    [bets],
+  );
+
+  const getEgBet = useCallback(
+    (goals: number) =>
+      bets.find(
+        (b) =>
+          b.betType === "EXACT_GOALS" &&
+          b.goalsTarget === goals &&
           b.status === "active",
       ) ?? null,
     [bets],
@@ -481,6 +503,87 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
         </div>
       </div>
 
+      {/* ── EXACT GOALS BAR ─────────────────────────────────────────────── */}
+      {!isFinished && (
+        <div
+          className="gl-interactive"
+          style={{
+            position: "fixed",
+            top: "34px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 2147483640,
+            pointerEvents: "none",
+            display: "flex",
+            alignItems: "center",
+            gap: "3px",
+            padding: "2px 6px 3px",
+            background: "rgba(0,0,0,0.72)",
+            borderRadius: "0 0 7px 7px",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderTop: "none",
+          }}
+        >
+          <span
+            style={{
+              color: "#6b7280",
+              fontSize: "8px",
+              fontWeight: 700,
+              letterSpacing: "0.05em",
+              marginRight: "2px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            ⚽ GOALS:
+          </span>
+          {EG_TARGETS.map(({ goals, label, odds }) => {
+            const egBet = getEgBet(goals);
+            return (
+              <button
+                key={goals}
+                onClick={() =>
+                  wallet ? setModal({ type: "eg", goals }) : connect()
+                }
+                className="gl-interactive"
+                style={{
+                  pointerEvents: "auto",
+                  background: egBet
+                    ? "rgba(6,78,59,0.7)"
+                    : "rgba(30,20,50,0.85)",
+                  border: `1px solid ${egBet ? "rgba(52,211,153,0.5)" : "rgba(255,255,255,0.13)"}`,
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  padding: "2px 5px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  minWidth: "28px",
+                }}
+              >
+                <span
+                  style={{
+                    color: egBet ? "#34d399" : "#e5e7eb",
+                    fontSize: "8px",
+                    fontWeight: 700,
+                  }}
+                >
+                  {label}
+                </span>
+                <span
+                  style={{
+                    color: "#fde047",
+                    fontSize: "8px",
+                    fontWeight: 600,
+                  }}
+                >
+                  {odds}×
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* ── LEFT COLUMN ─────────────────────────────────────────────────── */}
       <div
         className="gl-interactive"
@@ -757,6 +860,20 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           matchId={match?.id ?? ""}
           balance={balance}
           activeBet={getMwBet(modal.outcome)}
+          onPlaceBet={placeBet}
+          onChangeBet={changeBet}
+          onClose={() => setModal(null)}
+        />
+      )}
+      {modal?.type === "eg" && (
+        <BetModal
+          egGoals={modal.goals}
+          egOdds={EG_TARGETS.find((t) => t.goals === modal.goals)?.odds}
+          currentMinute={match?.currentMinute ?? 0}
+          goalWindow={currentGoalWindow}
+          matchId={match?.id ?? ""}
+          balance={balance}
+          activeBet={getEgBet(modal.goals)}
           onPlaceBet={placeBet}
           onChangeBet={changeBet}
           onClose={() => setModal(null)}

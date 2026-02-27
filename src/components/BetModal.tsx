@@ -3,10 +3,12 @@ import type { Player, MatchWinnerOdds, Bet, BalanceState } from "../types";
 import type { MatchWinnerOutcome } from "../types";
 
 interface BetModalProps {
-  // One of these two will be set
+  // One of these three will be set
   player?: Player;
   mwOutcome?: MatchWinnerOutcome;
   mwOdds?: MatchWinnerOdds;
+  egGoals?: number; // EXACT_GOALS — total goals target
+  egOdds?: number; // pre-set odds for that goals count
   // Context
   currentMinute: number;
   goalWindow: number;
@@ -15,9 +17,10 @@ interface BetModalProps {
   activeBet: Bet | null;
   // Callbacks
   onPlaceBet: (params: {
-    betType: "NEXT_GOAL_SCORER" | "MATCH_WINNER";
+    betType: "NEXT_GOAL_SCORER" | "MATCH_WINNER" | "EXACT_GOALS";
     playerId?: string;
     outcome?: MatchWinnerOutcome;
+    goalsTarget?: number;
     amount: number;
     odds: number;
     currentMinute: number;
@@ -40,6 +43,8 @@ export const BetModal: React.FC<BetModalProps> = ({
   player,
   mwOutcome,
   mwOdds,
+  egGoals,
+  egOdds,
   currentMinute,
   goalWindow,
   matchId,
@@ -54,8 +59,19 @@ export const BetModal: React.FC<BetModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const isNGS = !!player;
-  const odds = isNGS ? (player?.odds ?? 1) : mwOdds ? mwOdds[mwOutcome!] : 1;
-  const label = isNGS ? player!.name : outcomeLabel(mwOutcome!);
+  const isEG = egGoals !== undefined;
+  const odds = isNGS
+    ? (player?.odds ?? 1)
+    : isEG
+      ? (egOdds ?? 1)
+      : mwOdds
+        ? mwOdds[mwOutcome!]
+        : 1;
+  const label = isNGS
+    ? player!.name
+    : isEG
+      ? `Exact Goals: ${egGoals === 6 ? "6+" : egGoals}`
+      : outcomeLabel(mwOutcome!);
   const payout = amount * odds;
   const maxBet = balance.wallet;
 
@@ -82,9 +98,14 @@ export const BetModal: React.FC<BetModalProps> = ({
         if (!res.success) throw new Error(res.error ?? "Change failed");
       } else {
         const res = (await onPlaceBet({
-          betType: isNGS ? "NEXT_GOAL_SCORER" : "MATCH_WINNER",
+          betType: isNGS
+            ? "NEXT_GOAL_SCORER"
+            : isEG
+              ? "EXACT_GOALS"
+              : "MATCH_WINNER",
           playerId: isNGS ? player!.id : undefined,
-          outcome: !isNGS ? mwOutcome : undefined,
+          outcome: !isNGS && !isEG ? mwOutcome : undefined,
+          goalsTarget: isEG ? egGoals : undefined,
           amount,
           odds,
           currentMinute,

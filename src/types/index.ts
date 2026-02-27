@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────
 
 export type MatchStatus = "pre-match" | "live" | "halftime" | "finished";
-export type BetType = "NEXT_GOAL_SCORER" | "MATCH_WINNER";
+export type BetType = "NEXT_GOAL_SCORER" | "MATCH_WINNER" | "EXACT_GOALS";
 export type BetStatus =
   | "active"
   | "provisional_win"
@@ -69,6 +69,9 @@ export interface Bet {
 
   // For MATCH_WINNER
   outcome?: MatchWinnerOutcome;
+
+  // For EXACT_GOALS
+  goalsTarget?: number;
 
   original_amount: number;
   current_amount: number;
