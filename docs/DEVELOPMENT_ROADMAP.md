@@ -7,19 +7,19 @@
 
 ---
 
-> ## ▶ RESUME HERE — Track A: Smart Contracts
+> ## ▶ RESUME HERE — Track E: Chainlink / Sepolia Deploy
 >
-> **Last completed:** Phase 2.5 done (Feb 26 live session). Extension match picker operational, overlay working on tvgo.t-mobile.cz. Odds API polling disabled to preserve credits.
+> **Last completed:** Tracks 0–D done. Foundry contracts + 31 tests + EXACT_GOALS UI + replay mode.
+>
+> **Commits:** `78aaee2` (Track 0) → `d45c919` (Track A) → `c0ec412` (Track B+C) → `14bb97b` (Track D)
 >
 > **Immediate next tasks (in order):**
 >
-> 1. **Track 0** — Update all docs to reflect Feb 26–27 state ← _doing now_
-> 2. **Track A** — Init Hardhat in repo root → write `GoalLiveBetting.sol` (MATCH_WINNER + NGS + EXACT_GOALS) → deploy to Sepolia
-> 3. **Track B** — Surface Goalserve `@timer` field in MatchLive (port 5176) score header
-> 4. **Track C** — Replay mode: reset match to minute 0, `steadyOdds: true` in matchRegistry
-> 5. **Track D** — Exact Goals bet type: UI buttons + mock settlement + contract support
-> 6. **Track E** — Chainlink dev session: `docs/CHAINLINK_DEV_QUESTIONS.md`
-> 7. **Track F** — WorldCoin Sepolia investigation: `docs/WORLDCOIN_SEPOLIA_NOTES.md`
+> 1. **Track E** — Chainlink dev session: `docs/CHAINLINK_DEV_QUESTIONS.md` ✅ done
+> 2. **Track F** — WorldCoin Sepolia investigation: `docs/WORLDCOIN_SEPOLIA_NOTES.md` ✅ done
+> 3. **Sepolia deploy** — `npm run deploy:sepolia` (requires `PRIVATE_KEY` + `VITE_SEPOLIA_RPC_URL` in `.env.local`)
+> 4. **contractService.ts** — Wire real ABI (`out/GoalLiveBetting.sol/GoalLiveBetting.json`) + `SIMULATION_MODE = false`
+> 5. **bettingService.ts** — Connect `lockBetNGS` / `lockBetMW` / `lockBetEG` / `changeBet` / `claimPayout`
 
 ---
 
@@ -133,21 +133,21 @@ Work done during the Plzeň vs Panathinaikos UECL live session (match ended 2–
 **Settlement trigger:** Admin-manual from EventDetail → Oracle tab → calls `settleMatch()` on chain
 **Timer display:** Static Goalserve `@timer` value shown in MatchLive and overlay, updated every 30s poll
 
-### Hardhat project structure
+### Foundry project structure
 
 ```
 contracts/
   GoalLiveBetting.sol        ← main escrow + bet logic (NGS + MATCH_WINNER + EXACT_GOALS)
   MockOracle.sol             ← thin oracle wrapper (owner-only goal/settle relay)
-  interfaces/
-    IGoalLiveBetting.sol
   mocks/
     MockUSDC.sol
-hardhat.config.ts
-scripts/
-  deploy.ts                  ← deploys MockOracle + GoalLiveBetting, writes deployments/sepolia.json
+foundry.toml               ← via_ir=true, OZ remapping, solc 0.8.24
+script/
+  Deploy.s.sol               ← forge script deploy, writes deployments/<network>.json
 test/
-  GoalLiveBetting.test.ts
+  GoalLiveBetting.t.sol      ← 31 Solidity tests (30/30 unit + 1 fuzz) ✅
+lib/
+  forge-std/                 ← installed via `forge install --no-git`
 deployments/
   sepolia.json               ← contract + oracle addresses written post-deploy
 ```
@@ -391,40 +391,43 @@ interface PredictResponse {
 - [x] ~~Deploy Edge Functions via Supabase CLI~~ ← live on `weryswulejhjkrmervnf`
 - [ ] Deploy admin to Netlify / Vercel (admin.goal.live) — deferred until Phase 3 wired
 
-### Phase 3 — Smart Contracts 🔄
+### Phase 3 — Smart Contracts ✅
 
-**Track A — Contracts**
+**Track A — Contracts** ✅ `d45c919`
 
-- [ ] Hardhat project init in repo root (`contracts/`, `hardhat.config.ts`)
-- [ ] `GoalLiveBetting.sol` — NGS + MATCH_WINNER + EXACT_GOALS
-- [ ] `MockOracle.sol` — owner-only relay
-- [ ] `MockUSDC.sol` for local tests
-- [ ] `scripts/deploy.ts` → writes `deployments/sepolia.json`
-- [ ] Hardhat tests: fund, lockBet (all 3 types), goal, settle win/lose/draw, claimPayout
+> Switched from Hardhat to **Foundry** (forge 1.5.1) — avoids ESM/CJS conflicts with Node v23,
+> 10–50× faster tests, no TypeScript toolchain required for test execution.
+
+- [x] Foundry project init: `foundry.toml` (`via_ir=true`, OZ remapping, solc 0.8.24)
+- [x] `GoalLiveBetting.sol` — NGS + MATCH_WINNER + EXACT_GOALS
+- [x] `MockOracle.sol` — owner-only relay
+- [x] `MockUSDC.sol` for local tests
+- [x] `script/Deploy.s.sol` → writes `deployments/<network>.json`
+- [x] Foundry tests (`test/GoalLiveBetting.t.sol`): 30/30 unit + 1 fuzz ✅
 - [ ] Deploy to Sepolia → real contract + oracle addresses
 - [ ] Wire `contractService.ts` with real ABI + `SIMULATION_MODE = false`
 - [ ] Wire `bettingService.ts` → `lockBet()` / `changeBet()`
 - [ ] Admin: `createMatch`, `fundPool`, `settleMatch` work end-to-end on Sepolia
 
-**Track B — Timer**
+**Track B — Timer** ✅ `c0ec412`
 
-- [ ] Surface Goalserve `@timer` in MatchLive (port 5176) score header
-- [ ] Verify overlay `match.currentMinute` advances during replay (already via mock tick)
+- [x] Surface Goalserve `@timer` in MatchLive (port 5176) score header — green animated badge
+- [x] Verify overlay `match.currentMinute` advances during replay (already via mock tick)
 
-**Track C — Replay Mode**
+**Track C — Replay Mode** ✅ `c0ec412`
 
-- [ ] `matchData.ts`: reset to minute 0, score 0–0 for replay start
-- [ ] `steadyOdds: boolean` option in `MockDataService` (skip odds fluctuation)
-- [ ] `matchRegistry.ts`: `steadyOdds: true` on PLZEN_PANAT config
-- [ ] Rebuild extension
+- [x] `matchData.ts`: reset to minute 0, score 0–0 for replay start
+- [x] `steadyOdds: boolean` option in `MockDataService` (skip odds fluctuation)
+- [x] `matchRegistry.ts`: `steadyOdds: true` on PLZEN_PANAT config
+- [x] Rebuild extension
 
-**Track D — Exact Goals Bet**
+**Track D — Exact Goals Bet** ✅ `14bb97b`
 
-- [ ] Add `"EXACT_GOALS"` to `BetType` in `src/types/index.ts`
-- [ ] Add `goalsTarget?: number` to `Bet` interface
-- [ ] `BettingOverlay`: Exact Goals row (0 1 2 3 4 5+) with pre-set odds
-- [ ] `mockBettingService.settleBets`: resolve EXACT_GOALS bets
-- [ ] `GoalLiveBetting.sol`: EXACT_GOALS resolution in `settleMatch`
+- [x] Add `"EXACT_GOALS"` to `BetType` in `src/types/index.ts`
+- [x] Add `goalsTarget?: number` to `Bet` interface
+- [x] `BettingOverlay`: Exact Goals bar (0 1 2 3 4 5+) with pre-set odds — fixed strip below top bar
+- [x] `mockBettingService.settleBets`: resolve EXACT_GOALS bets (5+ = ≥5)
+- [x] `GoalLiveBetting.sol`: EXACT_GOALS already handled in `settleMatch` (Track A)
 
 **Track E — Chainlink prep**
 
@@ -460,19 +463,19 @@ interface PredictResponse {
 
 ## Tech Stack Reference
 
-| Layer        | Tech                                    | Notes                               |
-| ------------ | --------------------------------------- | ----------------------------------- |
-| Extension UI | React 18 + Vite + TS + Tailwind         | Chrome MV3, `src/`                  |
-| Admin UI     | React 18 + Vite + TS + Tailwind         | Standalone SPA, `admin/`, port 5174 |
-| Database     | Supabase (PostgreSQL)                   | Project ID: `weryswulejhjkrmervnf`  |
-| Realtime     | Supabase Realtime / WebSocket           | Match state updates                 |
-| Blockchain   | Ethereum Sepolia                        | USDC testnet                        |
-| Contracts    | Solidity 0.8.x + Hardhat + OpenZeppelin | Phase 3                             |
-| Oracle       | Chainlink CRE (Opta / Sportmonks node)  | Phase 4 (mocked now)                |
-| Wallet       | ethers.js v6 + MetaMask                 | Extension + admin                   |
-| Auth         | World ID (@worldcoin/idkit)             | Phase 4+                            |
-| ML / CRE API | Python scikit-learn RF + Node Express   | Phase 5                             |
-| Hosting      | Netlify / Vercel                        | admin.goal.live                     |
+| Layer        | Tech                                     | Notes                               |
+| ------------ | ---------------------------------------- | ----------------------------------- |
+| Extension UI | React 18 + Vite + TS + Tailwind          | Chrome MV3, `src/`                  |
+| Admin UI     | React 18 + Vite + TS + Tailwind          | Standalone SPA, `admin/`, port 5174 |
+| Database     | Supabase (PostgreSQL)                    | Project ID: `weryswulejhjkrmervnf`  |
+| Realtime     | Supabase Realtime / WebSocket            | Match state updates                 |
+| Blockchain   | Ethereum Sepolia                         | USDC testnet                        |
+| Contracts    | Solidity 0.8.24 + Foundry + OpenZeppelin | Phase 3 (`d45c919`)                 |
+| Oracle       | Chainlink CRE (Opta / Sportmonks node)   | Phase 4 (mocked now)                |
+| Wallet       | ethers.js v6 + MetaMask                  | Extension + admin                   |
+| Auth         | World ID (@worldcoin/idkit)              | Phase 4+                            |
+| ML / CRE API | Python scikit-learn RF + Node Express    | Phase 5                             |
+| Hosting      | Netlify / Vercel                         | admin.goal.live                     |
 
 ## Npm Scripts
 
@@ -486,8 +489,9 @@ npm run dev:matchlive    # MatchLive viewer dev (port 5176) — Plzeň/Panat fix
 npm run dev:matchlive2   # MatchLive viewer dev (port 5177) — dynamic
 # TODO Phase 3:
 npm run build:all        # extension + admin combined
-npm run test:contracts   # npx hardhat test
-npm run deploy:sepolia   # npx hardhat run scripts/deploy.ts --network sepolia
+npm run test:contracts   # forge test -vv
+npm run deploy:sepolia   # forge script script/Deploy.s.sol --rpc-url $RPC --broadcast --verify
+npm run anvil            # local anvil node (chain-id 31337)
 ```
 
 ## Environment Variables
@@ -509,8 +513,8 @@ VITE_CONTRACT_ADDRESS=...       # written to deployments/sepolia.json after depl
 VITE_ORACLE_ADDRESS=...         # MockOracle address
 VITE_USDC_ADDRESS=0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238  # Sepolia USDC (Circle)
 
-# Hardhat / deploy (contracts/.env — never commit PRIVATE_KEY)
-SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_API_KEY
+# Foundry / deploy (read from .env.local — never commit PRIVATE_KEY)
+VITE_SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_API_KEY
 PRIVATE_KEY=your_deployer_private_key
 ETHERSCAN_API_KEY=your_etherscan_key
 
