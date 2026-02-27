@@ -250,56 +250,75 @@ supabase/functions/
 
 ## Phase 4 — Chainlink CRE Integration ❌ NOT STARTED
 
-**Goal:** Replace mock match data with verified on-chain sports data.
-**Full reference:** `docs/CRE_CHAINLINK_INTEGRATION_GUIDE.md`
+**Goal:** Automate settlement and goal event recording via Chainlink CRE — no admin button click needed.
+**Full reference:** `docs/CRE_CHAINLINK_INTEGRATION_GUIDE.md` · `docs/CRE_QUESTIONS_ANALYSIS.md`
+
+### Decisions locked (Feb 27, 2026 CRE session)
+
+| Decision               | Answer                                                                                  |
+| ---------------------- | --------------------------------------------------------------------------------------- |
+| Oracle address Phase 3 | Admin MetaMask address — set via `setOracle(adminAddr)` at deploy                       |
+| Oracle address Phase 4 | `AutomationForwarder` address — swap via `setOracle(forwarderAddr)`, **no redeploy**    |
+| Live odds on-chain?    | ❌ Anti-pattern. Frontend polls The Odds API directly, never touches chain during match |
+| CRE settlement trigger | Cron every 1 min after KO — polls for FT status, then calls `settleMatch()`             |
+| CRE job model          | One **parameterised** job for all matches — `{matchId}` substituted at runtime          |
+| Goal events live       | Cron polls Goalserve every 60s; upgrade to Opta webhook later                           |
+| Data Streams for odds  | TBD — no Betfair/sports feed in catalog; frontend-only until custom feed built          |
+
+### Oracle address lifecycle
+
+```typescript
+// Phase 3 (deploy today)
+await contract.setOracle(adminAddress); // admin MetaMask
+
+// Phase 4 (March — no redeploy needed)
+await contract.setOracle(automationForwarderAddress); // Chainlink forwarder
+```
 
 ### Five data pillars
 
-| Pillar            | Data                   | Timing               | Now (mock)                     | Phase 4 (real)                |
-| ----------------- | ---------------------- | -------------------- | ------------------------------ | ----------------------------- |
-| Pre-game odds     | Player goalscorer odds | Hours before kickoff | `pre_match_odds.json`          | CRE HTTP + cron               |
-| Player lineups    | Starting 11            | 15 min pre-kick      | Seeded in Supabase             | CRE HTTP                      |
-| Live goal events  | Player, minute         | Real-time            | Manual insert to `goal_events` | CRE webhook                   |
-| Live odds updates | Volatile, 1-2s freq    | Very high            | Static JSON snapshots          | Chainlink Data Streams (pull) |
-| Official result   | Final scorers          | Post-match           | Hardcoded in seed              | CRE HTTP                      |
+| Pillar            | Data                   | Timing               | Phase 3 (now)                                         | Phase 4 (CRE)                     |
+| ----------------- | ---------------------- | -------------------- | ----------------------------------------------------- | --------------------------------- |
+| Pre-game odds     | Player goalscorer odds | Hours before kickoff | `pre_match_odds.json` / Odds API                      | CRE HTTP + cron                   |
+| Player lineups    | Starting 11            | 15 min pre-kick      | Seeded in Supabase manually                           | CRE HTTP                          |
+| Live goal events  | Player, minute         | Real-time            | Manual insert to `goal_events`                        | CRE Cron 60s (webhook later)      |
+| Live odds updates | Volatile, 1-2s freq    | During match         | Frontend polls Odds API directly — **never on-chain** | Frontend only (confirmed)         |
+| Official result   | Final scorers + score  | Post-match           | Admin manually via EventDetail                        | CRE Cron detects FT → auto-settle |
 
-### CRE workflow structure (Phase 4)
+### CRE YAML for settleMatch (Phase 4)
 
 ```yaml
 name: goal-live-match-oracle
 triggers:
   - type: Cron
-    schedule: "*/1 * * * *" # every minute during live match
-  - type: Webhook
-    path: /goal-event # fired by Opta/Sportmonks on goal
-capabilities:
-  - http # fetch from data provider
-  - threshold-encryption # protect API key in workflow
-  - evm-write # write result to GoalLiveBetting contract
+    schedule: "*/1 * * * *" # every minute after kickoff
+steps:
+  - id: check-match-status
+    type: http
+    url: "https://api.goalserve.com/soccer/match?id={goalserveMatchId}"
+    headers:
+      Authorization: "Bearer $GOALSERVE_KEY"
+  - id: settle
+    type: evm-write
+    condition: "steps.check-match-status.status == 'FT'"
+    contract: "$CONTRACT_ADDRESS"
+    abi: "GoalLiveBetting"
+    function: settleMatch
+    # uint256[] scorerIds must be ABI-encoded — confirm encoding with Chainlink session
+    args:
+      - "{matchId}" # string
+      - "{scorerIds}" # uint256[] — encoding TBD
+      - "{winner}" # uint8: 0=HOME, 1=DRAW, 2=AWAY
+      - "{homeGoals}" # uint8
+      - "{awayGoals}" # uint8
 ```
 
-### Mock vs Real CRE decision
+### Open questions for Chainlink session
 
-| Scenario                | Approach                                                       |
-| ----------------------- | -------------------------------------------------------------- |
-| Demo / current          | Mock oracle — manual insert to `goal_events` table in Supabase |
-| Testnet with live match | CRE HTTP + webhook from Opta/Sportmonks                        |
-| Production              | Full CRE workflow, Chainlink-verified settlement               |
-
-For demo, swap mock oracle by just inserting rows into `goal_events` via admin SQL or admin panel. The contract's `settleMatch()` reads from this table via the Supabase Edge Function.
-
-### Service abstraction (already in place)
-
-```typescript
-// src/services/index.ts
-import { VITE_USE_MOCK } from "../utils/env";
-export const services = {
-  data: VITE_USE_MOCK ? new MockDataService() : new RealDataService(),
-  betting: VITE_USE_MOCK ? new MockBettingService() : new RealBettingService(),
-  wallet: VITE_USE_MOCK ? new MockWalletService() : new RealWalletService(),
-};
-// Phase 4: RealDataService calls CRE instead of Supabase static
-```
+- [ ] AutomationForwarder address on Sepolia (chainId 11155111)
+- [ ] How to ABI-encode `uint256[]` scorerIds in CRE YAML
+- [ ] Shared testnet node endpoint for hackathon/testnet use
+- [ ] Data Streams: is there a sports odds custom feed option, or frontend-only confirmed permanently?
 
 ---
 
@@ -456,14 +475,16 @@ interface PredictResponse {
 
 ### Phase 4 — Chainlink CRE ❌
 
-- [ ] CRE workflow YAML (`name: goal-live-match-oracle`)
-- [ ] CRE Cron DON for pre-game odds (HTTP trigger → Goalserve/Odds API)
-- [ ] CRE webhook for live goal events (log trigger on `BetLocked` → update odds)
-- [ ] CRE settlement cron: watches for Full-time status → calls `settleMatch()`
-- [ ] Data Streams: custom Betfair odds stream for live MW odds
-- [ ] Swap `MockOracle` address for real CRE DON address on contract
-- [ ] See `docs/CHAINLINK_DEV_QUESTIONS.md` for session prep questions
+- [ ] Get AutomationForwarder address on Sepolia (Chainlink session)
+- [ ] `contract.setOracle(forwarderAddress)` — no redeploy needed
+- [ ] Write CRE YAML: Cron → Goalserve HTTP → `settleMatch()` ABI-encode
+- [ ] Confirm `uint256[]` scorerIds encoding in CRE YAML with Chainlink devs
+- [ ] Test: CRE cron fires at FT → contract auto-settles → players claim
+- [ ] CRE Cron 60s for live goal events → `goal_events` table insert
+- [ ] Upgrade goal events to Opta webhook when available
+- [ ] Data Streams investigation: sports odds custom feed feasibility
 - [ ] World ID integration (3 checkpoints: fund account / game end / withdraw)
+- [ ] See `docs/CHAINLINK_DEV_QUESTIONS.md` + `docs/CRE_QUESTIONS_ANALYSIS.md`
 
 ### Phase 5 — Live Odds ML API ❌
 
