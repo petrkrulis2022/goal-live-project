@@ -184,14 +184,8 @@ export default function EventDetail() {
     setOracleError(null);
     setOracleTx(null);
     try {
-      // 1. Call MockOracle on-chain (or simulate in SIMULATION_MODE)
-      const txHash = await contractService.emitGoal(
-        match.oracle_address ?? "simulation",
-        match.external_match_id,
-        goalForm.playerId,
-        goalForm.minute,
-      );
-      // 2. Write goal_event to Supabase so DB stays in sync
+      // Write goal_event to Supabase — no on-chain call needed.
+      // Settlement happens at FT via settleMatch() with confirmed scorers.
       const { error } = await supabase.from("goal_events").insert({
         match_id: match.id,
         player_id: goalForm.playerId,
@@ -199,9 +193,9 @@ export default function EventDetail() {
         team: goalForm.team,
         minute: goalForm.minute,
         event_type: "GOAL",
-        confirmed: false, // admin confirms manually or via VAR
-        source: "mock_oracle",
-        raw_payload: { tx: txHash },
+        confirmed: false, // admin confirms via toggle below
+        source: "admin_manual",
+        raw_payload: {},
       });
       if (error) throw new Error(error.message);
       await refreshGoals();
@@ -215,7 +209,7 @@ export default function EventDetail() {
           ? (match.score_away ?? 0) + 1
           : (match.score_away ?? 0);
       await updateScore(newHome, newAway);
-      setOracleTx(txHash);
+      setOracleTx("saved");
       // Flash the goal alert
       flashGoal(goalForm.playerName, goalForm.minute, goalForm.team);
       showToast(`⚽ GOAL! ${goalForm.playerName} ${goalForm.minute}'`, "green");
@@ -686,21 +680,24 @@ export default function EventDetail() {
           <div className="flex items-start gap-3 bg-blue-500/6 border border-blue-500/15 rounded-xl px-4 py-3 text-sm">
             <span className="text-blue-400 mt-0.5">ℹ️</span>
             <div className="text-gray-400">
-              <span className="text-blue-400 font-medium">MockOracle</span> —
-              Phase 3 only. In Phase 4, Chainlink CRE detects goals
-              automatically; this panel is replaced by read-only oracle status.
+              Goals are recorded in{" "}
+              <span className="text-blue-400 font-medium">Supabase only</span>{" "}
+              — no on-chain call. Live odds update in the frontend (off-chain).
+              Settlement happens <span className="text-white">once at FT</span>{" "}
+              via <code className="text-green-400 text-[11px]">settleMatch()</code> below,
+              passing confirmed scorers + final score.
               {match.oracle_address && (
                 <span className="block mt-1 font-mono text-[11px] text-gray-600">
-                  Oracle: {match.oracle_address}
+                  Oracle address (settleMatch signer): {match.oracle_address}
                 </span>
               )}
             </div>
           </div>
 
-          {/* Emit Goal form */}
+          {/* Record Goal form */}
           <div className="bg-gray-900/70 border border-white/5 rounded-xl p-5 space-y-4">
             <h3 className="text-sm font-semibold text-white">
-              ⚽ Emit Goal via MockOracle
+              ⚽ Record Goal Event
             </h3>
 
             <div className="grid grid-cols-3 gap-3">
@@ -772,13 +769,13 @@ export default function EventDetail() {
               disabled={oracleBusy || !goalForm.playerId}
               className="w-full py-2.5 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/25"
             >
-              {oracleBusy ? "Sending…" : "⚽ Emit Goal"}
+              {oracleBusy ? "Saving…" : "⚽ Record Goal"}
             </button>
 
             {/* Tx feedback */}
             {oracleTx && (
               <div className="bg-green-500/8 border border-green-500/20 rounded-lg px-3 py-2 text-[11px] font-mono text-green-400 break-all">
-                ✅ tx: {oracleTx}
+                ✅ Goal saved to Supabase — confirm it below before settling
               </div>
             )}
             {oracleError && (
