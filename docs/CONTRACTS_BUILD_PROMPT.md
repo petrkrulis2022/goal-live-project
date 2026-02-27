@@ -1,10 +1,13 @@
-# goal.live Smart Contracts Build Prompt (Phase 2)
+# goal.live Smart Contracts Build Prompt (Phase 3)
 
 **Target:** Blockchain Developer / Copilot Session  
-**Phase:** 2 - Smart Contract Development & Deployment  
+**Phase:** 3 — Smart Contract Development & Deployment  
 **Blockchain:** Ethereum Sepolia Testnet  
-**Duration:** Week 3  
-**Last Updated:** February 20, 2026
+**Last Updated:** February 27, 2026
+
+> **Updated Feb 27:** Bet types expanded from NGS-only to **MATCH_WINNER + NGS + EXACT_GOALS**.
+> Admin manually triggers settlement from EventDetail → Oracle tab (no auto-trigger until Chainlink Phase 4).
+> Settlement receives `homeGoals`, `awayGoals`, `Outcome winner`, and `string[] scorerIds` to resolve all three types in one call.
 
 ---
 
@@ -169,13 +172,16 @@ contract GoalLiveBetting is Ownable, ReentrancyGuard, Pausable {
     struct Bet {
         address bettor;
         string matchId;
-        uint256 playerId;
+        uint256 playerId;          // Used for NGS; 0 for MW / Exact Goals
         uint256 originalAmount;
-        uint256 currentAmount; // After penalties
-        uint256 odds; // Multiplier in basis points (e.g., 4.5x = 45000)
+        uint256 currentAmount;     // After penalties
+        uint256 odds;              // Multiplier in basis points (e.g., 4.5x = 45000)
         uint256 placedAt;
         uint256 changeCount;
         BetStatus status;
+        BetType betType;           // NGS | MATCH_WINNER | EXACT_GOALS
+        MatchOutcome mwPrediction; // Only used when betType == MATCH_WINNER
+        uint8 goalsTarget;         // Only used when betType == EXACT_GOALS
     }
 
     struct BetChange {
@@ -194,6 +200,10 @@ contract GoalLiveBetting is Ownable, ReentrancyGuard, Pausable {
         Settled,
         Cancelled
     }
+
+    // ── New enums (Feb 27 addition) ───────────────────────────────────
+    enum BetType { NEXT_GOAL_SCORER, MATCH_WINNER, EXACT_GOALS }
+    enum MatchOutcome { HOME, DRAW, AWAY }  // for MATCH_WINNER resolution
 
     // ============ Storage ============
 
@@ -409,13 +419,19 @@ contract GoalLiveBetting is Ownable, ReentrancyGuard, Pausable {
     // ============ Settlement Functions ============
 
     /**
-     * @notice Settle match (only oracle)
-     * @param matchId Match identifier
-     * @param goalScorers Array of player IDs who scored
+     * @notice Settle match (only oracle / admin)
+     * @param matchId     Match identifier
+     * @param goalScorers Array of player IDs who scored (for NGS resolution)
+     * @param winner      Final result: HOME | DRAW | AWAY (for MATCH_WINNER resolution)
+     * @param homeGoals   Final home-team goal count (for EXACT_GOALS resolution)
+     * @param awayGoals   Final away-team goal count (for EXACT_GOALS resolution)
      */
     function settleMatch(
         string memory matchId,
-        uint256[] memory goalScorers
+        uint256[] memory goalScorers,
+        MatchOutcome winner,
+        uint8 homeGoals,
+        uint8 awayGoals
     ) external onlyOracle {
         Match storage matchData = matches[matchId];
         require(matchData.isActive, "Match not active");

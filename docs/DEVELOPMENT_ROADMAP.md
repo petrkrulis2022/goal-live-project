@@ -1,21 +1,25 @@
 # goal.live — Master Development Plan
 
-**Last Updated:** February 25, 2026
-**Status:** Phase 1 ✅ Complete · Phase 2 ✅ Complete — admin UI + Edge Functions deployed · **Phase 3 smart contracts next**
-**Repo:** `petrkrulis2022/goal-live-project` · branch `main` · last commit `f701763`
+**Last Updated:** February 27, 2026
+**Status:** Phase 1 ✅ · Phase 2 ✅ · Phase 2.5 ✅ Live session infra · **Phase 3 smart contracts in progress**
+**Repo:** `petrkrulis2022/goal-live-project` · branch `main` · last commit `8da24da`
 **Uncommitted local:** none — all pushed
 
 ---
 
-> ## ▶ RESUME HERE — Phase 3: Smart Contracts
+> ## ▶ RESUME HERE — Track A: Smart Contracts
 >
-> **Last completed:** Phase 2 fully done. Edge Functions (`lock-bet`, `settle-match`, `sync-odds`) deployed to Supabase project `weryswulejhjkrmervnf`. `ODDS_API_KEY` secret set.
+> **Last completed:** Phase 2.5 done (Feb 26 live session). Extension match picker operational, overlay working on tvgo.t-mobile.cz. Odds API polling disabled to preserve credits.
 >
 > **Immediate next tasks (in order):**
 >
-> 1. **Init Hardhat project** → `mkdir contracts && cd contracts && npm init -y && npx hardhat init` (TypeScript project)
-> 2. **Write `GoalLiveBetting.sol`** — full spec in `docs/CONTRACTS_BUILD_PROMPT.md`
-> 3. **Deploy to Sepolia** → copy ABI → set `SIMULATION_MODE = false` in `admin/src/services/contractService.ts`
+> 1. **Track 0** — Update all docs to reflect Feb 26–27 state ← _doing now_
+> 2. **Track A** — Init Hardhat in repo root → write `GoalLiveBetting.sol` (MATCH_WINNER + NGS + EXACT_GOALS) → deploy to Sepolia
+> 3. **Track B** — Surface Goalserve `@timer` field in MatchLive (port 5176) score header
+> 4. **Track C** — Replay mode: reset match to minute 0, `steadyOdds: true` in matchRegistry
+> 5. **Track D** — Exact Goals bet type: UI buttons + mock settlement + contract support
+> 6. **Track E** — Chainlink dev session: `docs/CHAINLINK_DEV_QUESTIONS.md`
+> 7. **Track F** — WorldCoin Sepolia investigation: `docs/WORLDCOIN_SEPOLIA_NOTES.md`
 
 ---
 
@@ -93,46 +97,102 @@
 
 ---
 
-## Phase 3 — Smart Contracts ❌ NOT STARTED
+## Phase 2.5 — Live Match Session (Feb 26, 2026) ✅ COMPLETE
 
-**Goal:** Real on-chain betting with Sepolia USDC.
-**Full spec:** `docs/CONTRACTS_BUILD_PROMPT.md`
+Work done during the Plzeň vs Panathinaikos UECL live session (match ended 2–1).
+
+| Component                                                                          | Status | Commit    |
+| ---------------------------------------------------------------------------------- | ------ | --------- |
+| Odds API: switch to `bookmakers=betfair_ex_eu` only (1 credit/call)                | ✅     | `2108d60` |
+| Fallback odds: home 3.00 / draw 2.02 / away 5.30 (Betfair at 1–1)                  | ✅     | `2108d60` |
+| 3rd Scorer tab rename (score reached 1–1 mid-session)                              | ✅     | `20265cd` |
+| Czech bookie goalscorer odds updated to live snapshot                              | ✅     | `cbaaeb4` |
+| `src/data/matchData.ts` — renamed from `mockMatchData.ts`, MOCK\_ prefixes removed | ✅     | `f7e8053` |
+| `src/data/matchRegistry.ts` — typed multi-match config registry                    | ✅     | `2bfd99b` |
+| `MockDataService` — constructor accepts `MatchConfig`, instance-based              | ✅     | `2bfd99b` |
+| `createDataService(config)` factory export                                         | ✅     | `2bfd99b` |
+| `useMatchData(matchKey?)` — creates per-match service from registry                | ✅     | `2bfd99b` |
+| `BettingOverlay` — accepts `matchKey?: string` prop                                | ✅     | `2bfd99b` |
+| `extension/content-script.tsx` — reads `chrome.storage.local` for matchKey         | ✅     | `2bfd99b` |
+| `extension/popup.html` — dark-theme match picker, LIVE badge, Select/Clear         | ✅     | `2bfd99b` |
+| MV3 inline script fix — moved popup logic to external `popup.js`                   | ✅     | `82b6a10` |
+| `chrome.runtime.onMessage` listener — popup triggers re-injection on click         | ✅     | `24ecb77` |
+| React `ErrorBoundary` in content-script — crashes surface as red banner            | ✅     | `24ecb77` |
+| `build:ext` now copies fresh CSS to `dist/content-styles.css`                      | ✅     | `0ca2e09` |
+| Odds API polling disabled (`fetchOdds` commented out)                              | ✅     | `8da24da` |
+| Overlay confirmed working on tvgo.t-mobile.cz                                      | ✅     | —         |
+
+---
+
+## Phase 3 — Smart Contracts 🔄 IN PROGRESS
+
+**Goal:** Real on-chain betting with Sepolia USDC. Admin manually settles from EventDetail Oracle tab.
+**Full spec:** `docs/CONTRACTS_BUILD_PROMPT.md` (updated Feb 27 with MATCH_WINNER + EXACT_GOALS)
+
+**Bet types in contract:** MATCH_WINNER (home/draw/away) + NEXT_GOAL_SCORER + EXACT_GOALS (total goals 0–5+)
+**Settlement trigger:** Admin-manual from EventDetail → Oracle tab → calls `settleMatch()` on chain
+**Timer display:** Static Goalserve `@timer` value shown in MatchLive and overlay, updated every 30s poll
 
 ### Hardhat project structure
 
 ```
 contracts/
-  GoalLiveBetting.sol        ← main escrow + bet logic
+  GoalLiveBetting.sol        ← main escrow + bet logic (NGS + MATCH_WINNER + EXACT_GOALS)
+  MockOracle.sol             ← thin oracle wrapper (owner-only goal/settle relay)
   interfaces/
     IGoalLiveBetting.sol
   mocks/
     MockUSDC.sol
 hardhat.config.ts
 scripts/
-  deploy.ts
+  deploy.ts                  ← deploys MockOracle + GoalLiveBetting, writes deployments/sepolia.json
 test/
   GoalLiveBetting.test.ts
+deployments/
+  sepolia.json               ← contract + oracle addresses written post-deploy
 ```
 
 ### `GoalLiveBetting.sol` function surface
 
 ```solidity
-// Admin / operator
+// ── Enums ──────────────────────────────────────────────────────────────────
+enum BetType { NEXT_GOAL_SCORER, MATCH_WINNER, EXACT_GOALS }
+enum Outcome { HOME, DRAW, AWAY }   // only used for MATCH_WINNER
+
+// ── Admin / operator ────────────────────────────────────────────────────────
 function createMatch(string matchId, uint256 kickoffTime) external onlyOwner;
 function setOracle(address oracle) external onlyOwner;
-function fundPool(uint256 amount) external onlyOwner;         // USDC approve + transfer in
+function fundPool(uint256 amount) external onlyOwner;           // USDC approve + transfer in
 function withdrawPlatformFees() external onlyOwner;
+function emergencyWithdraw() external onlyOwner;
 
-// User flow (called by extension or Supabase Edge Function)
-function lockBet(bytes32 betId, address bettor, string playerId, uint256 amount, uint256 odds) external;
-function changeBet(bytes32 betId, string newPlayerId, uint256 penaltyAmount) external;
+// ── User flow (called by admin/backend per player action) ───────────────────
+// BetType.NEXT_GOAL_SCORER: outcomeOrTarget = playerId hash
+// BetType.MATCH_WINNER:     outcomeOrTarget = uint8(Outcome.HOME/DRAW/AWAY)
+// BetType.EXACT_GOALS:      outcomeOrTarget = total goals uint (0–99)
+function lockBet(
+    bytes32 betId, address bettor, BetType betType,
+    bytes32 outcomeOrTarget, uint256 amount, uint256 oddsBps
+) external;
+function changeBet(bytes32 betId, bytes32 newOutcomeOrTarget, uint256 penaltyAmount) external;
 
-// Oracle settlement (called by Chainlink CRE oracle)
-function settleMatch(string matchId, string[] scorerIds) external onlyOracle;
+// ── Oracle / admin settlement ────────────────────────────────────────────────
+// Called by admin from EventDetail → Oracle tab (Phase 3)
+// Called by Chainlink CRE DON (Phase 4)
+function settleMatch(
+    string matchId,
+    string[] scorerIds,          // for NGS resolution
+    Outcome winner,              // for MATCH_WINNER resolution
+    uint8 homeGoals,             // for EXACT_GOALS resolution
+    uint8 awayGoals
+) external onlyOracle;
 
-// Views
+function recordGoal(string calldata scorerId, uint256 minute) external onlyOracle; // provisional NGS
+
+// ── Views ────────────────────────────────────────────────────────────────────
 function getPoolStats() external view returns (uint256 totalBalance, uint256 totalLocked, uint256 available, uint256 fees);
 function getBet(bytes32 betId) external view returns (Bet memory);
+function claimPayout(bytes32 betId) external nonReentrant; // player pulls winnings
 ```
 
 ### Penalty formula (must match frontend)
@@ -331,28 +391,61 @@ interface PredictResponse {
 - [x] ~~Deploy Edge Functions via Supabase CLI~~ ← live on `weryswulejhjkrmervnf`
 - [ ] Deploy admin to Netlify / Vercel (admin.goal.live) — deferred until Phase 3 wired
 
-### Phase 3 — Smart Contracts ❌
+### Phase 3 — Smart Contracts 🔄
 
-- [ ] Hardhat project init (`contracts/`)
-- [ ] `GoalLiveBetting.sol` full implementation
-- [ ] `MockUSDC.sol` for tests
-- [ ] Hardhat tests (penalty formula, payout logic, settlement)
-- [ ] Deploy to Sepolia
-- [ ] Wire `contractService.ts` with real ABI + address
-- [ ] Set `SIMULATION_MODE = false` in `contractService.ts`, wire real ABI + address
+**Track A — Contracts**
+
+- [ ] Hardhat project init in repo root (`contracts/`, `hardhat.config.ts`)
+- [ ] `GoalLiveBetting.sol` — NGS + MATCH_WINNER + EXACT_GOALS
+- [ ] `MockOracle.sol` — owner-only relay
+- [ ] `MockUSDC.sol` for local tests
+- [ ] `scripts/deploy.ts` → writes `deployments/sepolia.json`
+- [ ] Hardhat tests: fund, lockBet (all 3 types), goal, settle win/lose/draw, claimPayout
+- [ ] Deploy to Sepolia → real contract + oracle addresses
+- [ ] Wire `contractService.ts` with real ABI + `SIMULATION_MODE = false`
 - [ ] Wire `bettingService.ts` → `lockBet()` / `changeBet()`
-- [ ] Extension: real MetaMask flow end-to-end
-- [ ] Admin: real `createMatch`, `fundPool`, `settleMatch` buttons work
+- [ ] Admin: `createMatch`, `fundPool`, `settleMatch` work end-to-end on Sepolia
+
+**Track B — Timer**
+
+- [ ] Surface Goalserve `@timer` in MatchLive (port 5176) score header
+- [ ] Verify overlay `match.currentMinute` advances during replay (already via mock tick)
+
+**Track C — Replay Mode**
+
+- [ ] `matchData.ts`: reset to minute 0, score 0–0 for replay start
+- [ ] `steadyOdds: boolean` option in `MockDataService` (skip odds fluctuation)
+- [ ] `matchRegistry.ts`: `steadyOdds: true` on PLZEN_PANAT config
+- [ ] Rebuild extension
+
+**Track D — Exact Goals Bet**
+
+- [ ] Add `"EXACT_GOALS"` to `BetType` in `src/types/index.ts`
+- [ ] Add `goalsTarget?: number` to `Bet` interface
+- [ ] `BettingOverlay`: Exact Goals row (0 1 2 3 4 5+) with pre-set odds
+- [ ] `mockBettingService.settleBets`: resolve EXACT_GOALS bets
+- [ ] `GoalLiveBetting.sol`: EXACT_GOALS resolution in `settleMatch`
+
+**Track E — Chainlink prep**
+
+- [x] `docs/CHAINLINK_DEV_QUESTIONS.md` created
+
+**Track F — WorldCoin investigation**
+
+- [x] `docs/WORLDCOIN_SEPOLIA_NOTES.md` created
+
 - [ ] `npm run build:all` script
 
 ### Phase 4 — Chainlink CRE ❌
 
-- [ ] CRE workflow YAML
-- [ ] CRE cron for pre-game odds
-- [ ] CRE webhook for live goal events
-- [ ] CRE settlement trigger → calls `settleMatch()`
-- [ ] Swap MockOracle for real CRE address on contract
-- [ ] World ID integration (3 checkpoints: bet / complete / withdraw)
+- [ ] CRE workflow YAML (`name: goal-live-match-oracle`)
+- [ ] CRE Cron DON for pre-game odds (HTTP trigger → Goalserve/Odds API)
+- [ ] CRE webhook for live goal events (log trigger on `BetLocked` → update odds)
+- [ ] CRE settlement cron: watches for Full-time status → calls `settleMatch()`
+- [ ] Data Streams: custom Betfair odds stream for live MW odds
+- [ ] Swap `MockOracle` address for real CRE DON address on contract
+- [ ] See `docs/CHAINLINK_DEV_QUESTIONS.md` for session prep questions
+- [ ] World ID integration (3 checkpoints: fund account / game end / withdraw)
 
 ### Phase 5 — Live Odds ML API ❌
 
@@ -384,13 +477,17 @@ interface PredictResponse {
 ## Npm Scripts
 
 ```bash
-npm run dev            # Extension dev (port 5173)
-npm run build          # Build extension + content script
-npm run build:ext      # Content script only
-npm run dev:admin      # Admin SPA dev (port 5174)
-npm run build:admin    # Build admin to dist-admin/
+npm run dev              # Extension dev (port 5173)
+npm run build            # Build extension + content script
+npm run build:ext        # Content script + CSS → dist/ (also copies content-styles.css)
+npm run dev:admin        # Admin SPA dev (port 5174)
+npm run build:admin      # Build admin to dist-admin/
+npm run dev:matchlive    # MatchLive viewer dev (port 5176) — Plzeň/Panat fixed
+npm run dev:matchlive2   # MatchLive viewer dev (port 5177) — dynamic
 # TODO Phase 3:
-npm run build:all      # extension + admin combined
+npm run build:all        # extension + admin combined
+npm run test:contracts   # npx hardhat test
+npm run deploy:sepolia   # npx hardhat run scripts/deploy.ts --network sepolia
 ```
 
 ## Environment Variables
@@ -402,27 +499,42 @@ VITE_SUPABASE_ANON_KEY=...
 
 # Feature flags
 VITE_USE_MOCK=true              # false = real Supabase + contract
+VITE_USE_REAL_WALLET=true       # true = MetaMask bridge (extension)
 
-# Phase 3+
-VITE_CONTRACT_ADDRESS=...
-VITE_ORACLE_ADDRESS=...
-VITE_USDC_ADDRESS=...           # Sepolia USDC
+# Wallet
+VITE_PLATFORM_WALLET=0xc3d06cf4247C1BaB07EDEB8CE6991d750F6Eb3E5
 
-# Phase 5 – Live Odds Capture
-ODDS_API_KEY=284c2661be564a872e91d8a4bb885ac9
+# Phase 3+ (set after Sepolia deploy)
+VITE_CONTRACT_ADDRESS=...       # written to deployments/sepolia.json after deploy
+VITE_ORACLE_ADDRESS=...         # MockOracle address
+VITE_USDC_ADDRESS=0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238  # Sepolia USDC (Circle)
+
+# Hardhat / deploy (contracts/.env — never commit PRIVATE_KEY)
+SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_API_KEY
+PRIVATE_KEY=your_deployer_private_key
+ETHERSCAN_API_KEY=your_etherscan_key
+
+# Odds API (disabled during off-session — re-enable 30min before kickoff)
+ODDS_API_KEY=069be437bad9795678cdc1c1cee711c3
 ```
 
 ## Key Design Decisions
 
-| Decision      | Choice                                     | Reason                                |
-| ------------- | ------------------------------------------ | ------------------------------------- |
-| Bet type      | Next Goal Scorer only                      | Single market simplifies MVP          |
-| Blockchain    | Ethereum Sepolia                           | Testnet USDC available                |
-| Currency      | USDC                                       | Stable, no memecoin complexity        |
-| Penalty       | `base[n] × (1 − min/90)`                   | Time-decay + progressive              |
-| Settlement    | Two-phase (provisional → final post-match) | Handles VAR / goal corrections        |
-| Admin auth    | MetaMask address vs `contract.owner()`     | No separate login, crypto-native      |
-| CRE strategy  | Mock oracle now, real CRE in Phase 4       | Flexible on data availability         |
-| Admin build   | Separate Vite config                       | Zero risk to extension build          |
-| Wallet lib    | ethers.js v6 (not wagmi)                   | Consistent across extension + admin   |
-| Odds pipeline | OddsAPI → Sheets → JSON → RF model         | Replayable, no live timing dependency |
+| Decision                     | Choice                                              | Reason                                    |
+| ---------------------------- | --------------------------------------------------- | ----------------------------------------- |
+| Bet types                    | NGS + MATCH_WINNER + EXACT_GOALS                    | All three in single contract Phase 3      |
+| Blockchain                   | Ethereum Sepolia                                    | Testnet USDC available                    |
+| Currency                     | USDC (`0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238`) | Stable, Circle Sepolia                    |
+| Penalty                      | `base[n] × (1 − min/90)`                            | Time-decay + progressive                  |
+| Settlement                   | Two-phase (provisional → final post-match)          | Handles VAR / goal corrections            |
+| Settlement trigger (Phase 3) | Admin manually via EventDetail Oracle tab           | No auto-trigger until Chainlink (Phase 4) |
+| Admin auth                   | MetaMask address vs `contract.owner()`              | No separate login, crypto-native          |
+| CRE strategy                 | Mock oracle now, real CRE in Phase 4                | Flexible on data availability             |
+| Admin build                  | Separate Vite config                                | Zero risk to extension build              |
+| Wallet lib                   | ethers.js v6 (not wagmi)                            | Consistent across extension + admin       |
+| Odds pipeline                | OddsAPI → Sheets → JSON → RF model                  | Replayable, no live timing dependency     |
+| Match picker                 | `chrome.storage.local` + `matchRegistry.ts`         | Extensible to N matches, no re-build      |
+| Replay odds                  | `steadyOdds: true` in MatchConfig                   | Fixed odds throughout match replay        |
+| Odds source                  | Betfair Exchange only (`betfair_ex_eu`)             | 1 credit/call vs 12 bookmakers            |
+| Timer display                | Static Goalserve `@timer`, 30s poll                 | No JS animation needed for replay         |
+| WorldCoin                    | Investigate Sepolia support first                   | Implement only if testnet proofs work     |
