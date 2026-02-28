@@ -1,16 +1,35 @@
 // ── Hardcoded match registry (mirrors matchRegistry.ts) ──────────────
 const REGISTRY = [
   {
+    matchKey: "liverpool_westham_20260228",
+    label: "Liverpool vs West Ham United",
+    league: "EPL",
+    home: "Liverpool",
+    away: "West Ham United",
+    score: "vs",
+    minute: "Pre-match",
+    status: "pre",
+  },
+  {
+    matchKey: "wolves_villa_20260227",
+    label: "Wolverhampton vs Aston Villa",
+    league: "EPL",
+    home: "Wolverhampton Wanderers",
+    away: "Aston Villa",
+    score: "FT",
+    minute: "",
+    status: "ft",
+  },
+  {
     matchKey: "plzen_panat_20260226",
     label: "Viktoria Plzeň vs Panathinaikos",
     league: "UECL",
     home: "Viktoria Plzeň",
     away: "Panathinaikos FC",
     score: "1 – 1",
-    minute: "2nd half",
-    status: "live",
+    minute: "FT",
+    status: "ft",
   },
-  // ── Add new matches here when needed ──────────────────────────────────────
 ];
 
 let activeKey = null;

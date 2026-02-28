@@ -76,10 +76,35 @@ const WOLVES_VILLA: MatchConfig = {
   steadyOdds: false, // use live Odds API feed
 };
 
-// ── Registry ──────────────────────────────────────────────────────────────────
-export const MATCH_REGISTRY: Record<string, MatchConfig> = {
-  [PLZEN_PANAT.matchKey]: PLZEN_PANAT,
-  [WOLVES_VILLA.matchKey]: WOLVES_VILLA,
+// ── Liverpool vs West Ham United, EPL Feb 28 2026 ───────────────────────────
+// Odds API event ID: 466f3df43a6647947e4fb9cab6657d80 (KO ~16:00 UTC)
+const LIVERPOOL_WESTHAM: MatchConfig = {
+  matchKey: "liverpool_westham_20260228",
+  label: "Liverpool vs West Ham United",
+  league: "EPL",
+  goalserveStaticId: "0", // update once Goalserve confirms match ID
+  goalserveLeague: "1204",
+  matchId: "466f3df43a6647947e4fb9cab6657d80",
+  currentMatch: {
+    id: "466f3df43a6647947e4fb9cab6657d80",
+    homeTeam: "Liverpool",
+    awayTeam: "West Ham United",
+    status: "pre-match",
+    currentMinute: 0,
+    score: { home: 0, away: 0 },
+    half: 1,
+  },
+  startingXI: [], // populated at lineup confirmation
+  initialMWOdds: { home: 1.5, draw: 4.2, away: 6.5 }, // pre-match estimate
+  goalScript: [], // live match — no replay script
+  steadyOdds: false,
 };
 
-export const DEFAULT_MATCH_KEY = PLZEN_PANAT.matchKey;
+// ── Registry ──────────────────────────────────────────────────────────────────
+export const MATCH_REGISTRY: Record<string, MatchConfig> = {
+  [LIVERPOOL_WESTHAM.matchKey]: LIVERPOOL_WESTHAM,
+  [WOLVES_VILLA.matchKey]: WOLVES_VILLA,
+  [PLZEN_PANAT.matchKey]: PLZEN_PANAT,
+};
+
+export const DEFAULT_MATCH_KEY = LIVERPOOL_WESTHAM.matchKey;
