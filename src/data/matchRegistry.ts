@@ -34,6 +34,8 @@ export interface MatchConfig {
   }>;
   /** When true, odds do not fluctuate during replay — useful for UI/UX testing */
   steadyOdds?: boolean;
+  /** When true, use the real Supabase data service (matchId = external_match_id in DB) */
+  useRealData?: boolean;
 }
 
 // ── Plzeň vs Panathinaikos, UECL Feb 26 2026 ─────────────────────────────────
@@ -98,6 +100,7 @@ const LIVERPOOL_WESTHAM: MatchConfig = {
   initialMWOdds: { home: 1.5, draw: 4.2, away: 6.5 }, // pre-match estimate
   goalScript: [], // live match — no replay script
   steadyOdds: false,
+  useRealData: true, // players + odds + match state come from Supabase
 };
 
 // ── Registry ──────────────────────────────────────────────────────────────────

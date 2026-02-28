@@ -5,6 +5,7 @@ import {
   mockDataService,
   createDataService,
 } from "../services/mock/mockDataService";
+import { realDataService } from "../services/real/dataService";
 import type { Match, Player, MatchWinnerOdds } from "../types";
 import type { MatchWinnerOutcome } from "../types";
 import { MATCH_ID } from "../data/matchData";
@@ -27,8 +28,13 @@ export function useMatchData(matchKey?: string) {
     if (matchKey) {
       const config = MATCH_REGISTRY[matchKey];
       if (config) {
+        // useRealData=true → live Supabase service (players + odds from DB)
+        // otherwise → MockDataService (simulation mode)
+        const svc = config.useRealData
+          ? realDataService
+          : createDataService(config);
         return {
-          dataService: createDataService(config),
+          dataService: svc,
           activeMatchId: config.matchId,
         };
       }
@@ -61,11 +67,17 @@ export function useMatchData(matchKey?: string) {
     init();
 
     // Poll mwOdds every 5 min so extension buttons stay current
-    const oddsIv = setInterval(() => {
-      dataService.getMatchWinnerOdds(matchId).then((mw) => {
-        if (!cancelled) setMwOdds(mw);
-      }).catch(() => {});
-    }, 5 * 60 * 1000);
+    const oddsIv = setInterval(
+      () => {
+        dataService
+          .getMatchWinnerOdds(matchId)
+          .then((mw) => {
+            if (!cancelled) setMwOdds(mw);
+          })
+          .catch(() => {});
+      },
+      5 * 60 * 1000,
+    );
 
     const unsub = dataService.subscribeToMatch(matchId, {
       onMinuteTick: (minute) => {
