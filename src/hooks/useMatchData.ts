@@ -60,6 +60,13 @@ export function useMatchData(matchKey?: string) {
 
     init();
 
+    // Poll mwOdds every 5 min so extension buttons stay current
+    const oddsIv = setInterval(() => {
+      dataService.getMatchWinnerOdds(matchId).then((mw) => {
+        if (!cancelled) setMwOdds(mw);
+      }).catch(() => {});
+    }, 5 * 60 * 1000);
+
     const unsub = dataService.subscribeToMatch(matchId, {
       onMinuteTick: (minute) => {
         setMatch((prev) => (prev ? { ...prev, currentMinute: minute } : prev));
@@ -105,6 +112,7 @@ export function useMatchData(matchKey?: string) {
 
     return () => {
       cancelled = true;
+      clearInterval(oddsIv);
       unsub();
     };
   }, [dataService, activeMatchId]);

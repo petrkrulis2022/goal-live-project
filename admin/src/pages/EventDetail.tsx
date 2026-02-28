@@ -36,7 +36,10 @@ export default function EventDetail() {
   const [oracleError, setOracleError] = useState<string | null>(null);
 
   const [h2h, setH2h] = useState<{
-    home: number; draw: number; away: number; bookmaker: string;
+    home: number;
+    draw: number;
+    away: number;
+    bookmaker: string;
   } | null>(null);
 
   async function fetchMatchOdds(m: DbMatch) {
@@ -54,9 +57,15 @@ export default function EventDetail() {
       const mkt = bm.markets?.find((mk: { key: string }) => mk.key === "h2h");
       if (!mkt) return;
       setH2h({
-        home: mkt.outcomes.find((o: { name: string }) => o.name === data.home_team)?.price ?? 0,
-        draw: mkt.outcomes.find((o: { name: string }) => o.name === "Draw")?.price ?? 0,
-        away: mkt.outcomes.find((o: { name: string }) => o.name === data.away_team)?.price ?? 0,
+        home:
+          mkt.outcomes.find((o: { name: string }) => o.name === data.home_team)
+            ?.price ?? 0,
+        draw:
+          mkt.outcomes.find((o: { name: string }) => o.name === "Draw")
+            ?.price ?? 0,
+        away:
+          mkt.outcomes.find((o: { name: string }) => o.name === data.away_team)
+            ?.price ?? 0,
         bookmaker: bm.title,
       });
     } catch {
@@ -682,12 +691,23 @@ export default function EventDetail() {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { label: `1 · ${match.home_team.split(" ")[0]}`, val: h2h.home },
+                  {
+                    label: `1 · ${match.home_team.split(" ")[0]}`,
+                    val: h2h.home,
+                  },
                   { label: "X · Draw", val: h2h.draw },
-                  { label: `2 · ${match.away_team.split(" ")[0]}`, val: h2h.away },
+                  {
+                    label: `2 · ${match.away_team.split(" ")[0]}`,
+                    val: h2h.away,
+                  },
                 ].map(({ label, val }) => (
-                  <div key={label} className="flex flex-col items-center gap-1 bg-gray-950/60 rounded-lg py-3 px-2">
-                    <span className="text-[11px] text-gray-500 font-medium">{label}</span>
+                  <div
+                    key={label}
+                    className="flex flex-col items-center gap-1 bg-gray-950/60 rounded-lg py-3 px-2"
+                  >
+                    <span className="text-[11px] text-gray-500 font-medium">
+                      {label}
+                    </span>
                     <span className="text-xl font-black tabular-nums text-blue-400">
                       {val > 0 ? val.toFixed(2) : "—"}
                     </span>
@@ -697,28 +717,28 @@ export default function EventDetail() {
             </div>
           )}
           <div className="grid grid-cols-2 gap-2 text-sm">
-          {[
-            ["External ID", match.external_match_id],
-            ["Status", match.status],
-            ["Kickoff", new Date(match.kickoff_at).toLocaleString()],
-            ["Half", String(match.half)],
-            ["Minute", String(match.current_minute)],
-            ["Demo", match.is_demo ? "Yes" : "No"],
-            ["Oracle", match.oracle_address ?? "—"],
-            ["Contract", match.contract_address ?? "—"],
-          ].map(([k, v]) => (
-            <div
-              key={k}
-              className="bg-gray-900/70 border border-white/5 rounded-xl px-4 py-3"
-            >
-              <div className="text-[10px] text-gray-600 uppercase tracking-wider font-medium mb-1">
-                {k}
+            {[
+              ["External ID", match.external_match_id],
+              ["Status", match.status],
+              ["Kickoff", new Date(match.kickoff_at).toLocaleString()],
+              ["Half", String(match.half)],
+              ["Minute", String(match.current_minute)],
+              ["Demo", match.is_demo ? "Yes" : "No"],
+              ["Oracle", match.oracle_address ?? "—"],
+              ["Contract", match.contract_address ?? "—"],
+            ].map(([k, v]) => (
+              <div
+                key={k}
+                className="bg-gray-900/70 border border-white/5 rounded-xl px-4 py-3"
+              >
+                <div className="text-[10px] text-gray-600 uppercase tracking-wider font-medium mb-1">
+                  {k}
+                </div>
+                <div className="font-mono text-xs text-gray-300 break-all">
+                  {v}
+                </div>
               </div>
-              <div className="font-mono text-xs text-gray-300 break-all">
-                {v}
-              </div>
-            </div>
-          ))}
+            ))}
           </div>
         </div>
       )}
