@@ -20,8 +20,8 @@ export const PlayerButton: React.FC<PlayerButtonProps> = ({
   disabled = false,
   alignRight = false,
 }) => {
-  // Names stored as "Surname Firstname" — first word is always the surname
-  const surname = player.name.split(" ")[0];
+  // Show last word of name as surname (Odds API stores as "First Last")
+  const surname = player.name.split(" ").slice(-1)[0];
   const [pressed, setPressed] = useState(false);
 
   // ── 3D colour scheme ──────────────────────────────────────────────────────

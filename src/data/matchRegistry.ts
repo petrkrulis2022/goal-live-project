@@ -84,7 +84,7 @@ const LIVERPOOL_WESTHAM: MatchConfig = {
   matchKey: "liverpool_westham_20260228",
   label: "Liverpool vs West Ham United",
   league: "EPL",
-  goalserveStaticId: "0", // update once Goalserve confirms match ID
+  goalserveStaticId: "3682598",
   goalserveLeague: "1204",
   matchId: "466f3df43a6647947e4fb9cab6657d80",
   currentMatch: {

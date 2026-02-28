@@ -9,7 +9,7 @@ const MATCH_STATIC_ID = _sp.get("goalserveStaticId") ?? "3826786";
 const ODDS_EVENT_ID =
   _sp.get("oddsEventId") ?? "551f9026650eeec36791c0482c8b97d9";
 const ODDS_SPORT = _sp.get("sport") ?? "soccer_uefa_europa_league";
-const ODDS_API_KEY = "069be437bad9795678cdc1c1cee711c3";
+const ODDS_API_KEY = "46978d34dc5ac52756dd87ffbf9844b0";
 const HOME_HINT = _sp.get("home") ?? "Viktoria Plzeň";
 const AWAY_HINT = _sp.get("away") ?? "Panathinaikos FC";
 const COMPETITION_LABEL = _sp.get("competition") ?? "UEFA Europa League";

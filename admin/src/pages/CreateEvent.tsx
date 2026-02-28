@@ -4,7 +4,7 @@ import { supabase } from "@shared/lib/supabase";
 import { contractService } from "../services/contractService";
 
 // ─── Odds API helpers ─────────────────────────────────────────────────────────
-const ODDS_API_KEY = "069be437bad9795678cdc1c1cee711c3";
+const ODDS_API_KEY = "46978d34dc5ac52756dd87ffbf9844b0";
 
 /** Goalserve league ID for each Odds API sport_key */
 const SPORT_TO_GS_LEAGUE: Record<string, string> = {
@@ -30,6 +30,11 @@ const SPORT_COLOR: Record<string, { badge: string }> = {
     badge: "bg-emerald-400/15 text-emerald-400 border-emerald-400/25",
   },
 };
+
+// Module-level cache — survives re-mounts, avoids hammering the Odds API
+let _eventsCache: OddsEvent[] | null = null;
+let _eventsCacheAt = 0;
+const EVENTS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 interface OddsEvent {
   id: string;
@@ -91,6 +96,7 @@ const EMPTY: FormState = {
 type Step =
   | { id: "idle" }
   | { id: "db"; label: "Saving event to database…" }
+  | { id: "seed"; label: "Fetching lineup & seeding players…" }
   | { id: "deploy"; label: "Deploying pool contract… (confirm in MetaMask)" }
   | { id: "fund"; label: "Funding pool… (confirm in MetaMask)" }
   | { id: "done"; contractAddress: string; txHash: string };
@@ -109,6 +115,12 @@ export default function CreateEvent() {
 
   useEffect(() => {
     async function fetchUpcomingGames() {
+      // Return cached result if still fresh
+      if (_eventsCache && Date.now() - _eventsCacheAt < EVENTS_CACHE_TTL) {
+        setTonightEvents(_eventsCache);
+        setEventsLoading(false);
+        return;
+      }
       try {
         const sports = [
           "soccer_epl",
@@ -141,6 +153,8 @@ export default function CreateEvent() {
               new Date(b.commence_time).getTime(),
           );
 
+        _eventsCache = all;
+        _eventsCacheAt = Date.now();
         setTonightEvents(all);
       } catch (e: any) {
         setEventsError("Failed to fetch upcoming games: " + e.message);
@@ -160,6 +174,243 @@ export default function CreateEvent() {
       kickoffAt: formatLocalDateTime(evt.commence_time),
       externalMatchId: evt.id,
     }));
+  }
+
+  // ── Auto-seed players: Goalserve lineup + Odds API odds ──────────────────
+  async function autoSeedPlayers(
+    matchDbId: string,
+    homeTeam: string,
+    awayTeam: string,
+    sportKey: string,
+  ) {
+    const gsLeague = SPORT_TO_GS_LEAGUE[sportKey] ?? "1204";
+
+    // 1. Discover Goalserve static_id from live feed
+    let staticId = "";
+    try {
+      const liveRes = await fetch(`/api/goalserve/soccernew/home?json=1`);
+      if (liveRes.ok) {
+        const liveData = await liveRes.json();
+        const homeWord = homeTeam.split(" ")[0].toLowerCase();
+        const awayWord = awayTeam.split(" ")[0].toLowerCase();
+        const cats: any[] =
+          liveData?.scores?.category ??
+          (Array.isArray(liveData?.scores) ? liveData.scores : []);
+        for (const cat of cats) {
+          const matches: any[] = Array.isArray(cat.match)
+            ? cat.match
+            : cat.match
+              ? [cat.match]
+              : [];
+          const found = matches.find((mm: any) => {
+            const lt = (
+              mm.localteam?.["@name"] ??
+              mm["@localteam"] ??
+              ""
+            ).toLowerCase();
+            const vt = (
+              mm.visitorteam?.["@name"] ??
+              mm["@visitorteam"] ??
+              ""
+            ).toLowerCase();
+            return lt.includes(homeWord) || vt.includes(awayWord);
+          });
+          if (found) {
+            staticId = found["@static_id"] ?? found["@id"] ?? "";
+            break;
+          }
+        }
+      }
+    } catch {
+      // continue — will try commentaries feed
+    }
+
+    // 2. If not found in live feed, try commentaries league feed
+    if (!staticId) {
+      try {
+        const comRes = await fetch(
+          `/api/goalserve/commentaries/${gsLeague}.xml?json=1`,
+        );
+        if (comRes.ok) {
+          const comData = await comRes.json();
+          const homeWord = homeTeam.split(" ")[0].toLowerCase();
+          const awayWord = awayTeam.split(" ")[0].toLowerCase();
+          const tourney = comData?.commentaries?.tournament;
+          const matchList: any[] = tourney
+            ? Array.isArray(tourney.match)
+              ? tourney.match
+              : tourney.match
+                ? [tourney.match]
+                : []
+            : [];
+          const found = matchList.find((mm: any) => {
+            const lt = (
+              mm.localteam?.["@name"] ??
+              mm["@localteam"] ??
+              ""
+            ).toLowerCase();
+            const vt = (
+              mm.visitorteam?.["@name"] ??
+              mm["@visitorteam"] ??
+              ""
+            ).toLowerCase();
+            return lt.includes(homeWord) || vt.includes(awayWord);
+          });
+          if (found) {
+            staticId = found["@static_id"] ?? found["@id"] ?? "";
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!staticId) return; // can't seed without lineup
+
+    // 3. Fetch full lineup
+    const lineupRes = await fetch(
+      `/api/goalserve/commentaries/match?id=${staticId}&league=${gsLeague}&json=1`,
+    );
+    if (!lineupRes.ok) return;
+    const lineupData = await lineupRes.json();
+    const raw =
+      lineupData?.commentaries?.tournament?.match ??
+      lineupData?.commentaries?.match ??
+      null;
+    if (!raw) return;
+    const matchNode = Array.isArray(raw) ? raw[0] : raw;
+
+    const teamsNode = matchNode.teams ?? {};
+    const subsNode = matchNode.substitutes ?? {};
+
+    function normAccent(s: string): string {
+      return s
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+    }
+
+    function parsePlayers(
+      node: any,
+    ): { num: string; name: string; pos: string }[] {
+      if (!node?.player) return [];
+      const arr = Array.isArray(node.player) ? node.player : [node.player];
+      return arr
+        .filter((p: any) => p?.["@name"])
+        .map((p: any) => ({
+          num: p["@number"] ?? "",
+          name: p["@name"] ?? "",
+          pos: p["@pos"] ?? "",
+        }));
+    }
+
+    type SquadEntry = {
+      name: string;
+      num: string;
+      pos: string;
+      team: "home" | "away";
+      isStarter: boolean;
+    };
+
+    const squad: SquadEntry[] = [
+      ...parsePlayers(teamsNode.localteam).map((p) => ({
+        ...p,
+        team: "home" as const,
+        isStarter: true,
+      })),
+      ...parsePlayers(subsNode.localteam).map((p) => ({
+        ...p,
+        team: "home" as const,
+        isStarter: false,
+      })),
+      ...parsePlayers(teamsNode.visitorteam).map((p) => ({
+        ...p,
+        team: "away" as const,
+        isStarter: true,
+      })),
+      ...parsePlayers(subsNode.visitorteam).map((p) => ({
+        ...p,
+        team: "away" as const,
+        isStarter: false,
+      })),
+    ];
+
+    if (squad.length === 0) return;
+
+    // 4. Fetch Odds API scorer odds
+    const priceMap = new Map<string, number>();
+    try {
+      const oddsRes = await fetch(
+        `/api/odds/sports/${sportKey}/events/${form.externalMatchId}/odds?apiKey=${ODDS_API_KEY}&markets=player_first_goal_scorer&regions=us,uk,eu&oddsFormat=decimal`,
+      );
+      if (oddsRes.ok) {
+        const oddsData = await oddsRes.json();
+        for (const bm of oddsData.bookmakers ?? []) {
+          for (const mkt of bm.markets ?? []) {
+            if (mkt.key !== "player_first_goal_scorer") continue;
+            for (const o of mkt.outcomes ?? []) {
+              const n = (o.description ?? o.name ?? "").trim();
+              if (n && o.price && n.toLowerCase() !== "no scorer") {
+                if (!priceMap.has(n)) priceMap.set(n, o.price);
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // odds optional — seed without them
+    }
+
+    // Match odds to each Goalserve player by normalised name/surname
+    function oddsFor(gsName: string): number {
+      const n = normAccent(gsName);
+      const words = n.split(/\s+/);
+      const surname = words[words.length - 1];
+      const firstName = words[0];
+      // 1. exact normalised full name
+      for (const [oddsName, price] of priceMap) {
+        const on = normAccent(oddsName);
+        if (on === n) return price;
+      }
+      // 2. surname match
+      if (surname.length >= 4) {
+        for (const [oddsName, price] of priceMap) {
+          const on = normAccent(oddsName);
+          const os = on.split(/\s+/).pop() ?? "";
+          if (os === surname) return price;
+          if (on.includes(surname) || n.includes(os)) return price;
+        }
+      }
+      // 3. first-name prefix match (handles nicknames: Savinho ↔ Savio…)
+      if (firstName.length >= 4) {
+        for (const [oddsName, price] of priceMap) {
+          const oddsFirst = normAccent(oddsName).split(/\s+/)[0];
+          if (
+            oddsFirst.startsWith(firstName.slice(0, 5)) ||
+            firstName.startsWith(oddsFirst.slice(0, 5))
+          )
+            return price;
+        }
+      }
+      return 1; // NOT NULL DEFAULT 1 sentinel
+    }
+
+    // 5. Upsert all squad players
+    const rows = squad.map(({ name, num, pos, team, isStarter }) => ({
+      match_id: matchDbId,
+      external_player_id: "gs_" + name.toLowerCase().replace(/[^a-z0-9]/g, "_"),
+      name,
+      team,
+      jersey_number: num ? parseInt(num, 10) || null : null,
+      position: pos || null,
+      is_starter: isStarter,
+      odds: oddsFor(name),
+    }));
+
+    await supabase
+      .from("players")
+      .upsert(rows, { onConflict: "match_id,external_player_id" });
   }
 
   const set = (k: keyof FormState, v: string | boolean) =>
@@ -200,6 +451,17 @@ export default function CreateEvent() {
         .single();
 
       if (dbErr) throw new Error(dbErr.message);
+
+      // ── Step 1.5: Auto-seed players from Goalserve + Odds API ─────────────
+      setStep({ id: "seed", label: "Fetching lineup & seeding players…" });
+      await autoSeedPlayers(
+        match.id,
+        form.homeTeam,
+        form.awayTeam,
+        selectedEvent?.sport_key ?? "soccer_epl",
+      ).catch(() => {
+        /* non-fatal — proceed even if seed fails */
+      });
 
       // ── Step 2: Deploy escrow contract (MetaMask) ──────────────────────────
       setStep({
@@ -516,11 +778,12 @@ export default function CreateEvent() {
 
 // ─── Step progress banner ────────────────────────────────────────────────────
 
-const STEP_ORDER = ["db", "deploy", "fund"] as const;
+const STEP_ORDER = ["db", "seed", "deploy", "fund"] as const;
 type ActiveStep = (typeof STEP_ORDER)[number];
 
 const STEP_LABELS: Record<ActiveStep, string> = {
   db: "Save to database",
+  seed: "Seed players",
   deploy: "Deploy contract",
   fund: "Fund pool",
 };

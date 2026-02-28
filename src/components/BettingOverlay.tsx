@@ -71,7 +71,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
   );
 
   const [modal, setModal] = useState<ModalState>(null);
-  const [sidesSwapped, setSidesSwapped] = useState(false);
+  const [activeTeam, setActiveTeam] = useState<"home" | "away">("home");
   const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
@@ -85,10 +85,6 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
 
   const homePlayers = players.filter((p) => p.team === "home");
   const awayPlayers = players.filter((p) => p.team === "away");
-  const leftPlayers = sidesSwapped ? homePlayers : awayPlayers;
-  const rightPlayers = sidesSwapped ? awayPlayers : homePlayers;
-  const leftTeam = sidesSwapped ? match?.homeTeam : match?.awayTeam;
-  const rightTeam = sidesSwapped ? match?.awayTeam : match?.homeTeam;
 
   const activeNgsBet: Bet | null =
     bets.find(
@@ -195,7 +191,6 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     );
   }
 
-  const colWidth = "140px";
   const betBarHeight = "40px";
 
   return (
@@ -244,23 +239,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           >
             ✕
           </button>
-          <button
-            onClick={() => setSidesSwapped((s) => !s)}
-            className="gl-interactive"
-            title="Swap team sides"
-            style={{
-              background: "rgba(0,0,0,0.6)",
-              border: "1px solid rgba(255,255,255,0.18)",
-              borderRadius: "5px",
-              color: "#d1d5db",
-              fontSize: "13px",
-              fontWeight: 700,
-              padding: "4px 9px",
-              cursor: "pointer",
-            }}
-          >
-            ⇄
-          </button>
+
           {!isFinished && isPreMatch && (
             <button
               onClick={startSimulation}
@@ -584,46 +563,99 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
         </div>
       )}
 
-      {/* ── LEFT COLUMN ─────────────────────────────────────────────────── */}
+      {/* ── PLAYER PANEL (tabbed by team, left side) ─────────────────── */}
       <div
         className="gl-interactive"
         style={{
           position: "fixed",
-          top: "32px",
+          top: "52px",
           left: 0,
           bottom: betBarHeight,
-          width: colWidth,
+          width: "178px",
           zIndex: 2147483640,
           pointerEvents: "none",
           display: "flex",
           flexDirection: "column",
-          padding: "4px 3px",
           background:
-            "linear-gradient(to right, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 100%)",
+            "linear-gradient(to right, rgba(0,0,0,0.72) 60%, rgba(0,0,0,0.0) 100%)",
         }}
       >
-        <p
-          style={{
-            color: "#6b7280",
-            fontSize: "8px",
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            textAlign: "center",
-            marginBottom: "3px",
-          }}
-        >
-          {leftTeam}
-        </p>
+        {/* ── Team tabs ── */}
         <div
           style={{
             display: "flex",
-            flexDirection: "column",
-            gap: "4px",
-            flex: 1,
+            gap: "2px",
+            padding: "4px 4px 0",
+            pointerEvents: "auto",
+            flexShrink: 0,
           }}
         >
-          {leftPlayers.map((p) => {
+          {(["home", "away"] as const).map((side) => {
+            const label =
+              side === "home"
+                ? (match?.homeTeam ?? "Home")
+                : (match?.awayTeam ?? "Away");
+            const count = (side === "home" ? homePlayers : awayPlayers).length;
+            const active = activeTeam === side;
+            return (
+              <button
+                key={side}
+                onClick={() => setActiveTeam(side)}
+                className="gl-interactive"
+                title={label}
+                style={{
+                  flex: 1,
+                  background: active
+                    ? side === "home"
+                      ? "rgba(59,130,246,0.35)"
+                      : "rgba(239,68,68,0.25)"
+                    : "rgba(0,0,0,0.5)",
+                  border: `1px solid ${
+                    active
+                      ? side === "home"
+                        ? "rgba(96,165,250,0.55)"
+                        : "rgba(252,165,165,0.45)"
+                      : "rgba(255,255,255,0.1)"
+                  }`,
+                  borderRadius: "5px 5px 0 0",
+                  borderBottom: active
+                    ? "none"
+                    : "1px solid rgba(255,255,255,0.1)",
+                  color: active
+                    ? side === "home"
+                      ? "#93c5fd"
+                      : "#fca5a5"
+                    : "#6b7280",
+                  fontSize: "8px",
+                  fontWeight: 700,
+                  padding: "3px 2px",
+                  cursor: "pointer",
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {label.split(" ")[0]}
+                {count > 0 ? ` (${count})` : ""}
+              </button>
+            );
+          })}
+        </div>
+        {/* ── Player list ── */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: "3px",
+            padding: "4px",
+            pointerEvents: "none",
+          }}
+        >
+          {(activeTeam === "home" ? homePlayers : awayPlayers).map((p) => {
             const settled = bets.find(
               (b) =>
                 b.betType === "NEXT_GOAL_SCORER" &&
@@ -640,68 +672,6 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
                 onClick={handlePlayerClick}
                 disabled={isFinished}
                 alignRight={false}
-              />
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── RIGHT COLUMN ────────────────────────────────────────────────── */}
-      <div
-        className="gl-interactive"
-        style={{
-          position: "fixed",
-          top: "32px",
-          right: 0,
-          bottom: betBarHeight,
-          width: colWidth,
-          zIndex: 2147483640,
-          pointerEvents: "none",
-          display: "flex",
-          flexDirection: "column",
-          padding: "4px 3px",
-          background:
-            "linear-gradient(to left, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 100%)",
-        }}
-      >
-        <p
-          style={{
-            color: "#6b7280",
-            fontSize: "8px",
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            textAlign: "center",
-            marginBottom: "3px",
-          }}
-        >
-          {rightTeam}
-        </p>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "4px",
-            flex: 1,
-          }}
-        >
-          {rightPlayers.map((p) => {
-            const settled = bets.find(
-              (b) =>
-                b.betType === "NEXT_GOAL_SCORER" &&
-                b.current_player_id === p.id &&
-                (b.status === "settled_won" || b.status === "settled_lost"),
-            );
-            return (
-              <PlayerButton
-                key={p.id}
-                player={p}
-                isCurrentBet={activeNgsBet?.current_player_id === p.id}
-                isSettled={!!settled}
-                settledWon={settled?.status === "settled_won"}
-                onClick={handlePlayerClick}
-                disabled={isFinished}
-                alignRight={true}
               />
             );
           })}
@@ -764,7 +734,8 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             <span
               style={{ color: "#fef3c7", fontSize: "13px", fontWeight: 800 }}
             >
-              #{currentBetPlayer.number} {currentBetPlayer.name.split(" ")[0]}
+              #{currentBetPlayer.number}{" "}
+              {currentBetPlayer.name.split(" ").slice(-1)[0]}
             </span>
             <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "11px" }}>
               │

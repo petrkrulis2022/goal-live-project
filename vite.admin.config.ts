@@ -29,12 +29,6 @@ export default defineConfig({
         secure: false,
         rewrite: (p) => p.replace("/api/odds", "/v4"),
       },
-      "/api/sportsdb": {
-        target: "https://www.thesportsdb.com",
-        changeOrigin: true,
-        secure: false,
-        rewrite: (p) => p.replace("/api/sportsdb", "/api/v1/json/3"),
-      },
     },
   },
   resolve: {
