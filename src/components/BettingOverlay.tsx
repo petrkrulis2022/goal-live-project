@@ -1,6 +1,20 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useWallet } from "../hooks/useWallet";
 
+const SB_URL = "https://weryswulejhjkrmervnf.supabase.co";
+const SB_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlcnlzd3VsZWpoamtybWVydm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjEyODEsImV4cCI6MjA4NzU5NzI4MX0.fxMn2LMdoFuYAln-34WUo1uUiWjSnlSzJlDS-sepdtc";
+
+interface MatchRow {
+  external_match_id: string;
+  home_team: string;
+  away_team: string;
+  status: string;
+  score_home: number;
+  score_away: number;
+  kickoff_at: string;
+}
+
 const LOGO_URL =
   typeof chrome !== "undefined" && chrome.runtime?.getURL
     ? chrome.runtime.getURL("goal-live-logo.png")
@@ -73,6 +87,29 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
   const [modal, setModal] = useState<ModalState>(null);
   const [activeTeam, setActiveTeam] = useState<"home" | "away">("home");
   const [hidden, setHidden] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerMatches, setPickerMatches] = useState<MatchRow[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
+
+  useEffect(() => {
+    if (!showPicker) return;
+    setPickerLoading(true);
+    fetch(
+      `${SB_URL}/rest/v1/matches?select=external_match_id,home_team,away_team,status,score_home,score_away,kickoff_at&order=kickoff_at.desc&limit=20`,
+      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } },
+    )
+      .then((r) => r.json())
+      .then((rows) => setPickerMatches(rows as MatchRow[]))
+      .catch(() => {})
+      .finally(() => setPickerLoading(false));
+  }, [showPicker]);
+
+  function switchMatch(id: string) {
+    setShowPicker(false);
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      chrome.storage.local.set({ matchKey: id });
+    }
+  }
 
   useEffect(() => {
     tryUnmuteVideo();
@@ -221,6 +258,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             gap: "4px",
             pointerEvents: "auto",
             justifyContent: "flex-start",
+            position: "relative",
           }}
         >
           <button
@@ -239,6 +277,81 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           >
             ✕
           </button>
+
+          <button
+            onClick={() => setShowPicker((v) => !v)}
+            className="gl-interactive"
+            style={{
+              background: showPicker ? "#10b981" : "rgba(0,0,0,0.6)",
+              border: "1px solid rgba(255,255,255,0.18)",
+              borderRadius: "5px",
+              color: showPicker ? "#000" : "#fff",
+              fontSize: "11px",
+              fontWeight: 700,
+              padding: "4px 10px",
+              cursor: "pointer",
+            }}
+          >
+            ⚽ Events
+          </button>
+
+          {showPicker && (
+            <div
+              className="gl-interactive"
+              style={{
+                position: "absolute",
+                top: "34px",
+                left: "4px",
+                background: "#111827",
+                border: "1px solid rgba(255,255,255,0.15)",
+                borderRadius: "8px",
+                minWidth: "260px",
+                zIndex: 2147483642,
+                overflow: "hidden",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.7)",
+              }}
+            >
+              <div style={{ padding: "8px 12px", borderBottom: "1px solid rgba(255,255,255,0.1)", fontSize: "11px", color: "#6b7280", fontWeight: 700, letterSpacing: "0.05em" }}>SELECT EVENT</div>
+              {pickerLoading ? (
+                <div style={{ padding: "12px", color: "#6b7280", fontSize: "12px" }}>Loading…</div>
+              ) : pickerMatches.length === 0 ? (
+                <div style={{ padding: "12px", color: "#6b7280", fontSize: "12px" }}>No events found</div>
+              ) : (
+                pickerMatches.map((m) => {
+                  const isActive = m.external_match_id === matchKey;
+                  const score = m.status === "pre-match"
+                    ? new Date(m.kickoff_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                    : m.status === "finished"
+                      ? `FT ${m.score_home}–${m.score_away}`
+                      : `${m.score_home}–${m.score_away}`;
+                  const statusDot = m.status === "live" || m.status === "halftime"
+                    ? <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", display: "inline-block", marginRight: 5 }} />
+                    : null;
+                  return (
+                    <div
+                      key={m.external_match_id}
+                      onClick={() => switchMatch(m.external_match_id)}
+                      style={{
+                        padding: "9px 12px",
+                        cursor: "pointer",
+                        background: isActive ? "rgba(16,185,129,0.15)" : "transparent",
+                        borderLeft: isActive ? "3px solid #10b981" : "3px solid transparent",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        borderBottom: "1px solid rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      <span style={{ color: "#f3f4f6", fontSize: "12px", fontWeight: 600 }}>
+                        {statusDot}{m.home_team} vs {m.away_team}
+                      </span>
+                      <span style={{ color: "#9ca3af", fontSize: "11px", marginLeft: 8 }}>{score}</span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
 
           {!isFinished && isPreMatch && (
             <button
