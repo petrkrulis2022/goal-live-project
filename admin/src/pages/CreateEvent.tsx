@@ -9,12 +9,14 @@ const ODDS_API_KEY = "46978d34dc5ac52756dd87ffbf9844b0";
 /** Goalserve league ID for each Odds API sport_key */
 const SPORT_TO_GS_LEAGUE: Record<string, string> = {
   soccer_epl: "1204",
+  soccer_spain_la_liga: "1399",
   soccer_uefa_europa_league: "1007",
   soccer_uefa_europa_conference_league: "1009",
 };
 
 const SPORT_LABELS: Record<string, string> = {
   soccer_epl: "Premier League",
+  soccer_spain_la_liga: "La Liga",
   soccer_uefa_europa_league: "UEFA Europa League",
   soccer_uefa_europa_conference_league: "UEFA Europa Conference League",
 };
@@ -22,6 +24,9 @@ const SPORT_LABELS: Record<string, string> = {
 const SPORT_COLOR: Record<string, { badge: string }> = {
   soccer_epl: {
     badge: "bg-purple-400/15 text-purple-400 border-purple-400/25",
+  },
+  soccer_spain_la_liga: {
+    badge: "bg-red-400/15 text-red-400 border-red-400/25",
   },
   soccer_uefa_europa_league: {
     badge: "bg-orange-400/15 text-orange-400 border-orange-400/25",
@@ -124,6 +129,7 @@ export default function CreateEvent() {
       try {
         const sports = [
           "soccer_epl",
+          "soccer_spain_la_liga",
           "soccer_uefa_europa_league",
           "soccer_uefa_europa_conference_league",
         ];
