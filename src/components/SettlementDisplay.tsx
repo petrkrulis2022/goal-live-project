@@ -111,14 +111,34 @@ export const SettlementDisplay: React.FC<SettlementDisplayProps> = ({
         <button
           onClick={onSwitchEvent}
           className="gl-interactive"
-          style={{ flex: 1, background: "#10b981", border: "none", borderRadius: "12px", padding: "12px", color: "#000", fontWeight: 900, fontSize: "14px", cursor: "pointer" }}
+          style={{
+            flex: 1,
+            background: "#10b981",
+            border: "none",
+            borderRadius: "12px",
+            padding: "12px",
+            color: "#000",
+            fontWeight: 900,
+            fontSize: "14px",
+            cursor: "pointer",
+          }}
         >
           ⚽ Switch Event
         </button>
         <button
           onClick={onReset}
           className="gl-interactive"
-          style={{ flex: 1, background: "rgba(55,65,81,0.8)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "12px", padding: "12px", color: "#fff", fontWeight: 700, fontSize: "14px", cursor: "pointer" }}
+          style={{
+            flex: 1,
+            background: "rgba(55,65,81,0.8)",
+            border: "1px solid rgba(255,255,255,0.15)",
+            borderRadius: "12px",
+            padding: "12px",
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: "14px",
+            cursor: "pointer",
+          }}
         >
           ↺ Replay
         </button>
