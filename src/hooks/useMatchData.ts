@@ -38,6 +38,9 @@ export function useMatchData(matchKey?: string) {
           activeMatchId: config.matchId,
         };
       }
+      // Not in hardcoded registry — treat matchKey as external_match_id
+      // (set by dynamic popup fetching from Supabase)
+      return { dataService: realDataService, activeMatchId: matchKey };
     }
     return { dataService: services.data, activeMatchId: MATCH_ID };
   }, [matchKey]);

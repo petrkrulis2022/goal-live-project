@@ -103,11 +103,38 @@ const LIVERPOOL_WESTHAM: MatchConfig = {
   useRealData: true, // players + odds + match state come from Supabase
 };
 
+// ── Real Madrid vs Getafe, La Liga Mar 2 2026 ────────────────────────────────
+// Odds API event ID: 7a8e8e30174af5cd99d1a3977365674e (KO 20:00 UTC)
+// Goalserve static_id: 4200637, league: 1399
+const REALMADRID_GETAFE: MatchConfig = {
+  matchKey: "realmadrid_getafe_20260302",
+  label: "Real Madrid vs Getafe",
+  league: "La Liga",
+  goalserveStaticId: "4200637",
+  goalserveLeague: "1399",
+  matchId: "7a8e8e30174af5cd99d1a3977365674e",
+  currentMatch: {
+    id: "7a8e8e30174af5cd99d1a3977365674e",
+    homeTeam: "Real Madrid",
+    awayTeam: "Getafe",
+    status: "pre-match",
+    currentMinute: 0,
+    score: { home: 0, away: 0 },
+    half: 1,
+  },
+  startingXI: [],
+  initialMWOdds: { home: 1.4, draw: 4.8, away: 8.5 },
+  goalScript: [],
+  steadyOdds: false,
+  useRealData: true,
+};
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 export const MATCH_REGISTRY: Record<string, MatchConfig> = {
+  [REALMADRID_GETAFE.matchKey]: REALMADRID_GETAFE,
   [LIVERPOOL_WESTHAM.matchKey]: LIVERPOOL_WESTHAM,
   [WOLVES_VILLA.matchKey]: WOLVES_VILLA,
   [PLZEN_PANAT.matchKey]: PLZEN_PANAT,
 };
 
-export const DEFAULT_MATCH_KEY = LIVERPOOL_WESTHAM.matchKey;
+export const DEFAULT_MATCH_KEY = REALMADRID_GETAFE.matchKey;

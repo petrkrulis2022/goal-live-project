@@ -1,38 +1,71 @@
-// ── Hardcoded match registry (mirrors matchRegistry.ts) ──────────────
-const REGISTRY = [
-  {
-    matchKey: "liverpool_westham_20260228",
-    label: "Liverpool vs West Ham United",
-    league: "EPL",
-    home: "Liverpool",
-    away: "West Ham United",
-    score: "vs",
-    minute: "Pre-match",
-    status: "pre",
-  },
-  {
-    matchKey: "wolves_villa_20260227",
-    label: "Wolverhampton vs Aston Villa",
-    league: "EPL",
-    home: "Wolverhampton Wanderers",
-    away: "Aston Villa",
-    score: "FT",
-    minute: "",
-    status: "ft",
-  },
-  {
-    matchKey: "plzen_panat_20260226",
-    label: "Viktoria Plzeň vs Panathinaikos",
-    league: "UECL",
-    home: "Viktoria Plzeň",
-    away: "Panathinaikos FC",
-    score: "1 – 1",
-    minute: "FT",
-    status: "ft",
-  },
-];
+// ── Supabase config ──────────────────────────────────────────────────
+const SUPABASE_URL = "https://weryswulejhjkrmervnf.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlcnlzd3VsZWpoamtybWVydm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjEyODEsImV4cCI6MjA4NzU5NzI4MX0.fxMn2LMdoFuYAln-34WUo1uUiWjSnlSzJlDS-sepdtc";
 
+let REGISTRY = [];
 let activeKey = null;
+
+async function loadMatches() {
+  const list = document.getElementById("match-list");
+  list.innerHTML = '<div class="empty">Loading matches…</div>';
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/matches?select=external_match_id,home_team,away_team,status,current_minute,score_home,score_away,half,kickoff_at,odds_api_config&order=kickoff_at.desc&limit=20`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      },
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const rows = await res.json();
+    REGISTRY = rows.map((r) => {
+      const statusMap = {
+        "pre-match": "pre",
+        live: "live",
+        halftime: "live",
+        finished: "ft",
+        cancelled: "ft",
+      };
+      const score =
+        r.status === "pre-match"
+          ? "vs"
+          : r.status === "finished"
+            ? `${r.score_home} – ${r.score_away}`
+            : `${r.score_home} – ${r.score_away}`;
+      const minute =
+        r.status === "live"
+          ? `${r.current_minute}'`
+          : r.status === "halftime"
+            ? "HT"
+            : r.status === "finished"
+              ? "FT"
+              : r.status === "pre-match"
+                ? new Date(r.kickoff_at).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "";
+      const cfg = r.odds_api_config ?? {};
+      const league = cfg.competition ?? cfg.sport ?? "";
+      return {
+        matchKey: r.external_match_id,
+        label: `${r.home_team} vs ${r.away_team}`,
+        league,
+        home: r.home_team,
+        away: r.away_team,
+        score,
+        minute,
+        status: statusMap[r.status] ?? "pre",
+      };
+    });
+    render();
+  } catch (e) {
+    list.innerHTML = `<div class="empty">Failed to load matches: ${e.message}</div>`;
+  }
+}
 
 function render() {
   const list = document.getElementById("match-list");
@@ -104,13 +137,8 @@ document.getElementById("btn-clear").addEventListener("click", () => {
   chrome.storage.local.remove("matchKey", () => render());
 });
 
-// Render cards immediately (no need to wait for storage for initial paint)
-render();
-
-// Then highlight the already-selected match if any
+// Load from Supabase, then highlight already-selected match
 chrome.storage.local.get("matchKey", (result) => {
-  if (result.matchKey && result.matchKey !== activeKey) {
-    activeKey = result.matchKey;
-    render();
-  }
+  if (result.matchKey) activeKey = result.matchKey;
+  loadMatches();
 });
