@@ -23,6 +23,8 @@ export interface Match {
   currentMinute: number;
   score: { home: number; away: number };
   half: 1 | 2;
+  /** On-chain escrow contract for this match (unique per game) */
+  contractAddress?: string | null;
 }
 
 // ── Player ────────────────────────────────────

@@ -16,6 +16,7 @@ function dbMatchToMatch(row: DbMatch): Match {
     currentMinute: row.current_minute,
     score: { home: row.score_home, away: row.score_away },
     half: row.half as 1 | 2,
+    contractAddress: row.contract_address ?? null,
   };
 }
 

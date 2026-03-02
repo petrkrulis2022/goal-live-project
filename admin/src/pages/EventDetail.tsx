@@ -13,6 +13,28 @@ import { MATCH_REGISTRY } from "@shared/data/matchRegistry";
 const ODDS_API_KEY = "46978d34dc5ac52756dd87ffbf9844b0";
 // Note: Goalserve key is baked into the Vite proxy rewrite (vite.admin.config.ts)
 
+// Sepolia on-chain constants
+const SEPOLIA_RPC = "https://ethereum-sepolia-rpc.publicnode.com";
+const USDC_SEPOLIA = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
+
+/** Returns USDC balance (6 decimals) of an address on Sepolia */
+async function fetchUsdcBalance(address: string): Promise<number> {
+  const data = "0x70a08231" + address.slice(2).padStart(64, "0");
+  const res = await fetch(SEPOLIA_RPC, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "eth_call",
+      params: [{ to: USDC_SEPOLIA, data }, "latest"],
+      id: 1,
+    }),
+  });
+  const json = await res.json();
+  if (!json.result || json.result === "0x") return 0;
+  return parseInt(json.result, 16) / 1_000_000;
+}
+
 type Tab = "overview" | "players" | "bets" | "goals" | "oracle";
 
 // ── Lineup types ──────────────────────────────────────────────────────────────
@@ -236,6 +258,10 @@ export default function EventDetail() {
   const [oracleBusy, setOracleBusy] = useState(false);
   const [oracleTx, setOracleTx] = useState<string | null>(null);
   const [oracleError, setOracleError] = useState<string | null>(null);
+  const [contractUsdcBalance, setContractUsdcBalance] = useState<number | null>(
+    null,
+  );
+  const [contractBalanceLoading, setContractBalanceLoading] = useState(false);
 
   const [h2h, setH2h] = useState<{
     home: number;
@@ -857,6 +883,19 @@ export default function EventDetail() {
     );
   }
 
+  async function refreshContractBalance() {
+    if (!match?.contract_address) return;
+    setContractBalanceLoading(true);
+    try {
+      const bal = await fetchUsdcBalance(match.contract_address);
+      setContractUsdcBalance(bal);
+    } catch {
+      setContractUsdcBalance(null);
+    } finally {
+      setContractBalanceLoading(false);
+    }
+  }
+
   async function handleSettleMatch() {
     if (!match) return;
     const activeScorers = goals
@@ -1338,6 +1377,83 @@ export default function EventDetail() {
               )}
             </div>
           </div>
+
+          {/* Match Escrow Contract */}
+          {match.contract_address ? (
+            <div className="bg-indigo-950/30 border border-indigo-500/25 rounded-xl p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-white">
+                  🔐 Match Escrow Contract
+                </h3>
+                <button
+                  onClick={refreshContractBalance}
+                  disabled={contractBalanceLoading}
+                  className="text-xs px-3 py-1 rounded-lg bg-indigo-700/40 text-indigo-300 hover:bg-indigo-700/70 transition-colors disabled:opacity-50"
+                >
+                  {contractBalanceLoading ? "Loading…" : "↺ Refresh Balance"}
+                </button>
+              </div>
+
+              {/* Contract address */}
+              <div className="bg-gray-900/60 border border-white/8 rounded-lg px-4 py-3">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wide font-semibold mb-1">
+                  Contract Address (Sepolia)
+                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-white font-mono text-xs break-all flex-1">
+                    {match.contract_address}
+                  </p>
+                  <button
+                    onClick={() =>
+                      navigator.clipboard.writeText(
+                        match.contract_address ?? "",
+                      )
+                    }
+                    className="flex-shrink-0 text-[10px] px-2 py-1 rounded bg-indigo-700/50 text-indigo-200 hover:bg-indigo-600/70 transition-colors"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <a
+                  href={`https://sepolia.etherscan.io/address/${match.contract_address}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-indigo-400 text-[10px] hover:text-indigo-200 mt-1 inline-block"
+                >
+                  View on Etherscan ↗
+                </a>
+              </div>
+
+              {/* USDC balance */}
+              <div className="bg-gray-900/60 border border-white/8 rounded-lg px-4 py-3 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wide font-semibold mb-0.5">
+                    On-Chain USDC Balance
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    (Sepolia USDC held in escrow)
+                  </p>
+                </div>
+                <div className="text-right">
+                  {contractBalanceLoading ? (
+                    <div className="w-4 h-4 border-2 border-gray-500 border-t-white rounded-full animate-spin" />
+                  ) : contractUsdcBalance !== null ? (
+                    <p
+                      className={`font-bold text-lg ${contractUsdcBalance > 0 ? "text-emerald-400" : "text-gray-500"}`}
+                    >
+                      ${contractUsdcBalance.toFixed(2)}
+                    </p>
+                  ) : (
+                    <p className="text-gray-600 text-xs">Click ↺ to load</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl px-4 py-3 text-sm text-yellow-500">
+              ⚠ No contract deployed for this match yet.
+            </div>
+          )}
 
           {/* Settle Match */}
           <div className="bg-gray-900/70 border border-white/5 rounded-xl p-5 space-y-3">

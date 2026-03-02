@@ -1041,6 +1041,10 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           currentBalance={wallet.inAppBalance}
           onRefresh={refreshBalance}
           onClose={() => setModal(null)}
+          contractAddress={match?.contractAddress}
+          matchLabel={
+            match ? `${match.homeTeam} vs ${match.awayTeam}` : undefined
+          }
         />
       )}
       {modal?.type === "withdraw" && wallet && (

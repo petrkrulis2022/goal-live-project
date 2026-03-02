@@ -7,6 +7,10 @@ interface TopUpModalProps {
   currentBalance: number;
   onRefresh: () => void;
   onClose: () => void;
+  /** On-chain escrow contract for the current match (unique per game) */
+  contractAddress?: string | null;
+  /** Label for the match (e.g. "Real Madrid vs Getafe") */
+  matchLabel?: string;
 }
 
 export const TopUpModal: React.FC<TopUpModalProps> = ({
@@ -14,8 +18,11 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({
   currentBalance,
   onRefresh,
   onClose,
+  contractAddress,
+  matchLabel,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [copiedContract, setCopiedContract] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [initialBalance] = useState(currentBalance);
   const detected = currentBalance > initialBalance;
@@ -26,6 +33,14 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({
     navigator.clipboard.writeText(depositAddress).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const handleCopyContract = () => {
+    if (!contractAddress) return;
+    navigator.clipboard.writeText(contractAddress).then(() => {
+      setCopiedContract(true);
+      setTimeout(() => setCopiedContract(false), 2000);
     });
   };
 
@@ -99,7 +114,44 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({
               Balance updates automatically within ~15 seconds.
             </p>
 
-            {/* Deposit address */}
+            {/* Match escrow contract address (unique per game) */}
+            {contractAddress && (
+              <div className="bg-indigo-950/40 border border-indigo-500/30 rounded-xl px-4 py-3 mb-3">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-indigo-300 text-[10px] font-semibold uppercase tracking-wide">
+                    Match Escrow Contract
+                  </p>
+                  <button
+                    onClick={handleCopyContract}
+                    className={`text-[10px] px-2 py-0.5 rounded font-bold transition-colors ${
+                      copiedContract
+                        ? "bg-emerald-600 text-black"
+                        : "bg-indigo-700/60 text-indigo-200 hover:bg-indigo-600/80"
+                    }`}
+                  >
+                    {copiedContract ? "✓ Copied" : "Copy"}
+                  </button>
+                </div>
+                {matchLabel && (
+                  <p className="text-indigo-400 text-[10px] mb-1">
+                    {matchLabel}
+                  </p>
+                )}
+                <p className="text-white font-mono text-xs break-all leading-relaxed">
+                  {contractAddress}
+                </p>
+                <a
+                  href={`https://sepolia.etherscan.io/address/${contractAddress}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-indigo-400 text-[10px] hover:text-indigo-200 mt-1 inline-block"
+                >
+                  View on Etherscan ↗
+                </a>
+              </div>
+            )}
+
+            {/* In-app wallet address */}
             <div className="bg-gray-900 border border-white/12 rounded-xl px-4 py-3 mb-3">
               <p className="text-gray-500 text-[10px] mb-1 font-semibold uppercase tracking-wide">
                 Your In-App Wallet Address
