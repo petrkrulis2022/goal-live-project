@@ -7,6 +7,7 @@ interface SettlementDisplayProps {
   balance: BalanceState;
   players: Player[];
   onReset: () => void;
+  onSwitchEvent: () => void;
 }
 
 function playerName(bet: Bet, players: Player[]): string {
@@ -26,6 +27,7 @@ export const SettlementDisplay: React.FC<SettlementDisplayProps> = ({
   balance,
   players,
   onReset,
+  onSwitchEvent,
 }) => {
   const won = bets.filter((b) => b.status === "settled_won");
   const lost = bets.filter((b) => b.status === "settled_lost");
@@ -104,13 +106,23 @@ export const SettlementDisplay: React.FC<SettlementDisplayProps> = ({
         </div>
       )}
 
-      {/* Reset button */}
-      <button
-        onClick={onReset}
-        className="w-full bg-emerald-500 hover:bg-emerald-400 rounded-xl py-3 text-black font-black text-sm transition-colors"
-      >
-        ↺ Replay Match Again
-      </button>
+      {/* Buttons */}
+      <div style={{ display: "flex", gap: "8px" }}>
+        <button
+          onClick={onSwitchEvent}
+          className="gl-interactive"
+          style={{ flex: 1, background: "#10b981", border: "none", borderRadius: "12px", padding: "12px", color: "#000", fontWeight: 900, fontSize: "14px", cursor: "pointer" }}
+        >
+          ⚽ Switch Event
+        </button>
+        <button
+          onClick={onReset}
+          className="gl-interactive"
+          style={{ flex: 1, background: "rgba(55,65,81,0.8)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "12px", padding: "12px", color: "#fff", fontWeight: 700, fontSize: "14px", cursor: "pointer" }}
+        >
+          ↺ Replay
+        </button>
+      </div>
     </div>
   );
 };

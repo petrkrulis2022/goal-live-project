@@ -240,7 +240,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           top: 0,
           left: 0,
           right: 0,
-          zIndex: 2147483641,
+          zIndex: 2147483643,
           pointerEvents: "none",
           display: "grid",
           gridTemplateColumns: "1fr auto 1fr",
@@ -306,27 +306,68 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
                 border: "1px solid rgba(255,255,255,0.15)",
                 borderRadius: "8px",
                 minWidth: "260px",
-                zIndex: 2147483642,
+                zIndex: 2147483644,
                 overflow: "hidden",
                 boxShadow: "0 8px 32px rgba(0,0,0,0.7)",
               }}
             >
-              <div style={{ padding: "8px 12px", borderBottom: "1px solid rgba(255,255,255,0.1)", fontSize: "11px", color: "#6b7280", fontWeight: 700, letterSpacing: "0.05em" }}>SELECT EVENT</div>
+              <div
+                style={{
+                  padding: "8px 12px",
+                  borderBottom: "1px solid rgba(255,255,255,0.1)",
+                  fontSize: "11px",
+                  color: "#6b7280",
+                  fontWeight: 700,
+                  letterSpacing: "0.05em",
+                }}
+              >
+                SELECT EVENT
+              </div>
               {pickerLoading ? (
-                <div style={{ padding: "12px", color: "#6b7280", fontSize: "12px" }}>Loading…</div>
+                <div
+                  style={{
+                    padding: "12px",
+                    color: "#6b7280",
+                    fontSize: "12px",
+                  }}
+                >
+                  Loading…
+                </div>
               ) : pickerMatches.length === 0 ? (
-                <div style={{ padding: "12px", color: "#6b7280", fontSize: "12px" }}>No events found</div>
+                <div
+                  style={{
+                    padding: "12px",
+                    color: "#6b7280",
+                    fontSize: "12px",
+                  }}
+                >
+                  No events found
+                </div>
               ) : (
                 pickerMatches.map((m) => {
                   const isActive = m.external_match_id === matchKey;
-                  const score = m.status === "pre-match"
-                    ? new Date(m.kickoff_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                    : m.status === "finished"
-                      ? `FT ${m.score_home}–${m.score_away}`
-                      : `${m.score_home}–${m.score_away}`;
-                  const statusDot = m.status === "live" || m.status === "halftime"
-                    ? <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", display: "inline-block", marginRight: 5 }} />
-                    : null;
+                  const score =
+                    m.status === "pre-match"
+                      ? new Date(m.kickoff_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : m.status === "finished"
+                        ? `FT ${m.score_home}–${m.score_away}`
+                        : `${m.score_home}–${m.score_away}`;
+                  const statusDot =
+                    m.status === "live" || m.status === "halftime" ? (
+                      <span
+                        style={{
+                          width: 7,
+                          height: 7,
+                          borderRadius: "50%",
+                          background: "#10b981",
+                          display: "inline-block",
+                          marginRight: 5,
+                        }}
+                      />
+                    ) : null;
                   return (
                     <div
                       key={m.external_match_id}
@@ -334,18 +375,37 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
                       style={{
                         padding: "9px 12px",
                         cursor: "pointer",
-                        background: isActive ? "rgba(16,185,129,0.15)" : "transparent",
-                        borderLeft: isActive ? "3px solid #10b981" : "3px solid transparent",
+                        background: isActive
+                          ? "rgba(16,185,129,0.15)"
+                          : "transparent",
+                        borderLeft: isActive
+                          ? "3px solid #10b981"
+                          : "3px solid transparent",
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
                         borderBottom: "1px solid rgba(255,255,255,0.06)",
                       }}
                     >
-                      <span style={{ color: "#f3f4f6", fontSize: "12px", fontWeight: 600 }}>
-                        {statusDot}{m.home_team} vs {m.away_team}
+                      <span
+                        style={{
+                          color: "#f3f4f6",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {statusDot}
+                        {m.home_team} vs {m.away_team}
                       </span>
-                      <span style={{ color: "#9ca3af", fontSize: "11px", marginLeft: 8 }}>{score}</span>
+                      <span
+                        style={{
+                          color: "#9ca3af",
+                          fontSize: "11px",
+                          marginLeft: 8,
+                        }}
+                      >
+                        {score}
+                      </span>
                     </div>
                   );
                 })
@@ -913,6 +973,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             balance={balance}
             players={players}
             onReset={resetSimulation}
+            onSwitchEvent={() => setShowPicker(true)}
           />
         </div>
       )}
