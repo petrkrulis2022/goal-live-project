@@ -65,13 +65,47 @@ class SupabaseDataService implements IDataService {
   }
 
   // ── getMatchWinnerOdds ────────────────────────
+  // Calls sync-odds (h2h_only) to get a fresh quote from The Odds API,
+  // which also writes the result back to DB. Falls back to the cached DB
+  // value if the edge function call fails (quota exceeded, network, etc.).
   async getMatchWinnerOdds(matchId: string): Promise<MatchWinnerOdds> {
     const { data, error } = await supabase
       .from("matches")
-      .select("odds_api_config")
+      .select("id, odds_api_config")
       .eq("external_match_id", matchId)
       .single();
     if (error || !data) throw new Error(`Match not found: ${matchId}`);
+
+    // Try to get a fresh quote via the sync-odds edge function.
+    try {
+      const res = await fetch(
+        `https://weryswulejhjkrmervnf.supabase.co/functions/v1/sync-odds`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey:
+              "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlcnlzd3VsZWpoamtybWVydm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjEyODEsImV4cCI6MjA4NzU5NzI4MX0.fxMn2LMdoFuYAln-34WUo1uUiWjSnlSzJlDS-sepdtc",
+          },
+          body: JSON.stringify({ match_id: data.id, h2h_only: true }),
+        },
+      );
+      if (res.ok) {
+        const json = await res.json();
+        const mw = json.match_winner as Record<string, number> | undefined;
+        if (mw && (mw.home || mw.draw || mw.away)) {
+          return {
+            home: mw.home ?? 1,
+            away: mw.away ?? 1,
+            draw: mw.draw ?? 1,
+          };
+        }
+      }
+    } catch {
+      // Fall through to cached value
+    }
+
+    // Fallback: return whatever is in DB (may be stale but better than nothing).
     const cfg = (data.odds_api_config ?? {}) as Record<string, unknown>;
     const mw = (cfg.match_winner_odds ?? {}) as Record<string, number>;
     return {

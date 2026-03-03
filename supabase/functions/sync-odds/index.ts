@@ -69,7 +69,7 @@ Deno.serve(async (req: Request) => {
     );
 
     const body = await req.json();
-    const { match_id, manual_odds } = body;
+    const { match_id, manual_odds, h2h_only } = body;
 
     if (!match_id) {
       return json({ error: "match_id is required" }, 400);
@@ -163,18 +163,102 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Fetch player_goal_scorer market from The Odds API
-    const url =
-      `${ODDS_API_BASE}/sports/${sport}/events/${eventId}/odds` +
-      `?apiKey=${apiKey}&regions=uk,us&markets=player_goal_scorer&oddsFormat=decimal`;
+    // ── h2h_only mode: just refresh match-winner odds, skip player stuff ──
+    if (h2h_only) {
+      const h2hUrl =
+        `${ODDS_API_BASE}/sports/${sport}/events/${eventId}/odds` +
+        `?apiKey=${apiKey}&regions=uk,eu&markets=h2h&bookmakers=betfair_ex_eu&oddsFormat=decimal`;
+      const h2hRes = await fetch(h2hUrl);
+      if (!h2hRes.ok) {
+        const txt = await h2hRes.text();
+        return json({ error: `Odds API h2h ${h2hRes.status}: ${txt}` }, 502);
+      }
+      const h2hData: OddsApiEvent = await h2hRes.json();
+      const bm = h2hData.bookmakers?.[0];
+      const mkt = bm?.markets?.find((m: OddsApiMarket) => m.key === "h2h");
+      if (!mkt) {
+        return json({ error: "h2h market not found in response" }, 404);
+      }
+      const mwOdds = {
+        home:
+          mkt.outcomes.find((o: OddsApiOutcome) => o.name === h2hData.home_team)
+            ?.price ?? 0,
+        draw:
+          mkt.outcomes.find((o: OddsApiOutcome) => o.name === "Draw")?.price ??
+          0,
+        away:
+          mkt.outcomes.find((o: OddsApiOutcome) => o.name === h2hData.away_team)
+            ?.price ?? 0,
+      };
+      const existingCfg =
+        (match.odds_api_config as Record<string, unknown>) ?? {};
+      await supabase
+        .from("matches")
+        .update({
+          odds_api_config: { ...existingCfg, match_winner_odds: mwOdds },
+        })
+        .eq("id", match_id);
+      return json({
+        success: true,
+        source: "odds_api_h2h",
+        bookmaker: bm?.title,
+        match_winner: mwOdds,
+      });
+    }
 
-    const apiRes = await fetch(url);
+    // Fetch player_goal_scorer AND h2h markets from The Odds API in parallel
+    const [apiRes, h2hApiRes] = await Promise.all([
+      fetch(
+        `${ODDS_API_BASE}/sports/${sport}/events/${eventId}/odds` +
+          `?apiKey=${apiKey}&regions=uk,us&markets=player_goal_scorer&oddsFormat=decimal`,
+      ),
+      fetch(
+        `${ODDS_API_BASE}/sports/${sport}/events/${eventId}/odds` +
+          `?apiKey=${apiKey}&regions=uk,eu&markets=h2h&bookmakers=betfair_ex_eu&oddsFormat=decimal`,
+      ),
+    ]);
+
     if (!apiRes.ok) {
       const txt = await apiRes.text();
       return json({ error: `Odds API ${apiRes.status}: ${txt}` }, 502);
     }
 
     const oddsData: OddsApiEvent = await apiRes.json();
+
+    // ── Update match_winner_odds from h2h response (best-effort) ─────────
+    let matchWinnerResult: { home: number; draw: number; away: number } | null =
+      null;
+    if (h2hApiRes.ok) {
+      const h2hData: OddsApiEvent = await h2hApiRes.json();
+      const bm = h2hData.bookmakers?.[0];
+      const mkt = bm?.markets?.find((m: OddsApiMarket) => m.key === "h2h");
+      if (mkt) {
+        matchWinnerResult = {
+          home:
+            mkt.outcomes.find(
+              (o: OddsApiOutcome) => o.name === h2hData.home_team,
+            )?.price ?? 0,
+          draw:
+            mkt.outcomes.find((o: OddsApiOutcome) => o.name === "Draw")
+              ?.price ?? 0,
+          away:
+            mkt.outcomes.find(
+              (o: OddsApiOutcome) => o.name === h2hData.away_team,
+            )?.price ?? 0,
+        };
+        const existingCfg =
+          (match.odds_api_config as Record<string, unknown>) ?? {};
+        await supabase
+          .from("matches")
+          .update({
+            odds_api_config: {
+              ...existingCfg,
+              match_winner_odds: matchWinnerResult,
+            },
+          })
+          .eq("id", match_id);
+      }
+    }
 
     // ── Average odds across all bookmakers ───────────────────────────────
     const accumulator: Record<string, number[]> = {};
@@ -237,6 +321,7 @@ Deno.serve(async (req: Request) => {
       bookmakers_checked: (oddsData.bookmakers ?? []).length,
       players_updated: updated.length,
       updated,
+      match_winner: matchWinnerResult,
     });
   } catch (err) {
     return json({ error: String(err) }, 500);

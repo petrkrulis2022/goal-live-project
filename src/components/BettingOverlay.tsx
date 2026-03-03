@@ -133,6 +133,43 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     ? awayPlayers.filter((p) => p.isStarter)
     : awayPlayers;
 
+  // Manual panel flip — persisted per match in localStorage.
+  const [panelFlipped, setPanelFlipped] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(`gl_panel_flip_${matchKey}`) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  // Reload preference when switching between matches.
+  useEffect(() => {
+    try {
+      setPanelFlipped(
+        localStorage.getItem(`gl_panel_flip_${matchKey}`) === "1",
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [matchKey]);
+
+  // Persist preference.
+  useEffect(() => {
+    try {
+      if (panelFlipped) localStorage.setItem(`gl_panel_flip_${matchKey}`, "1");
+      else localStorage.removeItem(`gl_panel_flip_${matchKey}`);
+    } catch {
+      /* ignore */
+    }
+  }, [panelFlipped, matchKey]);
+
+  const leftLineup = panelFlipped ? awayLineup : homeLineup;
+  const rightLineup = panelFlipped ? homeLineup : awayLineup;
+  const leftTeamName = panelFlipped ? match?.awayTeam : match?.homeTeam;
+  const rightTeamName = panelFlipped ? match?.homeTeam : match?.awayTeam;
+  const leftLabelColor = panelFlipped ? "#fca5a5" : "#93c5fd";
+  const rightLabelColor = panelFlipped ? "#93c5fd" : "#fca5a5";
+
   const activeNgsBet: Bet | null =
     bets.find(
       (b) =>
@@ -303,6 +340,33 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             }}
           >
             ⚽ Events
+          </button>
+
+          {/* Panel swap button */}
+          <button
+            onClick={() => setPanelFlipped((v) => !v)}
+            className="gl-interactive"
+            title={
+              panelFlipped
+                ? "Panels flipped — click to restore"
+                : "Swap left/right team panels"
+            }
+            style={{
+              background: panelFlipped
+                ? "rgba(251,191,36,0.2)"
+                : "rgba(0,0,0,0.6)",
+              border: `1px solid ${
+                panelFlipped ? "rgba(251,191,36,0.5)" : "rgba(255,255,255,0.18)"
+              }`,
+              borderRadius: "5px",
+              color: panelFlipped ? "#fbbf24" : "#9ca3af",
+              fontSize: "13px",
+              fontWeight: 700,
+              padding: "4px 9px",
+              cursor: "pointer",
+            }}
+          >
+            ⇆
           </button>
 
           {showPicker && (
@@ -781,7 +845,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
         </div>
       )}
 
-      {/* ── HOME TEAM PANEL (left side) ──────────────────────────────── */}
+      {/* ── LEFT PANEL (home in 1st half, away in 2nd half) ───────────── */}
       <div
         className="gl-interactive"
         style={{
@@ -803,7 +867,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           style={{
             padding: "4px 6px 2px",
             flexShrink: 0,
-            color: "#93c5fd",
+            color: leftLabelColor,
             fontSize: "8px",
             fontWeight: 700,
             letterSpacing: "0.08em",
@@ -813,7 +877,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             textOverflow: "ellipsis",
           }}
         >
-          {match?.homeTeam ?? "Home"}
+          {leftTeamName ?? "Home"}
         </div>
         {/* Player list */}
         <div
@@ -827,7 +891,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             pointerEvents: "none",
           }}
         >
-          {homeLineup.map((p) => {
+          {leftLineup.map((p) => {
             const settled = bets.find(
               (b) =>
                 b.betType === "NEXT_GOAL_SCORER" &&
@@ -850,7 +914,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
         </div>
       </div>
 
-      {/* ── AWAY TEAM PANEL (right side) ──────────────────────────────── */}
+      {/* ── RIGHT PANEL (away in 1st half, home in 2nd half) ──────────── */}
       <div
         className="gl-interactive"
         style={{
@@ -872,7 +936,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           style={{
             padding: "4px 6px 2px",
             flexShrink: 0,
-            color: "#fca5a5",
+            color: rightLabelColor,
             fontSize: "8px",
             fontWeight: 700,
             letterSpacing: "0.08em",
@@ -883,7 +947,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             textAlign: "right",
           }}
         >
-          {match?.awayTeam ?? "Away"}
+          {rightTeamName ?? "Away"}
         </div>
         {/* Player list */}
         <div
@@ -897,7 +961,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             pointerEvents: "none",
           }}
         >
-          {awayLineup.map((p) => {
+          {rightLineup.map((p) => {
             const settled = bets.find(
               (b) =>
                 b.betType === "NEXT_GOAL_SCORER" &&
