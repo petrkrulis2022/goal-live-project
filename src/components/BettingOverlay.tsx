@@ -29,6 +29,7 @@ const AD_VIBE_URL =
     : "";
 import { useMatchData } from "../hooks/useMatchData";
 import { useBetting } from "../hooks/useBetting";
+import { usePoolBalance } from "../hooks/usePoolBalance";
 import { MatchInfo } from "./MatchInfo";
 import { BalanceDisplay } from "./BalanceDisplay";
 import { PlayerButton } from "./PlayerButton";
@@ -84,6 +85,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     wallet?.address ?? null,
     match?.id, // Supabase UUID — filters lockedThisGame to current match only
   );
+  const poolBalance = usePoolBalance(match?.contractAddress);
 
   const [modal, setModal] = useState<ModalState>(null);
   const [hidden, setHidden] = useState(false);
@@ -535,6 +537,29 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
 
           {/* match scoreboard */}
           <MatchInfo match={match} />
+
+          {/* Pool balance chip */}
+          {poolBalance !== null && (
+            <div
+              className="gl-interactive"
+              style={{
+                background: "rgba(0,0,0,0.55)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "5px",
+                padding: "3px 8px",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ fontSize: "10px" }}>🏦</span>
+              <span style={{ color: "#6b7280", fontSize: "9px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Pool</span>
+              <span style={{ color: "#d1fae5", fontSize: "12px", fontWeight: 700 }}>
+                ${poolBalance.toFixed(2)}
+              </span>
+            </div>
+          )}
 
           {/* MW bet buttons — Home / Draw / Away */}
           {!isFinished &&
