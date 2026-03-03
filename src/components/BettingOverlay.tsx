@@ -85,7 +85,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     wallet?.address ?? null,
     match?.id, // Supabase UUID — filters lockedThisGame to current match only
   );
-  const poolBalance = usePoolBalance(match?.contractAddress);
+  const poolBalance = usePoolBalance(match?.contractAddress, matchKey ?? null);
 
   const [modal, setModal] = useState<ModalState>(null);
   const [hidden, setHidden] = useState(false);
@@ -554,8 +554,20 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
               }}
             >
               <span style={{ fontSize: "10px" }}>🏦</span>
-              <span style={{ color: "#6b7280", fontSize: "9px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Pool</span>
-              <span style={{ color: "#d1fae5", fontSize: "12px", fontWeight: 700 }}>
+              <span
+                style={{
+                  color: "#6b7280",
+                  fontSize: "9px",
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                Pool
+              </span>
+              <span
+                style={{ color: "#d1fae5", fontSize: "12px", fontWeight: 700 }}
+              >
                 ${poolBalance.toFixed(2)}
               </span>
             </div>

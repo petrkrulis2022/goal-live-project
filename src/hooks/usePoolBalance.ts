@@ -1,18 +1,31 @@
 import { useState, useEffect } from "react";
+import { Interface } from "ethers";
 
-const USDC_CONTRACT = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
 const SEPOLIA_RPC = "https://sepolia.drpc.org";
 const POLL_MS = 60_000; // refresh every 60 s
 
+// Minimal ABI for the public matches(string) getter.
+// Solidity omits nested mappings from auto-generated getters, so the return
+// tuple is: matchId, isActive, isSettled, poolSize, createdAt, finalOutcome, homeGoals, awayGoals
+const IFACE = new Interface([
+  "function matches(string matchId) view returns (string, bool, bool, uint256, uint256, uint8, uint8, uint8)",
+]);
+
 /**
- * Polls the on-chain USDC balance of a GoalLiveBetting contract.
- * Returns null while loading / no address provided.
+ * Polls the on-chain poolSize for a specific match inside the singleton
+ * GoalLiveBetting contract.  Returns null while loading or when params missing.
+ *
+ * @param contractAddress  The singleton contract address
+ * @param onChainMatchId   The external_match_id string used as the mapping key
  */
-export function usePoolBalance(contractAddress: string | null | undefined): number | null {
+export function usePoolBalance(
+  contractAddress: string | null | undefined,
+  onChainMatchId: string | null | undefined,
+): number | null {
   const [poolBalance, setPoolBalance] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!contractAddress) {
+    if (!contractAddress || !onChainMatchId) {
       setPoolBalance(null);
       return;
     }
@@ -21,15 +34,14 @@ export function usePoolBalance(contractAddress: string | null | undefined): numb
 
     async function fetch_() {
       try {
-        const data =
-          "0x70a08231" + contractAddress!.slice(2).padStart(64, "0");
+        const data = IFACE.encodeFunctionData("matches", [onChainMatchId]);
         const res = await fetch(SEPOLIA_RPC, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             jsonrpc: "2.0",
             method: "eth_call",
-            params: [{ to: USDC_CONTRACT, data }, "latest"],
+            params: [{ to: contractAddress, data }, "latest"],
             id: 1,
           }),
         });
@@ -37,9 +49,12 @@ export function usePoolBalance(contractAddress: string | null | undefined): numb
         if (cancelled) return;
         if (!json.result || json.result === "0x") {
           setPoolBalance(0);
-        } else {
-          setPoolBalance(parseInt(json.result, 16) / 1_000_000);
+          return;
         }
+        // Decoded tuple: [matchId(str), isActive, isSettled, poolSize(uint256), ...]
+        const decoded = IFACE.decodeFunctionResult("matches", json.result);
+        const poolSizeWei = decoded[3] as bigint; // poolSize is index 3
+        setPoolBalance(Number(poolSizeWei) / 1_000_000);
       } catch {
         // silently ignore — stale value stays displayed
       }
@@ -51,7 +66,7 @@ export function usePoolBalance(contractAddress: string | null | undefined): numb
       cancelled = true;
       clearInterval(iv);
     };
-  }, [contractAddress]);
+  }, [contractAddress, onChainMatchId]);
 
   return poolBalance;
 }
