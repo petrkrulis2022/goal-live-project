@@ -93,13 +93,16 @@ interface FormState {
   poolAmountUsdc: string;
 }
 
+// Platform wallet = oracle (signs settleMatch on-chain via ORACLE_PRIVATE_KEY in edge fn)
+const PLATFORM_ORACLE = "0xcb443c2db4025128964397CCb5BC4F4E8ab6A665";
+
 const EMPTY: FormState = {
   externalMatchId: "",
   homeTeam: "",
   awayTeam: "",
   kickoffAt: "",
   isDemo: false,
-  oracleAddress: "",
+  oracleAddress: PLATFORM_ORACLE,
   poolAmountUsdc: "",
 };
 
@@ -122,6 +125,27 @@ export default function CreateEvent() {
   const [eventsLoading, setEventsLoading] = useState(true);
   const [eventsError, setEventsError] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<OddsEvent | null>(null);
+  // IDs of fixtures already in the DB — shown as disabled in the picker
+  const [existingMatchIds, setExistingMatchIds] = useState<Set<string>>(
+    new Set(),
+  );
+
+  useEffect(() => {
+    supabase
+      .from("matches")
+      .select("external_match_id")
+      .then(({ data }) => {
+        if (data) {
+          setExistingMatchIds(
+            new Set(
+              data.map(
+                (r: { external_match_id: string }) => r.external_match_id,
+              ),
+            ),
+          );
+        }
+      });
+  }, []);
 
   useEffect(() => {
     async function fetchUpcomingGames() {
@@ -560,15 +584,19 @@ export default function CreateEvent() {
                 badge: "bg-gray-700/50 text-gray-400 border-gray-600/30",
               };
               const isSelected = selectedEvent?.id === evt.id;
+              const alreadyCreated = existingMatchIds.has(evt.id);
               return (
                 <button
                   key={evt.id}
                   type="button"
-                  onClick={() => pickEvent(evt)}
+                  onClick={() => !alreadyCreated && pickEvent(evt)}
+                  disabled={alreadyCreated}
                   className={`w-full text-left px-3.5 py-3 rounded-xl border transition-all duration-150 ${
-                    isSelected
-                      ? "border-green-500/50 bg-green-500/8"
-                      : "border-white/5 bg-gray-950 hover:border-white/10 hover:bg-gray-800/60"
+                    alreadyCreated
+                      ? "border-white/3 bg-gray-950/40 opacity-45 cursor-not-allowed"
+                      : isSelected
+                        ? "border-green-500/50 bg-green-500/8"
+                        : "border-white/5 bg-gray-950 hover:border-white/10 hover:bg-gray-800/60"
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
@@ -577,6 +605,11 @@ export default function CreateEvent() {
                     >
                       {SPORT_LABELS[evt.sport_key] ?? evt.sport_key}
                     </span>
+                    {alreadyCreated && (
+                      <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border bg-gray-700/40 text-gray-500 border-gray-600/20">
+                        Already created
+                      </span>
+                    )}
                     <span className="ml-auto text-[11px] text-gray-500 font-mono">
                       {kickoffLabel(evt.commence_time)}
                     </span>
