@@ -17,6 +17,8 @@ export type MatchWinnerOutcome = "home" | "away" | "draw";
 // ── Match ──────────────────────────────────────
 export interface Match {
   id: string;
+  /** Supabase row UUID — use for per-match DB queries (match_id FK) */
+  dbId?: string;
   homeTeam: string;
   awayTeam: string;
   status: MatchStatus;

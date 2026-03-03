@@ -17,7 +17,7 @@ export function useBetting(wallet: string | null, matchUuid?: string) {
   const refresh = useCallback(async () => {
     if (!wallet) return;
     const [b, bal] = await Promise.all([
-      services.betting.getBets(wallet),
+      services.betting.getBets(wallet, matchUuid),
       services.betting.getBalance(wallet, matchUuid),
     ]);
     setBets(b);
@@ -31,7 +31,7 @@ export function useBetting(wallet: string | null, matchUuid?: string) {
       provisional: bal.provisional,
       potentialPayout: bal.potentialPayout,
     });
-  }, [wallet]);
+  }, [wallet, matchUuid]);
 
   // Keep balance.wallet in sync with in-app balance from wallet service.
   // Also re-run refresh so locked/potentialPayout stay current after any state change.

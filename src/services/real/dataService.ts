@@ -10,6 +10,7 @@ import { supabase, type DbMatch, type DbPlayer } from "../../lib/supabase";
 function dbMatchToMatch(row: DbMatch): Match {
   return {
     id: row.external_match_id,
+    dbId: row.id,
     homeTeam: row.home_team,
     awayTeam: row.away_team,
     status: row.status as Match["status"],

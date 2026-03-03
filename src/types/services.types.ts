@@ -85,7 +85,7 @@ export interface ChangeBetResult {
 export interface IBettingService {
   placeBet(params: PlaceBetParams): Promise<PlaceBetResult>;
   changeBet(params: ChangeBetParams): Promise<ChangeBetResult>;
-  getBets(wallet: string): Promise<Bet[]>;
+  getBets(wallet: string, matchDbId?: string): Promise<Bet[]>;
   getBalance(wallet: string, matchUuid?: string): Promise<BalanceState>;
   previewPenalty(betId: string, currentMinute: number): PenaltyPreview;
   /** Called on goal: marks winning/losing NGS bets provisional */

@@ -85,6 +85,24 @@ class SupabaseBettingService implements IBettingService {
         };
     }
 
+    // Only one active MATCH_WINNER bet per wallet per match
+    if (betType === "MATCH_WINNER") {
+      const { data: existing } = await supabase
+        .from("bets")
+        .select("id")
+        .eq("bettor_wallet", wallet)
+        .eq("match_id", match.id)
+        .eq("bet_type", "MATCH_WINNER")
+        .eq("status", "active")
+        .maybeSingle();
+      if (existing)
+        return {
+          success: false,
+          bet: null as never,
+          error: `EXISTING_MW_BET:${existing.id}`,
+        };
+    }
+
     const { data, error } = await supabase
       .from("bets")
       .insert({
@@ -205,12 +223,14 @@ class SupabaseBettingService implements IBettingService {
   }
 
   // ── getBets ──────────────────────────────────
-  async getBets(wallet: string): Promise<Bet[]> {
-    const { data, error } = await supabase
+  async getBets(wallet: string, matchDbId?: string): Promise<Bet[]> {
+    let query = supabase
       .from("bets")
       .select("*")
       .eq("bettor_wallet", wallet)
       .order("placed_at", { ascending: false });
+    if (matchDbId) query = query.eq("match_id", matchDbId);
+    const { data, error } = await query;
     if (error) throw new Error(error.message);
     const bets = (data as DbBet[]).map(dbBetToBet);
     bets.forEach((b) => this._cache.set(b.id, b));
@@ -218,18 +238,16 @@ class SupabaseBettingService implements IBettingService {
   }
 
   // ── getBalance ───────────────────────────────
-  async getBalance(wallet: string, matchUuid?: string): Promise<BalanceState> {
-    const bets = await this.getBets(wallet);
+  async getBalance(wallet: string, matchDbId?: string): Promise<BalanceState> {
+    // Pass matchDbId so getBets only loads bets for this match
+    const bets = await this.getBets(wallet, matchDbId);
     const active = bets.filter((b) => b.status === "active");
     const provisional = bets
       .filter((b) => b.status === "provisional_win")
       .reduce((s, b) => s + b.current_amount * b.odds, 0);
     const locked = active.reduce((s, b) => s + b.current_amount, 0);
-    const lockedThisGame = matchUuid
-      ? active
-          .filter((b) => b.matchId === matchUuid)
-          .reduce((s, b) => s + b.current_amount, 0)
-      : locked;
+    // bets are already filtered per-match, so lockedThisGame === locked
+    const lockedThisGame = locked;
     const potentialPayout = active.reduce(
       (s, b) => s + b.current_amount * b.odds,
       0,

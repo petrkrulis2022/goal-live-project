@@ -83,7 +83,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
   } = useMatchData(matchKey);
   const { bets, balance, placeBet, changeBet, refresh } = useBetting(
     wallet?.address ?? null,
-    match?.id, // Supabase UUID — filters lockedThisGame to current match only
+    match?.dbId, // Supabase UUID — filters bets/balance to current match only
   );
   const poolBalance = usePoolBalance(match?.contractAddress, matchKey ?? null);
 
@@ -187,6 +187,12 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
       ) ?? null,
     [bets],
   );
+
+  // Any active MW bet regardless of outcome — used so switching Home→Away
+  // routes through changeBet (with penalty) instead of placing a second bet.
+  const activeMwBet =
+    bets.find((b) => b.betType === "MATCH_WINNER" && b.status === "active") ??
+    null;
 
   const getEgBet = useCallback(
     (goals: number) =>
@@ -770,25 +776,25 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           className="gl-interactive"
           style={{
             position: "fixed",
-            top: "34px",
+            top: "40px",
             left: "50%",
             transform: "translateX(-50%)",
-            zIndex: 2147483640,
+            zIndex: 2147483644,
             pointerEvents: "none",
             display: "flex",
             alignItems: "center",
-            gap: "3px",
-            padding: "2px 6px 3px",
-            background: "rgba(0,0,0,0.72)",
-            borderRadius: "0 0 7px 7px",
-            border: "1px solid rgba(255,255,255,0.08)",
+            gap: "4px",
+            padding: "4px 8px 5px",
+            background: "rgba(0,0,0,0.82)",
+            borderRadius: "0 0 8px 8px",
+            border: "1px solid rgba(255,255,255,0.10)",
             borderTop: "none",
           }}
         >
           <span
             style={{
               color: "#6b7280",
-              fontSize: "8px",
+              fontSize: "9px",
               fontWeight: 700,
               letterSpacing: "0.05em",
               marginRight: "2px",
@@ -812,20 +818,23 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
                     ? "rgba(6,78,59,0.7)"
                     : "rgba(30,20,50,0.85)",
                   border: `1px solid ${egBet ? "rgba(52,211,153,0.5)" : "rgba(255,255,255,0.13)"}`,
-                  borderRadius: "4px",
+                  borderRadius: "5px",
                   cursor: "pointer",
-                  padding: "2px 5px",
+                  padding: "5px 9px",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  minWidth: "28px",
+                  minWidth: "34px",
+                  minHeight: "36px",
+                  justifyContent: "center",
                 }}
               >
                 <span
                   style={{
                     color: egBet ? "#34d399" : "#e5e7eb",
-                    fontSize: "8px",
+                    fontSize: "10px",
                     fontWeight: 700,
+                    lineHeight: 1.2,
                   }}
                 >
                   {label}
@@ -833,8 +842,9 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
                 <span
                   style={{
                     color: "#fde047",
-                    fontSize: "8px",
+                    fontSize: "9px",
                     fontWeight: 600,
+                    lineHeight: 1.2,
                   }}
                 >
                   {odds}×
@@ -1137,7 +1147,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           goalWindow={currentGoalWindow}
           matchId={match?.id ?? ""}
           balance={balance}
-          activeBet={getMwBet(modal.outcome)}
+          activeBet={activeMwBet}
           onPlaceBet={placeBet}
           onChangeBet={changeBet}
           onClose={() => setModal(null)}
