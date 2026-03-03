@@ -167,13 +167,21 @@ export default function CreateEvent() {
         // show games starting from now up to 7 days ahead
         const windowEnd = now + 7 * 24 * 60 * 60 * 1000;
 
-        const results = await Promise.all(
+        const settled = await Promise.allSettled(
           sports.map((sport) =>
             fetch(
               `/api/odds/sports/${sport}/events?apiKey=${ODDS_API_KEY}&dateFormat=iso`,
             ).then((r) => r.json()),
           ),
         );
+
+        // Collect only successful responses that are arrays
+        const results = settled
+          .filter(
+            (r): r is PromiseFulfilledResult<OddsEvent[]> =>
+              r.status === "fulfilled" && Array.isArray(r.value),
+          )
+          .map((r) => r.value);
 
         const all: OddsEvent[] = results
           .flat()
