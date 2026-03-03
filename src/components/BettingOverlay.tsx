@@ -1129,11 +1129,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           goalWindow={currentGoalWindow}
           matchId={match?.id ?? ""}
           balance={balance}
-          activeBet={
-            activeNgsBet?.current_player_id === modal.player.id
-              ? activeNgsBet
-              : null
-          }
+          activeBet={activeNgsBet}
           onPlaceBet={placeBet}
           onChangeBet={changeBet}
           onClose={() => setModal(null)}
