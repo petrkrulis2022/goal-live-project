@@ -82,6 +82,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
   } = useMatchData(matchKey);
   const { bets, balance, placeBet, changeBet, refresh } = useBetting(
     wallet?.address ?? null,
+    match?.id, // Supabase UUID — filters lockedThisGame to current match only
   );
 
   const [modal, setModal] = useState<ModalState>(null);

@@ -103,10 +103,14 @@ export interface BetChange {
 
 // ── Balance ───────────────────────────────────
 export interface BalanceState {
-  /** Free / withdrawable USDC */
+  /** Free / withdrawable USDC (= inAppBalance from wallet service) */
   wallet: number;
-  /** USDC locked in active bets */
+  /** USDC locked in active bets — across ALL games */
   locked: number;
+  /** USDC locked in active bets — current match only */
+  lockedThisGame: number;
+  /** wallet - locked: how much the user can still bet with */
+  available: number;
   /** Provisional winnings (not withdrawable until settlement) */
   provisional: number;
   /** Potential payout if all active bets win (stake × odds) */

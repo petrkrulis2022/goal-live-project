@@ -63,7 +63,7 @@ class MockBettingService implements IBettingService {
     return this.bets.filter((b) => b.bettorWallet === wallet);
   }
 
-  async getBalance(wallet: string): Promise<BalanceState> {
+  async getBalance(wallet: string, matchUuid?: string): Promise<BalanceState> {
     // Compute locked/provisional dynamically from active bets for this wallet.
     // wallet amount is sourced from the real wallet service in useBetting.
     const active = this.bets.filter(
@@ -75,12 +75,24 @@ class MockBettingService implements IBettingService {
       )
       .reduce((sum, b) => sum + b.current_amount * b.odds, 0);
     const locked = active.reduce((sum, b) => sum + b.current_amount, 0);
+    const lockedThisGame = matchUuid
+      ? active
+          .filter((b) => b.matchId === matchUuid)
+          .reduce((sum, b) => sum + b.current_amount, 0)
+      : locked;
     // Potential payout = sum of (stake × odds) for all currently active bets
     const potentialPayout = active.reduce(
       (sum, b) => sum + b.current_amount * b.odds,
       0,
     );
-    return { wallet: 0, locked, provisional, potentialPayout };
+    return {
+      wallet: 0,
+      locked,
+      lockedThisGame,
+      available: 0,
+      provisional,
+      potentialPayout,
+    };
   }
 
   previewPenalty(betId: string, currentMinute: number): PenaltyPreview {

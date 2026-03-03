@@ -2,11 +2,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { services } from "../services";
 import type { Bet, BalanceState } from "../types";
 
-export function useBetting(wallet: string | null) {
+export function useBetting(wallet: string | null, matchUuid?: string) {
   const [bets, setBets] = useState<Bet[]>([]);
   const [balance, setBalance] = useState<BalanceState>(() => ({
     wallet: services.wallet.getState()?.balance ?? 0,
     locked: 0,
+    lockedThisGame: 0,
+    available: services.wallet.getState()?.inAppBalance ?? 0,
     provisional: 0,
     potentialPayout: 0,
   }));
@@ -16,13 +18,16 @@ export function useBetting(wallet: string | null) {
     if (!wallet) return;
     const [b, bal] = await Promise.all([
       services.betting.getBets(wallet),
-      services.betting.getBalance(wallet),
+      services.betting.getBalance(wallet, matchUuid),
     ]);
     setBets(b);
     // wallet = in-app balance (what user can bet with); locked/provisional from betting service
+    const inApp = services.wallet.getState()?.inAppBalance ?? 0;
     setBalance({
-      wallet: services.wallet.getState()?.inAppBalance ?? 0,
+      wallet: inApp,
       locked: bal.locked,
+      lockedThisGame: bal.lockedThisGame,
+      available: Math.max(0, inApp - bal.locked),
       provisional: bal.provisional,
       potentialPayout: bal.potentialPayout,
     });
@@ -37,7 +42,12 @@ export function useBetting(wallet: string | null) {
 
   useEffect(() => {
     return services.wallet.onStateChange((ws) => {
-      setBalance((prev) => ({ ...prev, wallet: ws?.inAppBalance ?? 0 }));
+      const inApp = ws?.inAppBalance ?? 0;
+      setBalance((prev) => ({
+        ...prev,
+        wallet: inApp,
+        available: Math.max(0, inApp - prev.locked),
+      }));
       // Re-sync locked / potentialPayout whenever wallet state changes
       if (ws) refreshRef.current();
     });

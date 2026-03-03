@@ -120,14 +120,26 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         </button>
       )}
 
-      {/* Locked amount + possible winning — only when there are active bets */}
+      {/* Available / locked split — only when there are active bets anywhere */}
       {balance.locked > 0 && (
         <>
           <span style={{ color: "rgba(255,255,255,0.15)", fontSize: "10px" }}>
             │
           </span>
+          <span style={{ color: "#6b7280", fontSize: "10px", fontWeight: 600 }}>
+            Avail
+          </span>
+          <span style={{ color: "#d1fae5", fontSize: "13px", fontWeight: 700 }}>
+            ${balance.available.toFixed(2)}
+          </span>
+          <span style={{ color: "rgba(255,255,255,0.15)", fontSize: "10px" }}>
+            │
+          </span>
           <span style={{ color: "#fbbf24", fontSize: "11px", fontWeight: 600 }}>
-            🔒 ${balance.locked.toFixed(2)}
+            🔒 ${balance.lockedThisGame.toFixed(2)}
+          </span>
+          <span style={{ color: "rgba(255,255,255,0.40)", fontSize: "9px", marginLeft: "1px" }}>
+            game
           </span>
           <span style={{ color: "rgba(255,255,255,0.15)", fontSize: "10px" }}>
             │

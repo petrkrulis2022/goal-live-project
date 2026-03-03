@@ -218,18 +218,30 @@ class SupabaseBettingService implements IBettingService {
   }
 
   // ── getBalance ───────────────────────────────
-  async getBalance(wallet: string): Promise<BalanceState> {
+  async getBalance(wallet: string, matchUuid?: string): Promise<BalanceState> {
     const bets = await this.getBets(wallet);
     const active = bets.filter((b) => b.status === "active");
     const provisional = bets
       .filter((b) => b.status === "provisional_win")
       .reduce((s, b) => s + b.current_amount * b.odds, 0);
     const locked = active.reduce((s, b) => s + b.current_amount, 0);
+    const lockedThisGame = matchUuid
+      ? active
+          .filter((b) => b.matchId === matchUuid)
+          .reduce((s, b) => s + b.current_amount, 0)
+      : locked;
     const potentialPayout = active.reduce(
       (s, b) => s + b.current_amount * b.odds,
       0,
     );
-    return { wallet: 0, locked, provisional, potentialPayout };
+    return {
+      wallet: 0,
+      locked,
+      lockedThisGame,
+      available: 0,
+      provisional,
+      potentialPayout,
+    };
   }
 
   // ── previewPenalty ────────────────────────────
