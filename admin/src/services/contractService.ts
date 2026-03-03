@@ -72,6 +72,35 @@ export const contractService = {
   },
 
   /**
+   * Get the user's locked USDC amount for a specific match (sum of active bets).
+   * Reads userBetIds[] on-chain and sums currentAmount for bets matching matchId.
+   * Returns amount in human-readable USDC units.
+   */
+  async getUserLockedForMatch(
+    userAddress: string,
+    matchId: string,
+  ): Promise<number> {
+    const address = getStoredContractAddress();
+    if (!address) return 0;
+    const provider = getProvider();
+    const contract = new ethers.Contract(
+      address,
+      GLB_ABI as ethers.InterfaceAbi,
+      provider,
+    );
+    const betIds: bigint[] = await contract.getUserBets(userAddress);
+    let total = 0n;
+    for (const betId of betIds) {
+      const bet = await contract.bets(betId);
+      // bet[1] = matchId (string), bet[4] = currentAmount, bet[8] = status (0=Active)
+      if (bet.matchId === matchId && Number(bet.status) === 0) {
+        total += bet.currentAmount;
+      }
+    }
+    return Number(ethers.formatUnits(total, 6));
+  },
+
+  /**
    * Deploy the GoalLiveBetting singleton (first time only), then call
    * createMatch(externalMatchId) to register the match.
    *
@@ -193,8 +222,15 @@ export const contractService = {
       const gt = goalsTarget ?? 0;
       tx = await contract.lockBetEG(matchId, gt, amount, oddsInt);
     } else {
-      // NGS — playerId is uint256 in contract
-      const playerIdNum = BigInt(playerId.replace(/\D/g, "") || "0");
+      // NGS — playerId must be the Goalserve static integer (external_player_id).
+      // Reject UUIDs: if the string contains '-' it's a UUID, not a numeric ID.
+      if (playerId.includes("-")) {
+        throw new Error(
+          `lockBet NGS: playerId must be a Goalserve integer (external_player_id), got UUID "${playerId}". ` +
+          `Make sure the UI passes player.external_player_id, not player.id.`
+        );
+      }
+      const playerIdNum = BigInt(playerId);
       tx = await contract.lockBetNGS(matchId, playerIdNum, amount, oddsInt);
     }
     const receipt = await tx.wait();
@@ -205,6 +241,40 @@ export const contractService = {
       blockchainBetId: blockchainBetId as string,
       txHash: tx.hash as string,
     };
+  },
+
+  /**
+   * Emergency settle: owner override when CRE oracle fails to settle.
+   * Calls emergencySettle(matchId, goalScorers[], winner, homeGoals, awayGoals).
+   * Same parameters as settleMatchOnChain.
+   */
+  async emergencySettleOnChain(
+    matchId: string,
+    scorerPlayerIds: string[],
+    winner: 0 | 1 | 2,
+    homeGoals: number,
+    awayGoals: number,
+  ): Promise<string> {
+    const address = getStoredContractAddress();
+    if (!address) throw new Error("Contract not deployed yet.");
+    const signer = await getSigner();
+    const contract = getContract(address, signer);
+    const scorersBigInt = scorerPlayerIds.map((id) => {
+      if (id.includes("-")) {
+        throw new Error(`emergencySettle: scorer ID "${id}" looks like a UUID. Pass Goalserve external_player_id integers.`);
+      }
+      return BigInt(id);
+    });
+    console.log("[contractService] emergencySettle", { matchId, scorersBigInt, winner, homeGoals, awayGoals });
+    const tx = await contract.emergencySettle(
+      matchId,
+      scorersBigInt,
+      winner,
+      homeGoals,
+      awayGoals,
+    );
+    await tx.wait();
+    return tx.hash as string;
   },
 
   /**
@@ -317,9 +387,16 @@ export const contractService = {
     if (!address) throw new Error("Contract not deployed yet.");
     const signer = await getSigner();
     const contract = getContract(address, signer);
-    const scorersBigInt = scorerPlayerIds.map((id) =>
-      BigInt(id.replace(/\D/g, "") || "0"),
-    );
+    // scorerPlayerIds must be Goalserve static integer strings (external_player_id)
+    const scorersBigInt = scorerPlayerIds.map((id) => {
+      if (id.includes("-")) {
+        throw new Error(
+          `settleMatchOnChain: scorer ID "${id}" looks like a UUID. ` +
+          `Pass Goalserve external_player_id integers instead.`
+        );
+      }
+      return BigInt(id);
+    });
     console.log("[contractService] settleMatch", {
       matchId,
       scorersBigInt,

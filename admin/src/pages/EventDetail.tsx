@@ -14,7 +14,7 @@ const ODDS_API_KEY = "46978d34dc5ac52756dd87ffbf9844b0";
 // Note: Goalserve key is baked into the Vite proxy rewrite (vite.admin.config.ts)
 
 // Sepolia on-chain constants
-const SEPOLIA_RPC = "https://ethereum-sepolia-rpc.publicnode.com";
+const SEPOLIA_RPC = "https://sepolia.drpc.org";
 const USDC_SEPOLIA = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
 
 /** Returns USDC balance (6 decimals) of an address on Sepolia */

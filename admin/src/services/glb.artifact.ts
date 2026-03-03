@@ -716,6 +716,39 @@ export const GLB_ABI = [
   },
   {
     "type": "function",
+    "name": "emergencySettle",
+    "inputs": [
+      {
+        "name": "matchId",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "goalScorers",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "winner",
+        "type": "uint8",
+        "internalType": "enum GoalLiveBetting.MatchOutcome"
+      },
+      {
+        "name": "homeGoals",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "awayGoals",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "settleMatch",
     "inputs": [
       {

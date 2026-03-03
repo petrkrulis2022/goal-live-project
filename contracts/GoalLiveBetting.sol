@@ -447,6 +447,36 @@ contract GoalLiveBetting is ReentrancyGuard, Ownable {
     //  Admin — Config
     // ─────────────────────────────────────────────────────────────
 
+    /**
+     * @notice Emergency settle: owner can settle a match manually if the
+     *         Chainlink CRE oracle fails or is unreachable. Identical logic to
+     *         settleMatch() but callable by the owner (deployer / admin multisig).
+     * @dev    Use only when CRE job has not settled within ~15 min of FT.
+     */
+    function emergencySettle(
+        string calldata matchId,
+        uint256[] calldata goalScorers,
+        MatchOutcome winner,
+        uint8 homeGoals,
+        uint8 awayGoals
+    ) external onlyOwner {
+        Match storage m = matches[matchId];
+        require(m.isActive, "GLB: match not active");
+        require(!m.isSettled, "GLB: already settled");
+
+        for (uint256 i; i < goalScorers.length; i++) {
+            m.goalScorers[goalScorers[i]] = true;
+        }
+
+        m.isActive = false;
+        m.finalOutcome = winner;
+        m.homeGoals = homeGoals;
+        m.awayGoals = awayGoals;
+        m.isSettled = true;
+
+        emit MatchSettled(matchId, goalScorers, winner, homeGoals, awayGoals);
+    }
+
     function setOracle(address newOracle) external onlyOwner {
         require(newOracle != address(0), "GLB: zero oracle");
         emit OracleUpdated(oracle, newOracle);
