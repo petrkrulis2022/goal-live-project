@@ -36,6 +36,8 @@ export interface Player {
   position: string;
   /** Next-goal-scorer odds */
   odds: number;
+  /** True if player is a starting XI member (false = substitute bench). Undefined for legacy data. */
+  isStarter?: boolean;
   /** True after this player scored in the current goal window */
   scoredInCurrentWindow?: boolean;
 }

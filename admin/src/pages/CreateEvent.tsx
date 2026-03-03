@@ -194,7 +194,7 @@ export default function CreateEvent() {
     homeTeam: string,
     awayTeam: string,
     sportKey: string,
-  ) {
+  ): Promise<string> {
     const gsLeague = SPORT_TO_GS_LEAGUE[sportKey] ?? "1204";
 
     // 1. Discover Goalserve static_id from live feed
@@ -277,19 +277,19 @@ export default function CreateEvent() {
       }
     }
 
-    if (!staticId) return; // can't seed without lineup
+    if (!staticId) return ""; // can't seed without lineup
 
     // 3. Fetch full lineup
     const lineupRes = await fetch(
       `/api/goalserve/commentaries/match?id=${staticId}&league=${gsLeague}&json=1`,
     );
-    if (!lineupRes.ok) return;
+    if (!lineupRes.ok) return "";
     const lineupData = await lineupRes.json();
     const raw =
       lineupData?.commentaries?.tournament?.match ??
       lineupData?.commentaries?.match ??
       null;
-    if (!raw) return;
+    if (!raw) return "";
     const matchNode = Array.isArray(raw) ? raw[0] : raw;
 
     const teamsNode = matchNode.teams ?? {};
@@ -348,7 +348,7 @@ export default function CreateEvent() {
       })),
     ];
 
-    if (squad.length === 0) return;
+    if (squad.length === 0) return "";
 
     // 4. Fetch Odds API scorer odds
     const priceMap = new Map<string, number>();
@@ -423,6 +423,7 @@ export default function CreateEvent() {
     await supabase
       .from("players")
       .upsert(rows, { onConflict: "match_id,external_player_id" });
+    return staticId;
   }
 
   const set = (k: keyof FormState, v: string | boolean) =>
@@ -466,14 +467,19 @@ export default function CreateEvent() {
 
       // ── Step 1.5: Auto-seed players from Goalserve + Odds API ─────────────
       setStep({ id: "seed", label: "Fetching lineup & seeding players…" });
-      await autoSeedPlayers(
+      const gsStaticId = await autoSeedPlayers(
         match.id,
         form.homeTeam,
         form.awayTeam,
         selectedEvent?.sport_key ?? "soccer_epl",
-      ).catch(() => {
-        /* non-fatal — proceed even if seed fails */
-      });
+      ).catch(() => "");
+      // Persist the discovered Goalserve static_id so EventDetail can use it later
+      if (gsStaticId) {
+        await supabase
+          .from("matches")
+          .update({ goalserve_static_id: gsStaticId })
+          .eq("id", match.id);
+      }
 
       // ── Step 2: Deploy escrow contract (MetaMask) ──────────────────────────
       setStep({

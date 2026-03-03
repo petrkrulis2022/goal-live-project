@@ -29,6 +29,7 @@ export interface DbMatch {
   odds_api_provider: string | null;
   odds_api_config: Record<string, unknown>;
   contract_address: string | null;
+  goalserve_static_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -42,6 +43,7 @@ export interface DbPlayer {
   jersey_number: number | null;
   position: string | null;
   odds: number;
+  is_starter: boolean;
   updated_at: string;
 }
 

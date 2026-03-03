@@ -28,6 +28,7 @@ function dbPlayerToPlayer(row: DbPlayer): Player {
     number: row.jersey_number ?? 0,
     position: row.position ?? "",
     odds: Number(row.odds),
+    isStarter: row.is_starter ?? false,
   };
 }
 

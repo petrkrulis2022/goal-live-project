@@ -328,8 +328,20 @@ export default function EventDetail() {
       const cfg = Object.values(MATCH_REGISTRY).find(
         (c) => c.matchId === m.external_match_id,
       );
-      const league = cfg?.goalserveLeague ?? "1204";
-      let staticId = cfg?.goalserveStaticId ?? "0";
+
+      // Determine correct Goalserve league: registry first, then from odds_api_config sport key
+      const SPORT_TO_GS_LEAGUE: Record<string, string> = {
+        soccer_epl: "1204",
+        soccer_spain_la_liga: "1399",
+        soccer_italy_serie_a: "1269",
+        soccer_uefa_europa_league: "1007",
+        soccer_uefa_europa_conference_league: "1009",
+      };
+      const sport = (m.odds_api_config as Record<string, string>)?.sport ?? "";
+      const league =
+        cfg?.goalserveLeague ?? SPORT_TO_GS_LEAGUE[sport] ?? "1204";
+      // Use persisted static_id from DB first (most reliable)
+      let staticId = m.goalserve_static_id ?? cfg?.goalserveStaticId ?? "0";
 
       // Auto-discover static_id if not set
       if (staticId === "0") {
@@ -405,6 +417,12 @@ export default function EventDetail() {
           if (!sid) return null;
           goalserveDiscoveredId.current = sid;
           staticId = sid;
+          // Persist for future loads (fire-and-forget)
+          supabase
+            .from("matches")
+            .update({ goalserve_static_id: sid })
+            .eq("id", m.id)
+            .then(() => {});
         }
       }
 

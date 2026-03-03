@@ -85,7 +85,6 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
   );
 
   const [modal, setModal] = useState<ModalState>(null);
-  const [activeTeam, setActiveTeam] = useState<"home" | "away">("home");
   const [hidden, setHidden] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMatches, setPickerMatches] = useState<MatchRow[]>([]);
@@ -122,6 +121,14 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
 
   const homePlayers = players.filter((p) => p.team === "home");
   const awayPlayers = players.filter((p) => p.team === "away");
+  // Active lineup = starters (is_starter=true). Falls back to all players if no is_starter data.
+  const hasStarterData = players.some((p) => p.isStarter);
+  const homeLineup = hasStarterData
+    ? homePlayers.filter((p) => p.isStarter)
+    : homePlayers;
+  const awayLineup = hasStarterData
+    ? awayPlayers.filter((p) => p.isStarter)
+    : awayPlayers;
 
   const activeNgsBet: Bet | null =
     bets.find(
@@ -736,7 +743,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
         </div>
       )}
 
-      {/* ── PLAYER PANEL (tabbed by team, left side) ─────────────────── */}
+      {/* ── HOME TEAM PANEL (left side) ──────────────────────────────── */}
       <div
         className="gl-interactive"
         style={{
@@ -744,7 +751,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           top: "52px",
           left: 0,
           bottom: betBarHeight,
-          width: "178px",
+          width: "164px",
           zIndex: 2147483640,
           pointerEvents: "none",
           display: "flex",
@@ -753,70 +760,24 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             "linear-gradient(to right, rgba(0,0,0,0.72) 60%, rgba(0,0,0,0.0) 100%)",
         }}
       >
-        {/* ── Team tabs ── */}
+        {/* Team label */}
         <div
           style={{
-            display: "flex",
-            gap: "2px",
-            padding: "4px 4px 0",
-            pointerEvents: "auto",
+            padding: "4px 6px 2px",
             flexShrink: 0,
+            color: "#93c5fd",
+            fontSize: "8px",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
-          {(["home", "away"] as const).map((side) => {
-            const label =
-              side === "home"
-                ? (match?.homeTeam ?? "Home")
-                : (match?.awayTeam ?? "Away");
-            const count = (side === "home" ? homePlayers : awayPlayers).length;
-            const active = activeTeam === side;
-            return (
-              <button
-                key={side}
-                onClick={() => setActiveTeam(side)}
-                className="gl-interactive"
-                title={label}
-                style={{
-                  flex: 1,
-                  background: active
-                    ? side === "home"
-                      ? "rgba(59,130,246,0.35)"
-                      : "rgba(239,68,68,0.25)"
-                    : "rgba(0,0,0,0.5)",
-                  border: `1px solid ${
-                    active
-                      ? side === "home"
-                        ? "rgba(96,165,250,0.55)"
-                        : "rgba(252,165,165,0.45)"
-                      : "rgba(255,255,255,0.1)"
-                  }`,
-                  borderRadius: "5px 5px 0 0",
-                  borderBottom: active
-                    ? "none"
-                    : "1px solid rgba(255,255,255,0.1)",
-                  color: active
-                    ? side === "home"
-                      ? "#93c5fd"
-                      : "#fca5a5"
-                    : "#6b7280",
-                  fontSize: "8px",
-                  fontWeight: 700,
-                  padding: "3px 2px",
-                  cursor: "pointer",
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {label.split(" ")[0]}
-                {count > 0 ? ` (${count})` : ""}
-              </button>
-            );
-          })}
+          {match?.homeTeam ?? "Home"}
         </div>
-        {/* ── Player list ── */}
+        {/* Player list */}
         <div
           style={{
             flex: 1,
@@ -824,11 +785,11 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             display: "flex",
             flexDirection: "column",
             gap: "3px",
-            padding: "4px",
+            padding: "2px 4px 4px",
             pointerEvents: "none",
           }}
         >
-          {(activeTeam === "home" ? homePlayers : awayPlayers).map((p) => {
+          {homeLineup.map((p) => {
             const settled = bets.find(
               (b) =>
                 b.betType === "NEXT_GOAL_SCORER" &&
@@ -845,6 +806,76 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
                 onClick={handlePlayerClick}
                 disabled={isFinished}
                 alignRight={false}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── AWAY TEAM PANEL (right side) ──────────────────────────────── */}
+      <div
+        className="gl-interactive"
+        style={{
+          position: "fixed",
+          top: "52px",
+          right: 0,
+          bottom: betBarHeight,
+          width: "164px",
+          zIndex: 2147483640,
+          pointerEvents: "none",
+          display: "flex",
+          flexDirection: "column",
+          background:
+            "linear-gradient(to left, rgba(0,0,0,0.72) 60%, rgba(0,0,0,0.0) 100%)",
+        }}
+      >
+        {/* Team label */}
+        <div
+          style={{
+            padding: "4px 6px 2px",
+            flexShrink: 0,
+            color: "#fca5a5",
+            fontSize: "8px",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            textAlign: "right",
+          }}
+        >
+          {match?.awayTeam ?? "Away"}
+        </div>
+        {/* Player list */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: "3px",
+            padding: "2px 4px 4px",
+            pointerEvents: "none",
+          }}
+        >
+          {awayLineup.map((p) => {
+            const settled = bets.find(
+              (b) =>
+                b.betType === "NEXT_GOAL_SCORER" &&
+                b.current_player_id === p.id &&
+                (b.status === "settled_won" || b.status === "settled_lost"),
+            );
+            return (
+              <PlayerButton
+                key={p.id}
+                player={p}
+                isCurrentBet={activeNgsBet?.current_player_id === p.id}
+                isSettled={!!settled}
+                settledWon={settled?.status === "settled_won"}
+                onClick={handlePlayerClick}
+                disabled={isFinished}
+                alignRight={true}
               />
             );
           })}
