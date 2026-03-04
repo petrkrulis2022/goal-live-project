@@ -112,7 +112,26 @@ export const BetModal: React.FC<BetModalProps> = ({
           goalWindow,
           matchId,
         })) as { success: boolean; error?: string };
-        if (!res.success) throw new Error(res.error ?? "Bet failed");
+        if (!res.success) {
+          // If an active bet already exists (UI state was stale), auto-route to change-bet
+          const existingMatch =
+            res.error?.match(/^EXISTING_NGS_BET:(.+)$/) ??
+            res.error?.match(/^EXISTING_MW_BET:(.+)$/);
+          if (existingMatch) {
+            const existingBetId = existingMatch[1];
+            const changeRes = (await onChangeBet(
+              existingBetId,
+              isNGS ? player!.id : undefined,
+              !isNGS && !isEG ? mwOutcome : undefined,
+              odds,
+              currentMinute,
+            )) as { success: boolean; error?: string };
+            if (!changeRes.success)
+              throw new Error(changeRes.error ?? "Change failed");
+          } else {
+            throw new Error(res.error ?? "Bet failed");
+          }
+        }
       }
       onClose();
     } catch (e) {
