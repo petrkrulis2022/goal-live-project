@@ -1,9 +1,26 @@
 # Real Data Flow: CRE Integration, Live Odds, and Automatic Resolution
 
-**Date:** March 4, 2026 (revised to match actual codebase)
-**Status:** Production Architecture
+**Date:** March 4, 2026
+**Branch:** `cre-chainlink` (commit `849f2b1`)
 **Network:** Sepolia (testnet) → Mainnet
 **Scale:** 5-15 matches/day (EPL, La Liga, Serie A)
+
+---
+
+## ✅ Build Progress — Where We Are
+
+| Phase                             | Status                     | What was built                                               |
+| --------------------------------- | -------------------------- | ------------------------------------------------------------ |
+| Migrations 007–010                | ✅ DONE — applied          | odds_history, match odds columns, pg_cron jobs, status cron  |
+| `sync-odds` edge function         | ✅ DONE — deployed         | Live odds (MW/EG/NGS) → Supabase Realtime → extension        |
+| `sync-match-status` edge function | ✅ DONE — deployed         | Goalserve livescores → status/minute/score in real time      |
+| pg_cron wiring (010)              | ✅ DONE — applied          | 3 jobs: Goalserve sync (primary) + 2 SQL safety nets         |
+| Extension manifest                | ✅ DONE                    | Bumped to v2.0.0 on `cre-chainlink`                          |
+| **`lock-bet` edge function**      | ❌ TODO — **NEXT SESSION** | Bet placement, DB insert, on-chain `lockBet()`               |
+| **`settle-match` edge function**  | ❌ TODO                    | Post-match resolution, payout calc, on-chain `settleMatch()` |
+| **Goal events feed**              | ❌ TODO                    | CRE Job #3 — goal detection → `goal_events` table            |
+| **`createMatch()` deployment**    | ❌ TODO                    | Per-match on-chain contract deployment                       |
+| **Admin panel: post result**      | ❌ TODO                    | Trigger `settle-match` from admin UI                         |
 
 ---
 
@@ -19,12 +36,12 @@ REAL ODDS API → SUPABASE DB → LIVE ODDS UPDATES → EDGE FUNCTION SETTLEMENT
 
 ## Architecture: What Runs Where
 
-| Layer                        | Role                                                                                                   |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------ |
-| **Supabase Postgres**        | Source of truth: `matches`, `players`, `bets`, `player_balances`, `provisional_credits`, `goal_events` |
-| **Supabase Edge Functions**  | `lock-bet`, `sync-odds`, `settle-match`, `run-migration`                                               |
-| **GoalLiveBetting contract** | `createMatch()` + `settleMatch()` only — no 15s polling                                                |
-| **Frontend / Extension**     | React + Vite Chrome extension, reads Supabase, writes via Edge Functions                               |
+| Layer                        | Role                                                                                                    |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Supabase Postgres**        | Source of truth: `matches`, `players`, `bets`, `player_balances`, `provisional_credits`, `goal_events`  |
+| **Supabase Edge Functions**  | ✅ `sync-odds` (live odds), ✅ `sync-match-status` (Goalserve status), ❌ `lock-bet`, ❌ `settle-match` |
+| **GoalLiveBetting contract** | `createMatch()` + `settleMatch()` only — no 15s polling                                                 |
+| **Frontend / Extension**     | React + Vite Chrome extension, reads Supabase, writes via Edge Functions                                |
 
 **Supabase project URL:** `https://weryswulejhjkrmervnf.supabase.co`
 **Edge Function base URL:** `https://weryswulejhjkrmervnf.supabase.co/functions/v1/`
@@ -88,24 +105,26 @@ function lockBet(
 ### `matches`
 
 ```sql
-id                uuid PRIMARY KEY
-external_match_id text
-home_team         text
-away_team         text
-kickoff_at        timestamptz
-status            enum: pre-match | live | halftime | finished | cancelled
-current_minute    integer
-score_home        integer
-score_away        integer
-half              integer
-oracle_address    text
-contract_address  text   -- address of this match's GoalLiveBetting instance
-odds_api_config   jsonb  -- { event_id, market_key } for The Odds API (legacy)
-odds_home         numeric(10,4)  -- latest H2H home-win odds (written by sync-odds, triggers Realtime)
-odds_draw         numeric(10,4)  -- latest H2H draw odds
-odds_away         numeric(10,4)  -- latest H2H away-win odds
-exact_goals_odds  jsonb          -- {"0":12.0,"1":7.5,...} derived from totals market
-created_at        timestamptz
+id                    uuid PRIMARY KEY
+external_match_id     text
+home_team             text
+away_team             text
+kickoff_at            timestamptz
+status                enum: pre-match | live | halftime | finished | cancelled
+current_minute        integer   -- ✅ written by sync-match-status every minute
+score_home            integer   -- ✅ written by sync-match-status (localteam/@goals)
+score_away            integer   -- ✅ written by sync-match-status (visitorteam/@goals)
+half                  integer
+oracle_address        text
+contract_address      text      -- address of this match's GoalLiveBetting instance
+odds_api_config       jsonb     -- { event_id, market_key } for The Odds API
+goalserve_static_id   text      -- ✅ Goalserve @static_id — used by sync-match-status to match rows
+odds_home             numeric(10,4)  -- ✅ latest H2H home-win odds (sync-odds → Realtime)
+odds_draw             numeric(10,4)  -- ✅ latest H2H draw odds
+odds_away             numeric(10,4)  -- ✅ latest H2H away-win odds
+exact_goals_odds      jsonb          -- ✅ {"0":12.0,"1":7.5,...} derived from totals market
+updated_at            timestamptz    -- ✅ touched on every sync-match-status update
+created_at            timestamptz
 ```
 
 ### `players`
@@ -286,7 +305,7 @@ Payout is always based on `current_amount` (post-penalty), **never** `original_a
 
 ---
 
-## Phase 1: Pre-Match Odds Capture
+## ✅ Phase 1: Pre-Match Odds Capture
 
 **Trigger:** ~1 hour before kickoff
 
@@ -320,9 +339,11 @@ Body (live sync from The Odds API):
 
 ---
 
-## Phase 2: During Match — Bet Placement and Live Odds
+## ⚠️ Phase 2: During Match — Bet Placement and Live Odds
 
-### Placing a Bet
+> **Live odds + status sync: ✅ DONE. Bet placement (`lock-bet`): ❌ NEXT SESSION.**
+
+### ❌ Placing a Bet — TODO (NEXT SESSION)
 
 **`lock-bet` endpoint:**
 
@@ -352,18 +373,22 @@ User changes the selected player on an active `NEXT_GOAL_SCORER` bet. A `bet_cha
 
 ### Live Odds Updates
 
-**How odds get from The Odds API to the extension without a page reload:**
+**✅ BUILT — How odds get from The Odds API to the extension without a page reload:**
 
 ```
- pg_cron (every 60s, server-side)
+ pg_cron job 'sync-odds' (every 60s, server-side, migration 009)
    ↓
  POST sync-odds { match_id }  ← fires for every match WHERE status = 'live'
    ↓
- The Odds API — single request: markets=h2h,totals,player_goal_scorer
+ The Odds API — TWO parallel requests (split to avoid INVALID_MARKET error):
+   Request 1: markets=h2h,totals  regions=uk,eu
+   Request 2: markets=player_goal_scorer  regions=uk,us  (best-effort)
    ↓
  Parse h2h      → matches.odds_home / odds_draw / odds_away
  Parse totals   → matches.exact_goals_odds  (derived exact-goals probabilities)
  Parse scorers  → players.odds  (averaged across bookmakers)
+   ↓
+ INSERT into odds_history (append-only audit log for post-match resolution)
    ↓
 Supabase Realtime fires on matches UPDATE + players UPDATE
    ↓
@@ -380,7 +405,50 @@ Supabase Realtime fires on matches UPDATE + players UPDATE
 
 ---
 
-## Phase 3: Post-Match — Automatic Resolution
+### ✅ Live Match Status Sync (Goalserve)
+
+**Built:** `supabase/functions/sync-match-status/index.ts` — deployed on `cre-chainlink`
+
+**How match status/score/minute get updated in real time:**
+
+```
+ pg_cron job 'sync-match-status' (every 60s, migration 010) — PRIMARY
+   ↓
+ GET http://www.goalserve.com/getfeed/{key}/soccernew/home?json=1
+   ↓
+ Parse scores.category[].matches.match[] (handles array or single-object quirk)
+   Build lookup: @static_id → { status, minute, scoreHome, scoreAway }
+   ↓
+ Query DB: matches WHERE status NOT IN ('finished','cancelled')
+               AND goalserve_static_id IS NOT NULL
+   ↓
+ For each match — map Goalserve @status:
+   "FT"        → finished
+   "HT"        → halftime  (minute = 45)
+   "45", "67"  → live      (minute = parsed integer)
+   "45+2"      → live      (minute = 47)
+   "14:00"     → pre-match (no regression if already live)
+   "Postponed" → cancelled
+   ↓
+ UPDATE matches SET status, current_minute, score_home, score_away, updated_at
+   (only if value actually changed — avoids unnecessary Realtime noise)
+   ↓
+ Supabase Realtime fires → extension sees status/score change instantly
+```
+
+**Safety nets (also in migration 010 — SQL-only fallback if Goalserve is down):**
+
+- `kickoff-to-live`: flips `pre-match → live` when `kickoff_at <= now()` (4hr window)
+- `live-to-finished`: flips `live → finished` at `kickoff_at + 115 min`
+
+**Goalserve API key:** `5dc9cf20aca34682682708de71344f52`  
+**Feed URL:** `http://www.goalserve.com/getfeed/{key}/soccernew/home?json=1`  
+**EPL league `@gid`:** `1204`  
+**Match identifier:** `@static_id` → `matches.goalserve_static_id`
+
+---
+
+## ❌ Phase 3: Post-Match — Automatic Resolution — TODO
 
 **Trigger:** Match finishes (`matches.status` transitions to `finished`)
 
@@ -510,33 +578,53 @@ When a `VAR_OVERTURNED` event arrives, provisional credits for that goal window 
 
 ## CRE Jobs Configuration
 
-### Job #1: Pre-Match Odds Capture (~1 hr before kickoff)
+### ✅ Job #1: Pre-Match Odds Capture (~1 hr before kickoff)
 
 **Trigger:** Scheduled, per registered match
 **Action:** Call `sync-odds` with `match_id`
 **Reads:** The Odds API via `matches.odds_api_config`
 **Writes:** `players.odds`, `pre_game_odds`
+**Migration:** 009 (pg_cron wired)
 
-### Job #2: Live Odds Polling (during match)
+### ✅ Job #2: Live Odds Polling (during match)
 
-**Mechanism:** `pg_cron` (Supabase built-in scheduler — runs server-side, no browser required)
+**Mechanism:** `pg_cron` — migration 009, job name `sync-odds`
 **Schedule:** Every 60 seconds, for every `matches` row with `status = 'live'`
-**Action:** `POST sync-odds { match_id }` — fetches `h2h + totals + player_goal_scorer` in one Odds API call
+**Action:** `POST sync-odds { match_id }` — two parallel Odds API calls (h2h+totals / player_goal_scorer)
 **Writes:**
 
-- `matches.odds_home / odds_draw / odds_away` (MW odds) → triggers Supabase Realtime → extension updates instantly
+- `matches.odds_home / odds_draw / odds_away` → triggers Supabase Realtime → extension updates instantly
 - `matches.exact_goals_odds` (EG odds derived from totals market)
 - `players.odds` (NGS odds averaged across bookmakers)
 - `odds_history` rows (append-only audit log for post-match resolution)
-  **Note:** No on-chain write. Postgres + Realtime only.
 
-### Job #3: Goal Event Detection
+**Note:** No on-chain write. Postgres + Realtime only.
+
+### ✅ Job #2b: Real-Time Match Status Sync (Goalserve)
+
+**Mechanism:** `pg_cron` — migration 010, job name `sync-match-status`
+**Schedule:** Every 60 seconds (fires even when match is pre-match — looks ahead)
+**Action:** `POST sync-match-status` edge function
+**Reads:** Goalserve `soccernew/home?json=1` — all today's matches with live `@status`
+**Writes:**
+
+- `matches.status` (pre-match | live | halftime | finished | cancelled)
+- `matches.current_minute` (parsed from numeric Goalserve `@status`)
+- `matches.score_home` / `matches.score_away` (from `localteam/@goals`, `visitorteam/@goals`)
+- `matches.updated_at` (triggers Realtime subscription in extension)
+
+**Safety nets (SQL-only, migration 010):**
+
+- `kickoff-to-live` — flips `pre-match → live` at `kickoff_at` (4hr back-window)
+- `live-to-finished` — flips `live → finished` at `kickoff_at + 115 min`
+
+### ❌ Job #3: Goal Event Detection — TODO
 
 **Trigger:** Score change detected (external feed or CRE watchdog)
 **Action:** Insert `goal_events` row (`source = 'chainlink_cre'`)
 **Optional:** Trigger provisional settlement per goal window
 
-### Job #4: Final Whistle and Settlement
+### ❌ Job #4: Final Whistle and Settlement — TODO
 
 **Trigger:** `matches.status` transitions to `finished`
 **Action:** Call `settle-match` Edge Function with final result
@@ -598,12 +686,30 @@ If `settle-match` is called twice for the same match:
 
 ## Summary Checklist for CRE Integration
 
-- [ ] Match deployed: `createMatch()` called, `matches.contract_address` set
+### Build Checklist (one-time — code & infra)
+
+- [x] Migration 007: `odds_history` table
+- [x] Migration 008: `matches.odds_home/draw/away/exact_goals_odds` columns
+- [x] Migration 009: pg_cron + pg_net enabled, `sync-odds` job scheduled
+- [x] Migration 010: `sync-match-status` job + SQL safety nets
+- [x] `sync-odds` edge function deployed (split 2-request, The Odds API)
+- [x] `sync-match-status` edge function deployed (Goalserve livescores)
+- [ ] `lock-bet` edge function — **NEXT SESSION**
+- [ ] `settle-match` edge function
+- [ ] Goal events feed (CRE Job #3)
+- [ ] Per-match `createMatch()` deployment flow
+- [ ] Admin panel: post final result → trigger `settle-match`
+
+### Per-Match Operational Checklist (run for every live match)
+
+- [ ] Match row inserted in `matches` with `goalserve_static_id` set
+- [ ] `createMatch()` called on-chain → `matches.contract_address` set
 - [ ] Players seeded: `players` rows with initial odds
 - [ ] Pre-match odds captured: `sync-odds` called ~1 hr before kickoff
-- [ ] Match goes live: `matches.status = 'live'`
+- [ ] Match goes live: `matches.status` auto-transitions via Goalserve sync
 - [ ] Bets placed: `lock-bet` Edge Function, `bets` rows inserted
-- [ ] Live odds refresh: `sync-odds` called periodically (no on-chain write)
+- [ ] Live odds refresh: `sync-odds` running every 60s via pg_cron (no on-chain write)
+- [ ] Live status/score: `sync-match-status` running every 60s via pg_cron
 - [ ] Goal scored: `goal_events` row inserted, optional provisional credit
 - [ ] Match ends: `settle-match` called with full result
 - [ ] Bets resolved: `bets.status` updated, `provisional_credits` written
