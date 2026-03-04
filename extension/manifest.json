@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "goal.live – Live Football Betting",
-  "version": "1.0.0",
-  "description": "Bet on live football matches using crypto (Phase 1 mock)",
+  "version": "2.0.0",
+  "description": "Bet on live football matches using crypto – CRE live odds",
   "permissions": ["activeTab", "storage"],
   "host_permissions": [
     "https://www.youtube.com/*",
