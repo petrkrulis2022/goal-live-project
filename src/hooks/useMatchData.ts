@@ -54,18 +54,17 @@ export function useMatchData(matchKey?: string) {
 
     init();
 
-    // Poll mwOdds every 5 min so extension buttons stay current
-    const oddsIv = setInterval(
-      () => {
-        dataService
-          .getMatchWinnerOdds(matchId)
-          .then((mw) => {
-            if (!cancelled) setMwOdds(mw);
-          })
-          .catch(() => {});
-      },
-      5 * 60 * 1000,
-    );
+    // Poll mwOdds every 20s as a browser-side fast-path backup.
+    // Server-side pg_cron fires sync-odds every 60s for all live matches
+    // regardless, and Supabase Realtime delivers the result instantly.
+    const oddsIv = setInterval(() => {
+      dataService
+        .getMatchWinnerOdds(matchId)
+        .then((mw) => {
+          if (!cancelled) setMwOdds(mw);
+        })
+        .catch(() => {});
+    }, 20 * 1000);
 
     const unsub = dataService.subscribeToMatch(matchId, {
       onMinuteTick: (minute) => {

@@ -60,6 +60,10 @@ export interface MatchWinnerOdds {
   home: number;
   away: number;
   draw: number;
+  /** Exact-goals odds map derived from The Odds API totals market.
+   *  Keys are total-goals strings: "0" | "1" | "2" | "3" | "4" | "5" (= 5+).
+   *  Null when not yet fetched or unavailable. */
+  egOdds?: Record<string, number>;
 }
 
 // ── Bet ───────────────────────────────────────

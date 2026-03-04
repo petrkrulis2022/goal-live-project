@@ -37,6 +37,7 @@ interface OddsApiOutcome {
   name: string;
   description?: string; // player name lives here for player markets
   price: number;
+  point?: number; // over/under line value (totals market, e.g. 2.5)
 }
 
 interface OddsApiMarket {
@@ -78,7 +79,7 @@ Deno.serve(async (req: Request) => {
     // ── Fetch match row ───────────────────────────────────────────────────
     const { data: match, error: matchErr } = await supabase
       .from("matches")
-      .select("id, external_match_id, odds_api_config")
+      .select("id, external_match_id, odds_api_config, current_minute")
       .eq("id", match_id)
       .single();
 
@@ -192,12 +193,23 @@ Deno.serve(async (req: Request) => {
       };
       const existingCfg =
         (match.odds_api_config as Record<string, unknown>) ?? {};
+      // Write to dedicated columns (triggers Supabase Realtime) + legacy config
       await supabase
         .from("matches")
         .update({
           odds_api_config: { ...existingCfg, match_winner_odds: mwOdds },
+          odds_home: mwOdds.home,
+          odds_draw: mwOdds.draw,
+          odds_away: mwOdds.away,
         })
         .eq("id", match_id);
+      // Append to odds_history for bet resolution audit
+      await supabase.from("odds_history").insert({
+        match_id: match_id,
+        bet_type: "MW",
+        odds_value: mwOdds,
+        minute: (match as Record<string, unknown>).current_minute ?? null,
+      });
       return json({
         success: true,
         source: "odds_api_h2h",
@@ -206,17 +218,12 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Fetch player_goal_scorer AND h2h markets from The Odds API in parallel
-    const [apiRes, h2hApiRes] = await Promise.all([
-      fetch(
-        `${ODDS_API_BASE}/sports/${sport}/events/${eventId}/odds` +
-          `?apiKey=${apiKey}&regions=uk,us&markets=player_goal_scorer&oddsFormat=decimal`,
-      ),
-      fetch(
-        `${ODDS_API_BASE}/sports/${sport}/events/${eventId}/odds` +
-          `?apiKey=${apiKey}&regions=uk,eu&markets=h2h&bookmakers=betfair_ex_eu&oddsFormat=decimal`,
-      ),
-    ]);
+    // Fetch all three markets in one call — h2h + totals + player_goal_scorer
+    // (saves API quota vs previous approach of two separate requests)
+    const apiRes = await fetch(
+      `${ODDS_API_BASE}/sports/${sport}/events/${eventId}/odds` +
+        `?apiKey=${apiKey}&regions=uk,eu,us&markets=h2h,totals,player_goal_scorer&oddsFormat=decimal`,
+    );
 
     if (!apiRes.ok) {
       const txt = await apiRes.text();
@@ -224,45 +231,93 @@ Deno.serve(async (req: Request) => {
     }
 
     const oddsData: OddsApiEvent = await apiRes.json();
+    const currentMinute =
+      ((match as Record<string, unknown>).current_minute as number | null) ??
+      null;
 
-    // ── Update match_winner_odds from h2h response (best-effort) ─────────
+    // ── Parse h2h market → match winner odds ──────────────────────────────
     let matchWinnerResult: { home: number; draw: number; away: number } | null =
       null;
-    if (h2hApiRes.ok) {
-      const h2hData: OddsApiEvent = await h2hApiRes.json();
-      const bm = h2hData.bookmakers?.[0];
-      const mkt = bm?.markets?.find((m: OddsApiMarket) => m.key === "h2h");
-      if (mkt) {
-        matchWinnerResult = {
-          home:
-            mkt.outcomes.find(
-              (o: OddsApiOutcome) => o.name === h2hData.home_team,
-            )?.price ?? 0,
-          draw:
-            mkt.outcomes.find((o: OddsApiOutcome) => o.name === "Draw")
-              ?.price ?? 0,
-          away:
-            mkt.outcomes.find(
-              (o: OddsApiOutcome) => o.name === h2hData.away_team,
-            )?.price ?? 0,
-        };
-        const existingCfg =
-          (match.odds_api_config as Record<string, unknown>) ?? {};
-        await supabase
-          .from("matches")
-          .update({
-            odds_api_config: {
-              ...existingCfg,
-              match_winner_odds: matchWinnerResult,
-            },
-          })
-          .eq("id", match_id);
-      }
+    for (const bookmaker of oddsData.bookmakers ?? []) {
+      const mkt = bookmaker.markets?.find(
+        (m: OddsApiMarket) => m.key === "h2h",
+      );
+      if (!mkt) continue;
+      matchWinnerResult = {
+        home:
+          mkt.outcomes.find(
+            (o: OddsApiOutcome) => o.name === oddsData.home_team,
+          )?.price ?? 0,
+        draw:
+          mkt.outcomes.find((o: OddsApiOutcome) => o.name === "Draw")?.price ??
+          0,
+        away:
+          mkt.outcomes.find(
+            (o: OddsApiOutcome) => o.name === oddsData.away_team,
+          )?.price ?? 0,
+      };
+      break; // use first bookmaker that has h2h
     }
 
-    // ── Average odds across all bookmakers ───────────────────────────────
-    const accumulator: Record<string, number[]> = {};
+    // ── Parse totals market → exact goals odds ────────────────────────────
+    // Derive P(exactly N goals) from cumulative under-line probabilities.
+    // P(N) ≈ implied_prob(under N+0.5) - implied_prob(under N-0.5)
+    let exactGoalsOdds: Record<string, number> | null = null;
+    for (const bookmaker of oddsData.bookmakers ?? []) {
+      const totalsMkt = bookmaker.markets?.find(
+        (m: OddsApiMarket) => m.key === "totals",
+      );
+      if (!totalsMkt) continue;
+      const underMap: Record<number, number> = {};
+      for (const outcome of totalsMkt.outcomes ?? []) {
+        if (outcome.name === "Under" && outcome.point !== undefined) {
+          underMap[outcome.point] = outcome.price;
+        }
+      }
+      if (Object.keys(underMap).length === 0) continue;
+      const egMap: Record<string, number> = {};
+      for (let n = 0; n <= 4; n++) {
+        const pCurr = underMap[n + 0.5] ? 1 / underMap[n + 0.5] : null;
+        const pPrev =
+          n > 0 ? (underMap[n - 0.5] ? 1 / underMap[n - 0.5] : null) : 0;
+        if (pCurr !== null && pPrev !== null) {
+          const prob = pCurr - pPrev;
+          if (prob > 0.005)
+            egMap[String(n)] = Math.round((1 / prob) * 100) / 100;
+        }
+      }
+      // 5+ goals = complement of P(under 4.5)
+      if (underMap[4.5]) {
+        const prob5plus = 1 - 1 / underMap[4.5];
+        if (prob5plus > 0.005)
+          egMap["5"] = Math.round((1 / prob5plus) * 100) / 100;
+      }
+      if (Object.keys(egMap).length > 0) exactGoalsOdds = egMap;
+      break; // use first bookmaker that has totals
+    }
 
+    // ── Write MW + EG to dedicated matches columns (triggers Realtime) ────
+    if (matchWinnerResult || exactGoalsOdds) {
+      const matchUpdate: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+      if (matchWinnerResult) {
+        const existingCfg =
+          (match.odds_api_config as Record<string, unknown>) ?? {};
+        matchUpdate.odds_api_config = {
+          ...existingCfg,
+          match_winner_odds: matchWinnerResult,
+        };
+        matchUpdate.odds_home = matchWinnerResult.home;
+        matchUpdate.odds_draw = matchWinnerResult.draw;
+        matchUpdate.odds_away = matchWinnerResult.away;
+      }
+      if (exactGoalsOdds) matchUpdate.exact_goals_odds = exactGoalsOdds;
+      await supabase.from("matches").update(matchUpdate).eq("id", match_id);
+    }
+
+    // ── Average player_goal_scorer odds across all bookmakers ─────────────
+    const accumulator: Record<string, number[]> = {};
     for (const bookmaker of oddsData.bookmakers ?? []) {
       for (const market of bookmaker.markets ?? []) {
         if (market.key !== "player_goal_scorer") continue;
@@ -274,7 +329,6 @@ Deno.serve(async (req: Request) => {
         }
       }
     }
-
     const averaged: Record<string, number> = {};
     for (const [name, prices] of Object.entries(accumulator)) {
       averaged[name] = prices.reduce((a, b) => a + b, 0) / prices.length;
@@ -305,13 +359,48 @@ Deno.serve(async (req: Request) => {
           .from("players")
           .update({ odds: rounded, updated_at: new Date().toISOString() })
           .eq("id", player.id);
-
         updated.push({
           player_id: player.external_player_id,
           name: player.name,
           odds: rounded,
         });
       }
+    }
+
+    // ── Append to odds_history for post-match bet resolution audit ────────
+    const historyRows: Record<string, unknown>[] = [];
+    if (matchWinnerResult) {
+      historyRows.push({
+        match_id,
+        bet_type: "MW",
+        odds_value: matchWinnerResult,
+        minute: currentMinute,
+      });
+    }
+    if (exactGoalsOdds) {
+      historyRows.push({
+        match_id,
+        bet_type: "EG",
+        odds_value: exactGoalsOdds,
+        minute: currentMinute,
+      });
+    }
+    for (const entry of updated) {
+      const player = (players ?? []).find(
+        (p) => p.external_player_id === entry.player_id,
+      );
+      if (player) {
+        historyRows.push({
+          match_id,
+          player_id: player.id,
+          bet_type: "NGS",
+          odds_value: { odds: entry.odds },
+          minute: currentMinute,
+        });
+      }
+    }
+    if (historyRows.length > 0) {
+      await supabase.from("odds_history").insert(historyRows);
     }
 
     return json({
@@ -322,6 +411,7 @@ Deno.serve(async (req: Request) => {
       players_updated: updated.length,
       updated,
       match_winner: matchWinnerResult,
+      exact_goals_odds: exactGoalsOdds,
     });
   } catch (err) {
     return json({ error: String(err) }, 500);

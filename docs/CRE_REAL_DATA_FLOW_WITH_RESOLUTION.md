@@ -19,12 +19,12 @@ REAL ODDS API → SUPABASE DB → LIVE ODDS UPDATES → EDGE FUNCTION SETTLEMENT
 
 ## Architecture: What Runs Where
 
-| Layer | Role |
-|---|---|
-| **Supabase Postgres** | Source of truth: `matches`, `players`, `bets`, `player_balances`, `provisional_credits`, `goal_events` |
-| **Supabase Edge Functions** | `lock-bet`, `sync-odds`, `settle-match`, `run-migration` |
-| **GoalLiveBetting contract** | `createMatch()` + `settleMatch()` only — no 15s polling |
-| **Frontend / Extension** | React + Vite Chrome extension, reads Supabase, writes via Edge Functions |
+| Layer                        | Role                                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **Supabase Postgres**        | Source of truth: `matches`, `players`, `bets`, `player_balances`, `provisional_credits`, `goal_events` |
+| **Supabase Edge Functions**  | `lock-bet`, `sync-odds`, `settle-match`, `run-migration`                                               |
+| **GoalLiveBetting contract** | `createMatch()` + `settleMatch()` only — no 15s polling                                                |
+| **Frontend / Extension**     | React + Vite Chrome extension, reads Supabase, writes via Edge Functions                               |
 
 **Supabase project URL:** `https://weryswulejhjkrmervnf.supabase.co`
 **Edge Function base URL:** `https://weryswulejhjkrmervnf.supabase.co/functions/v1/`
@@ -75,6 +75,7 @@ function lockBet(
 ```
 
 **What the contract does NOT do:**
+
 - ❌ Record live odds every 15 seconds
 - ❌ Store goal scorer history (first / second / third)
 - ❌ Resolve individual user positions on-chain
@@ -99,7 +100,11 @@ score_away        integer
 half              integer
 oracle_address    text
 contract_address  text   -- address of this match's GoalLiveBetting instance
-odds_api_config   jsonb  -- { event_id, market_key } for The Odds API
+odds_api_config   jsonb  -- { event_id, market_key } for The Odds API (legacy)
+odds_home         numeric(10,4)  -- latest H2H home-win odds (written by sync-odds, triggers Realtime)
+odds_draw         numeric(10,4)  -- latest H2H draw odds
+odds_away         numeric(10,4)  -- latest H2H away-win odds
+exact_goals_odds  jsonb          -- {"0":12.0,"1":7.5,...} derived from totals market
 created_at        timestamptz
 ```
 
@@ -214,15 +219,47 @@ expires_at    timestamptz
 UNIQUE (match_id, player_id)
 ```
 
+### `odds_history`
+
+Append-only odds log. Every `sync-odds` run INSERTs here — never UPDATEs.  
+Used after the match to verify bets were awarded at the correct locked-in odds.
+
+```sql
+id           uuid PRIMARY KEY
+match_id     uuid REFERENCES matches(id)
+player_id    uuid REFERENCES players(id)  -- NULL for MW and EG rows
+bet_type     text  -- 'NGS' | 'MW' | 'EG'
+odds_value   jsonb
+-- NGS:  { "odds": 8.0 }
+-- MW:   { "home": 1.74, "draw": 4.2, "away": 5.0 }
+-- EG:   { "0": 12.0, "1": 7.5, "2": 4.5, "3": 5.5, "4": 9.0, "5": 15.0 }
+minute       integer   -- match minute at time of capture
+recorded_at  timestamptz DEFAULT now()
+INDEX (match_id, recorded_at)
+```
+
+**Audit query (post-match: what were Bruno's NGS odds in minute 34?):**
+
+```sql
+SELECT odds_value, minute, recorded_at
+FROM odds_history
+WHERE match_id = '<uuid>'
+  AND player_id = '<Bruno uuid>'
+  AND bet_type = 'NGS'
+  AND minute <= 34
+ORDER BY recorded_at DESC
+LIMIT 1;
+```
+
 ---
 
 ## Bet Types
 
-| Type | Enum Value | Description |
-|---|---|---|
+| Type             | Enum Value         | Description                                                               |
+| ---------------- | ------------------ | ------------------------------------------------------------------------- |
 | Next Goal Scorer | `NEXT_GOAL_SCORER` | User picks a player to score the **next** goal in the current goal window |
-| Match Winner | `MATCH_WINNER` | User picks home / draw / away for full-time result |
-| Exact Goals | `EXACT_GOALS` | User picks total goals scored in the match (stored in `goals_target`) |
+| Match Winner     | `MATCH_WINNER`     | User picks home / draw / away for full-time result                        |
+| Exact Goals      | `EXACT_GOALS`      | User picks total goals scored in the match (stored in `goals_target`)     |
 
 > `EXACT_GOALS` was added to the Postgres `bet_type` enum via migration 004. The GoalLiveBetting contract had it from the start.
 
@@ -315,7 +352,31 @@ User changes the selected player on an active `NEXT_GOAL_SCORER` bet. A `bet_cha
 
 ### Live Odds Updates
 
-`sync-odds` can be called repeatedly during the match to refresh player odds from The Odds API. The frontend subscribes to Supabase Realtime on the `players` table. **No on-chain write occurs during the match.**
+**How odds get from The Odds API to the extension without a page reload:**
+
+```
+ pg_cron (every 60s, server-side)
+   ↓
+ POST sync-odds { match_id }  ← fires for every match WHERE status = 'live'
+   ↓
+ The Odds API — single request: markets=h2h,totals,player_goal_scorer
+   ↓
+ Parse h2h      → matches.odds_home / odds_draw / odds_away
+ Parse totals   → matches.exact_goals_odds  (derived exact-goals probabilities)
+ Parse scorers  → players.odds  (averaged across bookmakers)
+   ↓
+Supabase Realtime fires on matches UPDATE + players UPDATE
+   ↓
+ dataService matchChannel callback reads new columns from payload.new
+   → calls onOddsUpdate(cachedPlayers, freshMwOdds) immediately
+   ↓
+ React state updates → extension re-renders with live odds
+```
+
+- **No page reload needed.** Realtime delivers the update within ~1s of the DB write.
+- **Browser backup:** `useMatchData.ts` also polls `sync-odds` every **20 seconds** while the overlay is open, as a fast-path supplement to the 60s server-side cron.
+- **No on-chain write** occurs during the match.
+- **Odds history** is appended on every sync to `odds_history` for post-match bet resolution.
 
 ---
 
@@ -344,9 +405,10 @@ For each `active` bet on the match, `settle-match` calls `didBetWin()`:
 
 ```typescript
 function didBetWin(bet, scorerSet, winner, totalGoals) {
-  if (bet.bet_type === 'NEXT_GOAL_SCORER') return scorerSet.has(bet.current_player_id);
-  if (bet.bet_type === 'MATCH_WINNER')    return bet.outcome === winner;
-  if (bet.bet_type === 'EXACT_GOALS')     return bet.goals_target === totalGoals;
+  if (bet.bet_type === "NEXT_GOAL_SCORER")
+    return scorerSet.has(bet.current_player_id);
+  if (bet.bet_type === "MATCH_WINNER") return bet.outcome === winner;
+  if (bet.bet_type === "EXACT_GOALS") return bet.goals_target === totalGoals;
   return false;
 }
 ```
@@ -365,7 +427,13 @@ const payout = bet.current_amount * bet.odds;
 ### Step 3.4: On-Chain Settlement
 
 ```typescript
-await contract.settleMatch(matchId, goalScorerIds, winnerEnum, homeGoals, awayGoals);
+await contract.settleMatch(
+  matchId,
+  goalScorerIds,
+  winnerEnum,
+  homeGoals,
+  awayGoals,
+);
 ```
 
 The tx hash is written to `bets.blockchain_settle_tx`.
@@ -379,16 +447,16 @@ The tx hash is written to `bets.blockchain_settle_tx`.
   "scorers": ["<uuid>"],
   "bets_settled": 42,
   "winners": 17,
-  "total_payout": 318.50,
+  "total_payout": 318.5,
   "settled": [
     {
       "bet_id": "<uuid>",
       "wallet": "0x...",
       "won": true,
-      "payout": 25.00,
-      "original_amount": 10.00,
-      "current_amount": 9.00,
-      "total_penalties": 1.00,
+      "payout": 25.0,
+      "original_amount": 10.0,
+      "current_amount": 9.0,
+      "total_penalties": 1.0,
       "odds": 2.78
     }
   ]
@@ -430,11 +498,11 @@ SELECT * FROM player_available_balance WHERE wallet_address = lower('0x...');
 
 Goal events are written to `goal_events` with `source = 'chainlink_cre'` when driven by Chainlink CRE, or `'manual'` when entered via the admin panel.
 
-| event_type | Meaning |
-|---|---|
-| `GOAL` | Goal confirmed |
-| `VAR_OVERTURNED` | Goal disallowed by VAR |
-| `VAR_CORRECTED` | Previously disallowed goal reinstated |
+| event_type       | Meaning                               |
+| ---------------- | ------------------------------------- |
+| `GOAL`           | Goal confirmed                        |
+| `VAR_OVERTURNED` | Goal disallowed by VAR                |
+| `VAR_CORRECTED`  | Previously disallowed goal reinstated |
 
 When a `VAR_OVERTURNED` event arrives, provisional credits for that goal window may be reversed.
 
@@ -451,9 +519,16 @@ When a `VAR_OVERTURNED` event arrives, provisional credits for that goal window 
 
 ### Job #2: Live Odds Polling (during match)
 
-**Trigger:** Every N minutes (configurable)
-**Action:** Call `sync-odds` with `match_id`
-**Note:** No on-chain write. Postgres + Realtime only.
+**Mechanism:** `pg_cron` (Supabase built-in scheduler — runs server-side, no browser required)
+**Schedule:** Every 60 seconds, for every `matches` row with `status = 'live'`
+**Action:** `POST sync-odds { match_id }` — fetches `h2h + totals + player_goal_scorer` in one Odds API call
+**Writes:**
+
+- `matches.odds_home / odds_draw / odds_away` (MW odds) → triggers Supabase Realtime → extension updates instantly
+- `matches.exact_goals_odds` (EG odds derived from totals market)
+- `players.odds` (NGS odds averaged across bookmakers)
+- `odds_history` rows (append-only audit log for post-match resolution)
+  **Note:** No on-chain write. Postgres + Realtime only.
 
 ### Job #3: Goal Event Detection
 
@@ -471,15 +546,15 @@ When a `VAR_OVERTURNED` event arrives, provisional credits for that goal window 
 
 ## Key Differences from Naive Architecture
 
-| Topic | Wrong Assumption | Actual System |
-|---|---|---|
-| Contract deployment | One singleton for all matches | One contract **per match**; address in `matches.contract_address` |
-| On-chain odds | Recorded on-chain every 15 seconds | Never on-chain; Supabase Postgres only |
-| Goal scorer tracking | `first_goalscorer`, `second_goalscorer`, `third_goalscorer` | `NEXT_GOAL_SCORER` per goal window; no ordinal tracking |
-| Payout calculation | `original_amount × odds` | `current_amount × odds` (post-penalty) |
-| Table names | `user_positions`, `user_balances` | `bets`, `player_balances`, `provisional_credits` |
-| Backend URLs | Placeholder/fabricated | `https://weryswulejhjkrmervnf.supabase.co/functions/v1/{fn}` |
-| Contract address | Hardcoded `0xF553...` | Retrieved from DB per match; no global address |
+| Topic                | Wrong Assumption                                            | Actual System                                                     |
+| -------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------- |
+| Contract deployment  | One singleton for all matches                               | One contract **per match**; address in `matches.contract_address` |
+| On-chain odds        | Recorded on-chain every 15 seconds                          | Never on-chain; Supabase Postgres only                            |
+| Goal scorer tracking | `first_goalscorer`, `second_goalscorer`, `third_goalscorer` | `NEXT_GOAL_SCORER` per goal window; no ordinal tracking           |
+| Payout calculation   | `original_amount × odds`                                    | `current_amount × odds` (post-penalty)                            |
+| Table names          | `user_positions`, `user_balances`                           | `bets`, `player_balances`, `provisional_credits`                  |
+| Backend URLs         | Placeholder/fabricated                                      | `https://weryswulejhjkrmervnf.supabase.co/functions/v1/{fn}`      |
+| Contract address     | Hardcoded `0xF553...`                                       | Retrieved from DB per match; no global address                    |
 
 ---
 
@@ -511,12 +586,12 @@ If `settle-match` is called twice for the same match:
 
 ## Real Data Sources
 
-| Data | Source |
-|---|---|
-| Player odds | The Odds API (`ODDS_API_KEY` env var) |
-| Match schedule | Manual insertion into `matches` table or external feed |
-| Goal events | CRE Chainlink job (`source=chainlink_cre`) or admin panel |
-| Final result | Posted to `settle-match` by CRE job or admin |
+| Data           | Source                                                                 |
+| -------------- | ---------------------------------------------------------------------- |
+| Player odds    | The Odds API (`ODDS_API_KEY` env var)                                  |
+| Match schedule | Manual insertion into `matches` table or external feed                 |
+| Goal events    | CRE Chainlink job (`source=chainlink_cre`) or admin panel              |
+| Final result   | Posted to `settle-match` by CRE job or admin                           |
 | On-chain proof | GoalLiveBetting `settleMatch()` tx hash in `bets.blockchain_settle_tx` |
 
 ---

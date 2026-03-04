@@ -57,7 +57,7 @@ const MW_OUTCOMES: Array<{ outcome: MatchWinnerOutcome; label: string }> = [
   { outcome: "away", label: "Away" },
 ];
 
-/** Exact Goals — total goals targets with fixed odds (last entry = 5+ means ≥5) */
+/** Exact Goals — fallback odds used when live egOdds from The Odds API are not yet available */
 const EG_TARGETS = [
   { goals: 0, label: "0", odds: 12.0 },
   { goals: 1, label: "1", odds: 7.5 },
@@ -65,7 +65,7 @@ const EG_TARGETS = [
   { goals: 3, label: "3", odds: 5.5 },
   { goals: 4, label: "4", odds: 9.0 },
   { goals: 5, label: "5+", odds: 15.0 },
-] as const;
+];
 
 export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
   matchKey,
@@ -440,7 +440,9 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
               <div
                 style={{ display: "flex", alignItems: "center", gap: "3px" }}
               >
-                {EG_TARGETS.map(({ goals, label, odds }) => {
+                {EG_TARGETS.map(({ goals, label, odds: fallbackOdds }) => {
+                  // Use live odds from Odds API if available, else fall back to static values
+                  const odds = mwOdds.egOdds?.[String(goals)] ?? fallbackOdds;
                   const egBet = getEgBet(goals);
                   return (
                     <button
@@ -991,7 +993,10 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
       {modal?.type === "eg" && (
         <BetModal
           egGoals={modal.goals}
-          egOdds={EG_TARGETS.find((t) => t.goals === modal.goals)?.odds}
+          egOdds={
+            mwOdds.egOdds?.[String(modal.goals)] ??
+            EG_TARGETS.find((t) => t.goals === modal.goals)?.odds
+          }
           currentMinute={match?.currentMinute ?? 0}
           goalWindow={currentGoalWindow}
           matchId={match?.id ?? ""}

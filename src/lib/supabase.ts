@@ -28,6 +28,10 @@ export interface DbMatch {
   oracle_address: string | null;
   odds_api_provider: string | null;
   odds_api_config: Record<string, unknown>;
+  odds_home: number | null;
+  odds_draw: number | null;
+  odds_away: number | null;
+  exact_goals_odds: Record<string, number> | null;
   contract_address: string | null;
   goalserve_static_id: string | null;
   created_at: string;

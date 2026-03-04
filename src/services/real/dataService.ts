@@ -172,6 +172,20 @@ class SupabaseDataService implements IDataService {
               away: row.score_away,
             });
           }
+          // If pg_cron sync-odds wrote new odds columns, deliver them instantly
+          // without waiting for the next 20s browser poll.
+          if (row.odds_home || row.odds_draw || row.odds_away) {
+            const mw: MatchWinnerOdds = {
+              home: row.odds_home ?? 0,
+              draw: row.odds_draw ?? 0,
+              away: row.odds_away ?? 0,
+              egOdds:
+                (row.exact_goals_odds as Record<string, number>) ?? undefined,
+            };
+            if (cachedPlayers.length > 0) {
+              callbacks.onOddsUpdate(cachedPlayers, mw);
+            }
+          }
         },
       )
       .subscribe();
@@ -187,8 +201,9 @@ class SupabaseDataService implements IDataService {
           table: "players",
         },
         async () => {
-          // Refetch all players when any odds change
+          // Refetch all players when any odds change; update cache for matchChannel
           const players = await this.getPlayers(matchId);
+          cachedPlayers = players;
           const mwOdds = await this.getMatchWinnerOdds(matchId);
           callbacks.onOddsUpdate(players, mwOdds);
         },
