@@ -4,6 +4,7 @@ import type { BalanceState } from "../types";
 interface BalanceDisplayProps {
   balance: BalanceState;
   walletAddress: string | null;
+  poolBalance?: number | null;
   onConnect: () => void;
   onTopUp?: () => void;
   onWithdraw?: () => void;
@@ -12,6 +13,7 @@ interface BalanceDisplayProps {
 export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   balance,
   walletAddress,
+  poolBalance,
   onConnect,
   onTopUp,
   onWithdraw,
@@ -41,14 +43,18 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     );
   }
 
-  // address | MetaMask: $703 USDC [+ Top Up] | In-App: $50.00 | 🔒 ...
+  // Two-row 4+4 layout
+  const sep = (
+    <span style={{ color: "rgba(255,255,255,0.18)", fontSize: "11px" }}>│</span>
+  );
+
   return (
     <div
       className="gl-interactive"
       style={{
         display: "flex",
-        alignItems: "center",
-        gap: "6px",
+        flexDirection: "column",
+        gap: "2px",
         background: "rgba(0,0,0,0.65)",
         border: "1px solid rgba(255,255,255,0.10)",
         borderRadius: "6px",
@@ -56,119 +62,143 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         whiteSpace: "nowrap",
       }}
     >
-      {/* Wallet address */}
-      <span
-        style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}
-      >
-        {short}
-      </span>
-
-      <span style={{ color: "rgba(255,255,255,0.20)", fontSize: "12px" }}>
-        │
-      </span>
-
-      {/* Fund button (opens deposit address modal) */}
-      {onTopUp && (
-        <button
-          onClick={onTopUp}
-          className="gl-interactive"
+      {/* ROW 1: Pool (if available) | address | Fund | In-App $X USDC */}
+      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+        {poolBalance != null && (
+          <>
+            <span style={{ fontSize: "10px" }}>🏦</span>
+            <span
+              style={{
+                color: "#6b7280",
+                fontSize: "9px",
+                fontWeight: 600,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Pool
+            </span>
+            <span
+              style={{ color: "#d1fae5", fontSize: "12px", fontWeight: 700 }}
+            >
+              ${poolBalance.toFixed(2)}
+            </span>
+            {sep}
+          </>
+        )}
+        <span
           style={{
-            background: "rgba(6,78,59,0.6)",
-            border: "1px solid rgba(52,211,153,0.45)",
-            borderRadius: "4px",
-            color: "#34d399",
+            color: "#9ca3af",
             fontSize: "11px",
-            fontWeight: 700,
-            padding: "3px 9px",
-            cursor: "pointer",
+            fontFamily: "monospace",
           }}
         >
-          + Fund
-        </button>
-      )}
-
-      <span style={{ color: "rgba(255,255,255,0.20)", fontSize: "12px" }}>
-        │
-      </span>
-
-      {/* In-App balance — what the user bets with */}
-      <span style={{ color: "#6b7280", fontSize: "10px", fontWeight: 600 }}>
-        In-App
-      </span>
-      <span style={{ color: "#ffffff", fontSize: "14px", fontWeight: 700 }}>
-        ${balance.wallet.toFixed(2)}
-      </span>
-      <span style={{ color: "#9ca3af", fontSize: "11px" }}>USDC</span>
-
-      {/* Withdraw button */}
-      {onWithdraw && balance.wallet > 0 && (
-        <button
-          onClick={onWithdraw}
-          className="gl-interactive"
-          style={{
-            background: "rgba(30,58,138,0.5)",
-            border: "1px solid rgba(96,165,250,0.45)",
-            borderRadius: "4px",
-            color: "#60a5fa",
-            fontSize: "11px",
-            fontWeight: 700,
-            padding: "3px 9px",
-            cursor: "pointer",
-          }}
-        >
-          ↓ Withdraw
-        </button>
-      )}
-
-      {/* Available / locked split — only when there are active bets anywhere */}
-      {balance.locked > 0 && (
-        <>
-          <span style={{ color: "rgba(255,255,255,0.15)", fontSize: "10px" }}>
-            │
-          </span>
-          <span style={{ color: "#6b7280", fontSize: "10px", fontWeight: 600 }}>
-            Avail
-          </span>
-          <span style={{ color: "#d1fae5", fontSize: "13px", fontWeight: 700 }}>
-            ${balance.available.toFixed(2)}
-          </span>
-          <span style={{ color: "rgba(255,255,255,0.15)", fontSize: "10px" }}>
-            │
-          </span>
-          <span style={{ color: "#fbbf24", fontSize: "11px", fontWeight: 600 }}>
-            🔒 ${balance.lockedThisGame.toFixed(2)}
-          </span>
-          <span
+          {short}
+        </span>
+        {sep}
+        {onTopUp && (
+          <button
+            onClick={onTopUp}
+            className="gl-interactive"
             style={{
-              color: "rgba(255,255,255,0.40)",
-              fontSize: "9px",
-              marginLeft: "1px",
+              background: "rgba(6,78,59,0.6)",
+              border: "1px solid rgba(52,211,153,0.45)",
+              borderRadius: "4px",
+              color: "#34d399",
+              fontSize: "11px",
+              fontWeight: 700,
+              padding: "2px 8px",
+              cursor: "pointer",
             }}
           >
-            game
-          </span>
-          <span style={{ color: "rgba(255,255,255,0.15)", fontSize: "10px" }}>
-            │
-          </span>
-          <span style={{ color: "#a78bfa", fontSize: "10px", fontWeight: 600 }}>
-            Win
-          </span>
-          <span style={{ color: "#c4b5fd", fontSize: "13px", fontWeight: 700 }}>
-            ${balance.potentialPayout.toFixed(2)}
-          </span>
-        </>
-      )}
+            + Fund
+          </button>
+        )}
+        {sep}
+        <span style={{ color: "#6b7280", fontSize: "10px", fontWeight: 600 }}>
+          In-App
+        </span>
+        <span style={{ color: "#ffffff", fontSize: "13px", fontWeight: 700 }}>
+          ${balance.wallet.toFixed(2)}
+        </span>
+        <span style={{ color: "#9ca3af", fontSize: "10px" }}>USDC</span>
+      </div>
 
-      {/* Pending win — only when non-zero */}
-      {balance.provisional > 0 && (
-        <>
-          <span style={{ color: "rgba(255,255,255,0.15)", fontSize: "10px" }}>
-            │
-          </span>
-          <span style={{ color: "#34d399", fontSize: "11px", fontWeight: 600 }}>
-            ⏳ +${balance.provisional.toFixed(2)}
-          </span>
-        </>
+      {/* ROW 2: Withdraw | Avail | Locked | Win | Provisional */}
+      {((onWithdraw && balance.wallet > 0) || balance.locked > 0) && (
+        <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+          {onWithdraw && balance.wallet > 0 && (
+            <>
+              <button
+                onClick={onWithdraw}
+                className="gl-interactive"
+                style={{
+                  background: "rgba(30,58,138,0.5)",
+                  border: "1px solid rgba(96,165,250,0.45)",
+                  borderRadius: "4px",
+                  color: "#60a5fa",
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  padding: "2px 8px",
+                  cursor: "pointer",
+                }}
+              >
+                ↓ Withdraw
+              </button>
+              {balance.locked > 0 && sep}
+            </>
+          )}
+          {balance.locked > 0 && (
+            <>
+              <span
+                style={{ color: "#6b7280", fontSize: "10px", fontWeight: 600 }}
+              >
+                Avail
+              </span>
+              <span
+                style={{ color: "#d1fae5", fontSize: "12px", fontWeight: 700 }}
+              >
+                ${balance.available.toFixed(2)}
+              </span>
+              {sep}
+              <span
+                style={{ color: "#fbbf24", fontSize: "11px", fontWeight: 600 }}
+              >
+                🔒 ${balance.lockedThisGame.toFixed(2)}
+              </span>
+              <span
+                style={{ color: "rgba(255,255,255,0.35)", fontSize: "9px" }}
+              >
+                game
+              </span>
+              {sep}
+              <span
+                style={{ color: "#a78bfa", fontSize: "10px", fontWeight: 600 }}
+              >
+                Win
+              </span>
+              <span
+                style={{ color: "#c4b5fd", fontSize: "12px", fontWeight: 700 }}
+              >
+                ${balance.potentialPayout.toFixed(2)}
+              </span>
+              {balance.provisional > 0 && (
+                <>
+                  {sep}
+                  <span
+                    style={{
+                      color: "#34d399",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    ⏳ +${balance.provisional.toFixed(2)}
+                  </span>
+                </>
+              )}
+            </>
+          )}
+        </div>
       )}
     </div>
   );

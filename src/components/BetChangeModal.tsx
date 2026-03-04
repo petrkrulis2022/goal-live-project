@@ -208,30 +208,6 @@ export const BetChangeModal: React.FC<BetChangeModalProps> = ({
           )}
         </div>
 
-        {/* Player picker */}
-        <p className="text-gray-400 text-xs mb-2">Select new player</p>
-        <div className="grid grid-cols-2 gap-2 mb-4 max-h-52 overflow-y-auto pr-1">
-          {players
-            .filter((p) => p.id !== bet.current_player_id)
-            .map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setSelectedId(p.id)}
-                className={`flex flex-col items-start p-2 rounded-lg border text-left transition-all
-                  ${
-                    selectedId === p.id
-                      ? "border-emerald-500 bg-emerald-950/50 text-white"
-                      : "border-white/10 bg-gray-800/50 text-gray-300 hover:border-white/30"
-                  }`}
-              >
-                <span className="font-bold text-xs">{p.name}</span>
-                <span className="text-yellow-300 text-[11px]">
-                  {p.odds.toFixed(2)}×
-                </span>
-              </button>
-            ))}
-        </div>
-
         {/* Payout preview */}
         {selectedPlayer && (
           <div className="bg-black/40 rounded-lg px-3 py-2 mb-4 flex justify-between">

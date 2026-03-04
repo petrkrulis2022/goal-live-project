@@ -115,6 +115,45 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     return () => window.removeEventListener("gl:balanceRefresh", h);
   }, [refresh]);
 
+  // ── In-game ad popup: CubePay 5s → gap 3s → Vibe 5s → wait → repeat ──
+  const [adVisible, setAdVisible] = useState(false);
+  const [adIndex, setAdIndex] = useState(0); // 0 = CubePay, 1 = Vibe.live
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const cycle = () => {
+      // 1. Show CubePay
+      setAdIndex(0);
+      setAdVisible(true);
+      timers.push(
+        setTimeout(() => {
+          // 2. Hide CubePay
+          setAdVisible(false);
+          timers.push(
+            setTimeout(() => {
+              // 3. Show Vibe
+              setAdIndex(1);
+              setAdVisible(true);
+              timers.push(
+                setTimeout(() => {
+                  // 4. Hide Vibe
+                  setAdVisible(false);
+                }, 5_000),
+              );
+            }, 3_000),
+          );
+        }, 5_000),
+      );
+    };
+    // First cycle after 3 s (immediate for testing)
+    timers.push(setTimeout(cycle, 3_000));
+    // Repeat every 60 s
+    const iv = setInterval(cycle, 60_000);
+    return () => {
+      timers.forEach(clearTimeout);
+      clearInterval(iv);
+    };
+  }, []);
+
   const homePlayers = players.filter((p) => p.team === "home");
   const awayPlayers = players.filter((p) => p.team === "away");
   // Active lineup = starters (is_starter=true). Falls back to all players if no is_starter data.
@@ -156,12 +195,17 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     }
   }, [panelFlipped, matchKey]);
 
+  // Corner bet mock state — only one corner active at a time (no real bet logic)
+  const [activeCorner, setActiveCorner] = useState<
+    null | "A" | "B" | "C" | "D"
+  >(null);
+
   const leftLineup = panelFlipped ? awayLineup : homeLineup;
   const rightLineup = panelFlipped ? homeLineup : awayLineup;
   const leftTeamName = panelFlipped ? match?.awayTeam : match?.homeTeam;
   const rightTeamName = panelFlipped ? match?.homeTeam : match?.awayTeam;
-  const leftLabelColor = panelFlipped ? "#fca5a5" : "#93c5fd";
-  const rightLabelColor = panelFlipped ? "#93c5fd" : "#fca5a5";
+  const leftLabelColor = panelFlipped ? "#60a5fa" : "#4ade80";
+  const rightLabelColor = panelFlipped ? "#4ade80" : "#60a5fa";
 
   const activeNgsBet: Bet | null =
     bets.find(
@@ -274,7 +318,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     );
   }
 
-  const betBarHeight = "40px";
+  const betBarHeight = "48px";
 
   return (
     <>
@@ -305,6 +349,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             pointerEvents: "auto",
             justifyContent: "flex-start",
             position: "relative",
+            paddingLeft: "164px",
           }}
         >
           <button
@@ -367,6 +412,84 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           >
             ⇆
           </button>
+
+          {/* Exact Goals buttons — top bar, between swap and logo */}
+          {!isFinished && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "2px",
+                marginLeft: "6px",
+              }}
+            >
+              <span
+                style={{
+                  color: "#ffffff",
+                  fontSize: "11px",
+                  fontWeight: 800,
+                  letterSpacing: "0.05em",
+                  whiteSpace: "nowrap",
+                  textTransform: "uppercase",
+                  textShadow: "0 1px 4px rgba(0,0,0,0.8)",
+                }}
+              >
+                Exact Goals
+              </span>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "3px" }}
+              >
+                {EG_TARGETS.map(({ goals, label, odds }) => {
+                  const egBet = getEgBet(goals);
+                  return (
+                    <button
+                      key={goals}
+                      onClick={() =>
+                        wallet ? setModal({ type: "eg", goals }) : connect()
+                      }
+                      className="gl-interactive"
+                      style={{
+                        pointerEvents: "auto",
+                        background: egBet
+                          ? "rgba(6,78,59,0.7)"
+                          : "rgba(30,20,50,0.85)",
+                        border: `1px solid ${egBet ? "rgba(52,211,153,0.5)" : "rgba(255,255,255,0.13)"}`,
+                        borderRadius: "5px",
+                        cursor: "pointer",
+                        padding: "4px 8px",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        minWidth: "36px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: egBet ? "#34d399" : "#e5e7eb",
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {label}
+                      </span>
+                      <span
+                        style={{
+                          color: "#fde047",
+                          fontSize: "10px",
+                          fontWeight: 600,
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {odds}×
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {showPicker && (
             <div
@@ -485,55 +608,6 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
               )}
             </div>
           )}
-
-          {/* Ad button 1: CubePay — 3D, rectangular, pushed toward centre */}
-          {AD_CUBEPAY_URL && (
-            <button
-              className="gl-interactive"
-              onClick={() =>
-                window.open("https://vision-pay.netlify.app/", "_blank")
-              }
-              title="CubePay — powered by goal.live"
-              style={{
-                background:
-                  "linear-gradient(180deg, #1a2e1a 0%, #0f1f0f 60%, #071207 100%)",
-                border: "1px solid rgba(52,211,153,0.55)",
-                borderBottom: "3px solid #021005",
-                borderRadius: "7px",
-                boxShadow:
-                  "0 4px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)",
-                padding: "3px 8px 3px 4px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "5px",
-                flexShrink: 0,
-              }}
-            >
-              <img
-                src={AD_CUBEPAY_URL}
-                alt="CubePay"
-                style={{
-                  height: "28px",
-                  width: "28px",
-                  borderRadius: "4px",
-                  display: "block",
-                  objectFit: "cover",
-                }}
-              />
-              <span
-                style={{
-                  color: "#34d399",
-                  fontSize: "11px",
-                  fontWeight: 800,
-                  letterSpacing: "0.04em",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Visit
-              </span>
-            </button>
-          )}
         </div>
 
         {/* Centre column: always truly centred by CSS grid */}
@@ -561,162 +635,34 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             />
           )}
 
-          {/* match scoreboard */}
-          <MatchInfo match={match} />
-
-          {/* Pool balance chip */}
-          {poolBalance !== null && (
-            <div
-              className="gl-interactive"
-              style={{
-                background: "rgba(0,0,0,0.55)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: "5px",
-                padding: "3px 8px",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                flexShrink: 0,
-              }}
-            >
-              <span style={{ fontSize: "10px" }}>🏦</span>
-              <span
-                style={{
-                  color: "#6b7280",
-                  fontSize: "9px",
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                Pool
-              </span>
-              <span
-                style={{ color: "#d1fae5", fontSize: "12px", fontWeight: 700 }}
-              >
-                ${poolBalance.toFixed(2)}
-              </span>
-            </div>
-          )}
-
-          {/* MW bet buttons — Home / Draw / Away */}
-          {!isFinished &&
-            MW_OUTCOMES.map(({ outcome, label }) => {
-              const mwBet = getMwBet(outcome);
-              return (
-                <button
-                  key={outcome}
-                  onClick={() =>
-                    wallet ? setModal({ type: "mw", outcome }) : connect()
-                  }
-                  className="gl-interactive"
-                  style={{
-                    background: mwBet ? "rgba(6,78,59,0.7)" : "rgba(0,0,0,0.6)",
-                    border: `1px solid ${
-                      mwBet ? "rgba(52,211,153,0.5)" : "rgba(255,255,255,0.12)"
-                    }`,
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    padding: "2px 5px",
-                  }}
-                >
-                  <span
-                    style={{
-                      color: "#9ca3af",
-                      fontSize: "8px",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {label}
-                  </span>
-                  <span
-                    style={{
-                      color: "#fde047",
-                      fontSize: "10px",
-                      fontWeight: 700,
-                    }}
-                  >
-                    {mwOdds[outcome].toFixed(2)}×
-                  </span>
-                </button>
-              );
-            })}
-
-          {/* Extra Bets — right of Away */}
-          {!isFinished && (
-            <button
-              className="gl-interactive"
-              onClick={() => {}}
-              title="Extra bets — corners, cards, goals (coming soon)"
-              style={{
-                background: "rgba(109,40,217,0.30)",
-                border: "1px solid rgba(167,139,250,0.5)",
-                borderRadius: "6px",
-                color: "#a78bfa",
-                fontSize: "11px",
-                fontWeight: 700,
-                padding: "4px 10px",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Extra Bets
-            </button>
-          )}
+          {/* match scoreboard + MW bets inside */}
+          <MatchInfo
+            match={match}
+            mwOdds={mwOdds}
+            getMwBet={(o) => !!getMwBet(o)}
+            onMwBet={(o) =>
+              wallet ? setModal({ type: "mw", outcome: o }) : connect()
+            }
+            isFinished={isFinished}
+          />
         </div>
 
-        {/* Right: balance */}
+        {/* Right: pool + balance — two rows, pushed toward centre to free corner */}
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            gap: "4px",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            gap: "2px",
             pointerEvents: "auto",
+            paddingRight: "164px",
           }}
         >
-          {/* Ad button 2: Vibe.live — 3D, pushed toward centre */}
-          {AD_VIBE_URL && (
-            <button
-              className="gl-interactive"
-              onClick={() =>
-                window.open("https://cube-pay-web.netlify.app/", "_blank")
-              }
-              title="Vibe.live — powered by goal.live"
-              style={{
-                background:
-                  "linear-gradient(180deg, #1e1030 0%, #120a22 60%, #080412 100%)",
-                border: "1px solid rgba(167,139,250,0.55)",
-                borderBottom: "3px solid #040108",
-                borderRadius: "7px",
-                boxShadow:
-                  "0 4px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)",
-                padding: "3px 4px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                flexShrink: 0,
-              }}
-            >
-              <img
-                src={AD_VIBE_URL}
-                alt="Vibe.live"
-                style={{
-                  height: "30px",
-                  width: "auto",
-                  borderRadius: "4px",
-                  display: "block",
-                }}
-              />
-            </button>
-          )}
-
           <BalanceDisplay
             balance={balance}
             walletAddress={wallet?.address ?? null}
+            poolBalance={poolBalance}
             onConnect={connect}
             onTopUp={wallet ? () => setModal({ type: "topup" }) : undefined}
             onWithdraw={
@@ -726,99 +672,14 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
         </div>
       </div>
 
-      {/* ── EXACT GOALS BAR ─────────────────────────────────────────────── */}
-      {!isFinished && (
-        <div
-          className="gl-interactive"
-          style={{
-            position: "fixed",
-            top: "40px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 2147483644,
-            pointerEvents: "none",
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-            padding: "4px 8px 5px",
-            background: "rgba(0,0,0,0.82)",
-            borderRadius: "0 0 8px 8px",
-            border: "1px solid rgba(255,255,255,0.10)",
-            borderTop: "none",
-          }}
-        >
-          <span
-            style={{
-              color: "#6b7280",
-              fontSize: "9px",
-              fontWeight: 700,
-              letterSpacing: "0.05em",
-              marginRight: "2px",
-              whiteSpace: "nowrap",
-            }}
-          >
-            ⚽ GOALS:
-          </span>
-          {EG_TARGETS.map(({ goals, label, odds }) => {
-            const egBet = getEgBet(goals);
-            return (
-              <button
-                key={goals}
-                onClick={() =>
-                  wallet ? setModal({ type: "eg", goals }) : connect()
-                }
-                className="gl-interactive"
-                style={{
-                  pointerEvents: "auto",
-                  background: egBet
-                    ? "rgba(6,78,59,0.7)"
-                    : "rgba(30,20,50,0.85)",
-                  border: `1px solid ${egBet ? "rgba(52,211,153,0.5)" : "rgba(255,255,255,0.13)"}`,
-                  borderRadius: "5px",
-                  cursor: "pointer",
-                  padding: "5px 9px",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "34px",
-                  minHeight: "36px",
-                  justifyContent: "center",
-                }}
-              >
-                <span
-                  style={{
-                    color: egBet ? "#34d399" : "#e5e7eb",
-                    fontSize: "10px",
-                    fontWeight: 700,
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {label}
-                </span>
-                <span
-                  style={{
-                    color: "#fde047",
-                    fontSize: "9px",
-                    fontWeight: 600,
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {odds}×
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       {/* ── LEFT PANEL (home in 1st half, away in 2nd half) ───────────── */}
       <div
         className="gl-interactive"
         style={{
           position: "fixed",
-          top: "52px",
+          top: "60px",
           left: 0,
-          bottom: betBarHeight,
+          bottom: "60px",
           width: "164px",
           zIndex: 2147483640,
           pointerEvents: "none",
@@ -831,16 +692,17 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
         {/* Team label */}
         <div
           style={{
-            padding: "4px 6px 2px",
+            padding: "2px 6px 2px",
             flexShrink: 0,
             color: leftLabelColor,
-            fontSize: "8px",
-            fontWeight: 700,
-            letterSpacing: "0.08em",
+            fontSize: "13px",
+            fontWeight: 800,
+            letterSpacing: "0.06em",
             textTransform: "uppercase",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
+            textShadow: `0 0 12px ${leftLabelColor}88, 0 1px 3px rgba(0,0,0,0.9)`,
           }}
         >
           {leftTeamName ?? "Home"}
@@ -885,9 +747,9 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
         className="gl-interactive"
         style={{
           position: "fixed",
-          top: "52px",
+          top: "60px",
           right: 0,
-          bottom: betBarHeight,
+          bottom: "60px",
           width: "164px",
           zIndex: 2147483640,
           pointerEvents: "none",
@@ -900,17 +762,18 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
         {/* Team label */}
         <div
           style={{
-            padding: "4px 6px 2px",
+            padding: "2px 6px 2px",
             flexShrink: 0,
             color: rightLabelColor,
-            fontSize: "8px",
-            fontWeight: 700,
-            letterSpacing: "0.08em",
+            fontSize: "13px",
+            fontWeight: 800,
+            letterSpacing: "0.06em",
             textTransform: "uppercase",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
             textAlign: "right",
+            textShadow: `0 0 12px ${rightLabelColor}88, 0 1px 3px rgba(0,0,0,0.9)`,
           }}
         >
           {rightTeamName ?? "Away"}
@@ -967,88 +830,109 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           background:
             "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%)",
           padding: "0 8px",
+          gap: "6px",
         }}
       >
-        {activeNgsBet && currentBetPlayer ? (
-          <button
-            onClick={() => setModal({ type: "change", bet: activeNgsBet })}
-            className="gl-interactive"
-            style={{
-              pointerEvents: "auto",
-              background:
-                "linear-gradient(180deg, #064e3b 0%, #065f46 50%, #022c22 100%)",
-              border: "1px solid rgba(52,211,153,0.70)",
-              borderBottom: "3px solid #011a14",
-              borderRadius: "8px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              padding: "5px 16px",
-              boxShadow:
-                "0 4px 16px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.12)",
-            }}
-          >
+        {/* CENTER: NGS active bet — EG and MW are now in top bar / MatchInfo */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flex: 1,
+          }}
+        >
+          {activeNgsBet && currentBetPlayer ? (
+            <button
+              onClick={() => setModal({ type: "change", bet: activeNgsBet })}
+              className="gl-interactive"
+              style={{
+                pointerEvents: "auto",
+                background:
+                  "linear-gradient(180deg, #064e3b 0%, #065f46 50%, #022c22 100%)",
+                border: "1px solid rgba(52,211,153,0.70)",
+                borderBottom: "3px solid #011a14",
+                borderRadius: "8px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "5px 16px",
+                boxShadow:
+                  "0 4px 16px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.12)",
+              }}
+            >
+              <span
+                style={{
+                  color: "#34d399",
+                  fontSize: "11px",
+                  fontWeight: 900,
+                  letterSpacing: "0.05em",
+                  textShadow: "0 0 10px rgba(52,211,153,0.7)",
+                }}
+              >
+                ★ ACTIVE BET
+              </span>
+              <span
+                style={{ color: "rgba(255,255,255,0.3)", fontSize: "11px" }}
+              >
+                │
+              </span>
+              <span
+                style={{ color: "#fef3c7", fontSize: "13px", fontWeight: 800 }}
+              >
+                #{currentBetPlayer.number}{" "}
+                {currentBetPlayer.name.split(" ").slice(-1)[0]}
+              </span>
+              <span
+                style={{ color: "rgba(255,255,255,0.3)", fontSize: "11px" }}
+              >
+                │
+              </span>
+              <span
+                style={{ color: "#6ee7b7", fontSize: "13px", fontWeight: 800 }}
+              >
+                {currentBetPlayer.odds.toFixed(2)}×
+              </span>
+              <span
+                style={{ color: "rgba(255,255,255,0.3)", fontSize: "11px" }}
+              >
+                │
+              </span>
+              <span
+                style={{ color: "#86efac", fontSize: "12px", fontWeight: 700 }}
+              >
+                ${activeNgsBet.current_amount.toFixed(0)} → $
+                {(activeNgsBet.current_amount * currentBetPlayer.odds).toFixed(
+                  0,
+                )}
+              </span>
+              <span
+                style={{
+                  color: "#34d399",
+                  fontSize: "10px",
+                  fontWeight: 600,
+                  opacity: 0.7,
+                }}
+              >
+                tap to change
+              </span>
+            </button>
+          ) : (
             <span
               style={{
-                color: "#34d399",
+                color: "rgba(255,255,255,0.25)",
                 fontSize: "11px",
-                fontWeight: 900,
-                letterSpacing: "0.05em",
-                textShadow: "0 0 10px rgba(52,211,153,0.7)",
-              }}
-            >
-              ★ ACTIVE BET
-            </span>
-            <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "11px" }}>
-              │
-            </span>
-            <span
-              style={{ color: "#fef3c7", fontSize: "13px", fontWeight: 800 }}
-            >
-              #{currentBetPlayer.number}{" "}
-              {currentBetPlayer.name.split(" ").slice(-1)[0]}
-            </span>
-            <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "11px" }}>
-              │
-            </span>
-            <span
-              style={{ color: "#6ee7b7", fontSize: "13px", fontWeight: 800 }}
-            >
-              {currentBetPlayer.odds.toFixed(2)}×
-            </span>
-            <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "11px" }}>
-              │
-            </span>
-            <span
-              style={{ color: "#86efac", fontSize: "12px", fontWeight: 700 }}
-            >
-              ${activeNgsBet.current_amount.toFixed(0)} → $
-              {(activeNgsBet.current_amount * currentBetPlayer.odds).toFixed(0)}
-            </span>
-            <span
-              style={{
-                color: "#34d399",
-                fontSize: "10px",
                 fontWeight: 600,
-                opacity: 0.7,
+                letterSpacing: "0.05em",
               }}
             >
-              tap to change
+              tap a player to place a next goal scorer bet
             </span>
-          </button>
-        ) : (
-          <span
-            style={{
-              color: "rgba(255,255,255,0.25)",
-              fontSize: "11px",
-              fontWeight: 600,
-              letterSpacing: "0.05em",
-            }}
-          >
-            tap a player to place a next goal scorer bet
-          </span>
-        )}
+          )}
+        </div>
+
+        {/* (Match Winner buttons are now inside the MatchInfo scoreboard box) */}
       </div>
 
       {/* ── SETTLEMENT overlay ──────────────────────────────────────────── */}
@@ -1152,6 +1036,212 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           onClose={() => setModal(null)}
         />
       )}
+
+      {/* ── CORNER BET MOCK BUTTONS — one per screen corner ───────────── */}
+      {["A", "B", "C", "D"].map((corner) => {
+        const isTop = corner === "A" || corner === "B";
+        const isLeft = corner === "A" || corner === "C";
+        const isActive = activeCorner === corner;
+        return (
+          <button
+            key={corner}
+            onClick={() =>
+              setActiveCorner((prev) =>
+                prev === corner ? null : (corner as "A" | "B" | "C" | "D"),
+              )
+            }
+            className="gl-interactive"
+            title={`Corner ${corner} — next corner kick bet (mock)`}
+            style={{
+              position: "fixed",
+              ...(isTop ? { top: "0" } : { bottom: "0" }),
+              ...(isLeft ? { left: "0" } : { right: "0" }),
+              zIndex: 2147483645,
+              pointerEvents: "auto",
+              width: "156px",
+              height: "60px",
+              background: isActive
+                ? "linear-gradient(180deg,#fef08a 0%,#fde047 40%,#eab308 100%)"
+                : "linear-gradient(180deg,#fde047 0%,#eab308 40%,#ca8a04 100%)",
+              borderTop: `1px solid ${isActive ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.35)"}`,
+              borderLeft: `1px solid ${isActive ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.18)"}`,
+              borderRight: `1px solid ${isActive ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.18)"}`,
+              borderBottom: `3px solid ${isActive ? "#92400e" : "#a16207"}`,
+              borderRadius: "8px",
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "2px",
+              boxShadow: isActive
+                ? "0 0 14px rgba(253,211,77,0.8), inset 0 1px 0 rgba(255,255,255,0.4)"
+                : "0 5px 0 #a16207, 0 6px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.35)",
+              transform: isActive ? "translateY(2px)" : "translateY(0px)",
+              transition: "all 0.12s ease",
+              lineHeight: 1,
+            }}
+          >
+            <span
+              style={{
+                fontSize: "11px",
+                color: isActive ? "#78350f" : "#1c1917",
+                fontWeight: 800,
+                letterSpacing: "0.04em",
+              }}
+            >
+              Corner {corner}
+            </span>
+            <span
+              style={{
+                fontSize: "13px",
+                fontWeight: 800,
+                color: isActive ? "#92400e" : "#1c1917",
+                textShadow: isActive ? "0 0 8px rgba(255,255,255,0.4)" : "none",
+              }}
+            >
+              2.80×
+            </span>
+          </button>
+        );
+      })}
+
+      {/* ── IN-GAME AD POPUP ──────────────────────────────────────────────
+           Appears bottom-centre for 5 s, TV-style, fully clickable */}
+      <div
+        className="gl-interactive"
+        style={{
+          position: "fixed",
+          bottom: "10%",
+          left: "28%",
+          zIndex: 2147483642,
+          opacity: adVisible ? 1 : 0,
+          transform: adVisible ? "translateY(0)" : "translateY(14px)",
+          transition: "opacity 0.45s ease, transform 0.45s ease",
+          pointerEvents: adVisible ? "auto" : "none",
+        }}
+      >
+        {adIndex === 0 ? (
+          <button
+            className="gl-interactive"
+            onClick={() =>
+              window.open("https://vision-pay.netlify.app/", "_blank")
+            }
+            title="CubePay — AR/XR Payments Infrastructure"
+            style={{
+              background: "linear-gradient(135deg, #0a1f0a 0%, #071507 100%)",
+              border: "1.5px solid rgba(52,211,153,0.75)",
+              borderBottom: "3px solid #021005",
+              borderRadius: "10px",
+              boxShadow:
+                "0 8px 28px rgba(0,0,0,0.8), 0 0 0 1px rgba(52,211,153,0.12)",
+              padding: "10px 18px 10px 10px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              minWidth: "270px",
+            }}
+          >
+            {AD_CUBEPAY_URL && (
+              <img
+                src={AD_CUBEPAY_URL}
+                alt="CubePay"
+                style={{
+                  height: "48px",
+                  width: "48px",
+                  borderRadius: "8px",
+                  objectFit: "cover",
+                  flexShrink: 0,
+                }}
+              />
+            )}
+            <div style={{ textAlign: "left" }}>
+              <div
+                style={{
+                  color: "#34d399",
+                  fontSize: "15px",
+                  fontWeight: 900,
+                  letterSpacing: "0.01em",
+                  lineHeight: 1.2,
+                }}
+              >
+                Visit Cube Pay
+              </div>
+              <div
+                style={{
+                  color: "rgba(255,255,255,0.6)",
+                  fontSize: "11px",
+                  fontWeight: 500,
+                  marginTop: "3px",
+                  lineHeight: 1.4,
+                }}
+              >
+                AR/XR Payments Infrastructure
+              </div>
+            </div>
+          </button>
+        ) : (
+          <button
+            className="gl-interactive"
+            onClick={() =>
+              window.open("https://cube-pay-web.netlify.app/", "_blank")
+            }
+            title="Vibe.Live — Your Interactive Streaming"
+            style={{
+              background: "linear-gradient(135deg, #0e0820 0%, #080412 100%)",
+              border: "1.5px solid rgba(167,139,250,0.75)",
+              borderBottom: "3px solid #040108",
+              borderRadius: "10px",
+              boxShadow:
+                "0 8px 28px rgba(0,0,0,0.8), 0 0 0 1px rgba(167,139,250,0.12)",
+              padding: "10px 18px 10px 10px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              minWidth: "270px",
+            }}
+          >
+            {AD_VIBE_URL && (
+              <img
+                src={AD_VIBE_URL}
+                alt="Vibe.live"
+                style={{
+                  height: "48px",
+                  width: "auto",
+                  borderRadius: "8px",
+                  flexShrink: 0,
+                }}
+              />
+            )}
+            <div style={{ textAlign: "left" }}>
+              <div
+                style={{
+                  color: "#a78bfa",
+                  fontSize: "15px",
+                  fontWeight: 900,
+                  letterSpacing: "0.01em",
+                  lineHeight: 1.2,
+                }}
+              >
+                Visit Vibe.Live
+              </div>
+              <div
+                style={{
+                  color: "rgba(255,255,255,0.6)",
+                  fontSize: "11px",
+                  fontWeight: 500,
+                  marginTop: "3px",
+                  lineHeight: 1.4,
+                }}
+              >
+                Your Interactive Streaming
+              </div>
+            </div>
+          </button>
+        )}
+      </div>
     </>
   );
 };
