@@ -72,15 +72,8 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
 }) => {
   const { wallet, connect, topUp, withdraw, setPlayerAddress, refreshBalance } =
     useWallet();
-  const {
-    match,
-    players,
-    mwOdds,
-    loading,
-    startSimulation,
-    resetSimulation,
-    currentGoalWindow,
-  } = useMatchData(matchKey);
+  const { match, players, mwOdds, loading, currentGoalWindow } =
+    useMatchData(matchKey);
   const { bets, balance, placeBet, changeBet, refresh } = useBetting(
     wallet?.address ?? null,
     match?.dbId, // Supabase UUID — filters bets/balance to current match only
@@ -491,43 +484,6 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
                 })
               )}
             </div>
-          )}
-
-          {!isFinished && isPreMatch && (
-            <button
-              onClick={startSimulation}
-              className="gl-interactive"
-              style={{
-                background: "#10b981",
-                border: "none",
-                borderRadius: "5px",
-                color: "#000",
-                fontWeight: 800,
-                fontSize: "13px",
-                padding: "4px 14px",
-                cursor: "pointer",
-              }}
-            >
-              ▶ Start
-            </button>
-          )}
-          {!isPreMatch && !isFinished && (
-            <button
-              onClick={resetSimulation}
-              className="gl-interactive"
-              style={{
-                background: "rgba(55,65,81,0.8)",
-                border: "1px solid rgba(255,255,255,0.18)",
-                borderRadius: "5px",
-                color: "#fff",
-                fontWeight: 700,
-                fontSize: "13px",
-                padding: "4px 12px",
-                cursor: "pointer",
-              }}
-            >
-              ↺
-            </button>
           )}
 
           {/* Ad button 1: CubePay — 3D, rectangular, pushed toward centre */}
@@ -1115,7 +1071,6 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             bets={bets}
             balance={balance}
             players={players}
-            onReset={resetSimulation}
             onSwitchEvent={() => setShowPicker(true)}
           />
         </div>

@@ -28,6 +28,11 @@ function dbBetToBet(row: DbBet): Bet {
     original_player_id: row.original_player_id,
     current_player_id: row.current_player_id,
     outcome: row.outcome ?? undefined,
+    // EXACT_GOALS stores the goals target as a string in original_player_id
+    goalsTarget:
+      row.bet_type === "EXACT_GOALS" && row.original_player_id
+        ? Number(row.original_player_id)
+        : undefined,
     original_amount: Number(row.original_amount),
     current_amount: Number(row.current_amount),
     total_penalties: Number(row.total_penalties),
@@ -52,6 +57,7 @@ class SupabaseBettingService implements IBettingService {
       betType,
       playerId,
       outcome,
+      goalsTarget,
       amount,
       odds,
       currentMinute,
@@ -109,8 +115,15 @@ class SupabaseBettingService implements IBettingService {
         bettor_wallet: wallet,
         match_id: match.id,
         bet_type: betType,
-        original_player_id: playerId ?? outcome ?? "",
-        current_player_id: playerId ?? outcome ?? "",
+        // EXACT_GOALS: encode goalsTarget as string (no dedicated column in schema)
+        original_player_id:
+          playerId ??
+          outcome ??
+          (goalsTarget !== undefined ? String(goalsTarget) : ""),
+        current_player_id:
+          playerId ??
+          outcome ??
+          (goalsTarget !== undefined ? String(goalsTarget) : ""),
         outcome: betType === "MATCH_WINNER" ? outcome : null,
         original_amount: amount,
         current_amount: amount,

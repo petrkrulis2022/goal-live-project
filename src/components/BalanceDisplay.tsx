@@ -138,7 +138,13 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           <span style={{ color: "#fbbf24", fontSize: "11px", fontWeight: 600 }}>
             🔒 ${balance.lockedThisGame.toFixed(2)}
           </span>
-          <span style={{ color: "rgba(255,255,255,0.40)", fontSize: "9px", marginLeft: "1px" }}>
+          <span
+            style={{
+              color: "rgba(255,255,255,0.40)",
+              fontSize: "9px",
+              marginLeft: "1px",
+            }}
+          >
             game
           </span>
           <span style={{ color: "rgba(255,255,255,0.15)", fontSize: "10px" }}>

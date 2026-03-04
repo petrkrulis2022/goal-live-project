@@ -103,7 +103,11 @@ export function useBetting(wallet: string | null, matchUuid?: string) {
         const result = await services.betting.placeBet({ ...params, wallet });
         if (result.success) {
           // Optimistically deduct from real wallet state so balance updates immediately
-          await services.wallet.deductBalance(params.amount);
+          try {
+            await services.wallet.deductBalance(params.amount);
+          } catch {
+            // soft-fail: bet is placed in DB; refresh will reconcile locked amount
+          }
         }
         await refresh();
         return result;

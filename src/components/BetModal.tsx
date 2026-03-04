@@ -167,7 +167,12 @@ export const BetModal: React.FC<BetModalProps> = ({
         <div className="flex justify-between items-start mb-4">
           <div>
             <p className="text-gray-400 text-xs">
-              {isNGS ? "Next Goal Scorer" : "Match Winner"} · {currentMinute}'
+              {isNGS
+                ? "Next Goal Scorer"
+                : isEG
+                  ? "Exact Goals"
+                  : "Match Winner"}{" "}
+              · {currentMinute}'
             </p>
             <h2 className="text-white font-black text-xl">{label}</h2>
             <p className="text-yellow-300 font-bold text-lg">

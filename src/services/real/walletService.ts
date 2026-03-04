@@ -3,6 +3,7 @@
 //  Activated when VITE_USE_REAL_WALLET=true
 // ─────────────────────────────────────────────
 import type { IWalletService, WalletState } from "../../types/services.types";
+import { supabase } from "../../lib/supabase";
 
 // EIP-1193 provider
 declare global {
@@ -45,6 +46,62 @@ class RealWalletService implements IWalletService {
   private emit(s: WalletState | null) {
     this.state = s;
     this.listeners.forEach((cb) => cb(s));
+  }
+
+  /** Read in-app balance from player_balances table (total_deposited - total_withdrawn). */
+  private async fetchInAppBalance(address: string): Promise<number> {
+    const { data } = await supabase
+      .from("player_balances")
+      .select("total_deposited, total_withdrawn")
+      .eq("wallet_address", address.toLowerCase())
+      .maybeSingle();
+    if (!data) return 0;
+    return Math.max(
+      0,
+      Math.round(
+        (Number(data.total_deposited) - Number(data.total_withdrawn)) * 100,
+      ) / 100,
+    );
+  }
+
+  /** Persist a deposit delta into player_balances. */
+  private async recordDeposit(address: string, delta: number): Promise<void> {
+    // First read current, then upsert with incremented value
+    const { data } = await supabase
+      .from("player_balances")
+      .select("total_deposited")
+      .eq("wallet_address", address.toLowerCase())
+      .maybeSingle();
+    const current = Number(data?.total_deposited ?? 0);
+    await supabase.from("player_balances").upsert(
+      {
+        wallet_address: address.toLowerCase(),
+        total_deposited: Math.round((current + delta) * 1e6) / 1e6,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "wallet_address" },
+    );
+  }
+
+  /** Persist a withdrawal into player_balances. */
+  private async recordWithdrawal(
+    address: string,
+    amount: number,
+  ): Promise<void> {
+    const { data } = await supabase
+      .from("player_balances")
+      .select("total_withdrawn")
+      .eq("wallet_address", address.toLowerCase())
+      .maybeSingle();
+    const current = Number(data?.total_withdrawn ?? 0);
+    await supabase.from("player_balances").upsert(
+      {
+        wallet_address: address.toLowerCase(),
+        total_withdrawn: Math.round((current + amount) * 1e6) / 1e6,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "wallet_address" },
+    );
   }
 
   /** Switch MetaMask network to Sepolia. */
@@ -101,11 +158,14 @@ class RealWalletService implements IWalletService {
     if (!accounts.length) {
       this.emit(null);
     } else {
-      const balance = await this.fetchUsdc(accounts[0]);
+      const [balance, inAppBalance] = await Promise.all([
+        this.fetchUsdc(accounts[0]),
+        this.fetchInAppBalance(accounts[0]),
+      ]);
       this.emit({
         address: accounts[0],
         balance,
-        inAppBalance: 0,
+        inAppBalance,
         connected: true,
       });
     }
@@ -122,11 +182,14 @@ class RealWalletService implements IWalletService {
       method: "eth_requestAccounts",
     })) as string[];
     const address = accounts[0];
-    const balance = await this.fetchUsdc(address);
+    const [balance, inAppBalance] = await Promise.all([
+      this.fetchUsdc(address),
+      this.fetchInAppBalance(address),
+    ]);
     const ws: WalletState = {
       address,
       balance,
-      inAppBalance: 0,
+      inAppBalance,
       connected: true,
     };
     this.emit(ws);
@@ -183,8 +246,9 @@ class RealWalletService implements IWalletService {
       const confirmed = await this.fetchUsdc(address);
       if (confirmed !== snapshotBalance) {
         const delta = Math.max(0, confirmed - snapshotBalance);
-        const newInApp =
-          Math.round(((this.state?.inAppBalance ?? 0) + delta) * 100) / 100;
+        // Persist deposit to player_balances so it survives reloads
+        await this.recordDeposit(address, delta).catch(() => {});
+        const newInApp = await this.fetchInAppBalance(address);
         this.emit({
           ...this.state!,
           balance: confirmed,
@@ -229,7 +293,8 @@ class RealWalletService implements IWalletService {
       params: [{ from: this.state.address, to: USDC_CONTRACT, data }],
     })) as string;
 
-    // Optimistically deduct
+    // Record withdrawal in DB (persisted) and update in-memory state
+    await this.recordWithdrawal(this.state.address, amount).catch(() => {});
     const newInApp = Math.max(
       0,
       Math.round((currentInApp - amount) * 100) / 100,

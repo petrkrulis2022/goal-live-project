@@ -51,7 +51,7 @@ export interface DbBet {
   id: string;
   bettor_wallet: string;
   match_id: string;
-  bet_type: "NEXT_GOAL_SCORER" | "MATCH_WINNER";
+  bet_type: "NEXT_GOAL_SCORER" | "MATCH_WINNER" | "EXACT_GOALS";
   original_player_id: string;
   current_player_id: string;
   outcome: "home" | "away" | "draw" | null;

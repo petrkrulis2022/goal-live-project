@@ -6,7 +6,6 @@ interface SettlementDisplayProps {
   bets: Bet[];
   balance: BalanceState;
   players: Player[];
-  onReset: () => void;
   onSwitchEvent: () => void;
 }
 
@@ -26,7 +25,6 @@ export const SettlementDisplay: React.FC<SettlementDisplayProps> = ({
   bets,
   balance,
   players,
-  onReset,
   onSwitchEvent,
 }) => {
   const won = bets.filter((b) => b.status === "settled_won");
@@ -107,12 +105,12 @@ export const SettlementDisplay: React.FC<SettlementDisplayProps> = ({
       )}
 
       {/* Buttons */}
-      <div style={{ display: "flex", gap: "8px" }}>
+      <div>
         <button
           onClick={onSwitchEvent}
           className="gl-interactive"
           style={{
-            flex: 1,
+            width: "100%",
             background: "#10b981",
             border: "none",
             borderRadius: "12px",
@@ -124,23 +122,6 @@ export const SettlementDisplay: React.FC<SettlementDisplayProps> = ({
           }}
         >
           ⚽ Switch Event
-        </button>
-        <button
-          onClick={onReset}
-          className="gl-interactive"
-          style={{
-            flex: 1,
-            background: "rgba(55,65,81,0.8)",
-            border: "1px solid rgba(255,255,255,0.15)",
-            borderRadius: "12px",
-            padding: "12px",
-            color: "#fff",
-            fontWeight: 700,
-            fontSize: "14px",
-            cursor: "pointer",
-          }}
-        >
-          ↺ Replay
         </button>
       </div>
     </div>

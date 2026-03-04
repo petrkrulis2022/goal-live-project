@@ -227,7 +227,7 @@ export const contractService = {
       if (playerId.includes("-")) {
         throw new Error(
           `lockBet NGS: playerId must be a Goalserve integer (external_player_id), got UUID "${playerId}". ` +
-          `Make sure the UI passes player.external_player_id, not player.id.`
+            `Make sure the UI passes player.external_player_id, not player.id.`,
         );
       }
       const playerIdNum = BigInt(playerId);
@@ -261,11 +261,19 @@ export const contractService = {
     const contract = getContract(address, signer);
     const scorersBigInt = scorerPlayerIds.map((id) => {
       if (id.includes("-")) {
-        throw new Error(`emergencySettle: scorer ID "${id}" looks like a UUID. Pass Goalserve external_player_id integers.`);
+        throw new Error(
+          `emergencySettle: scorer ID "${id}" looks like a UUID. Pass Goalserve external_player_id integers.`,
+        );
       }
       return BigInt(id);
     });
-    console.log("[contractService] emergencySettle", { matchId, scorersBigInt, winner, homeGoals, awayGoals });
+    console.log("[contractService] emergencySettle", {
+      matchId,
+      scorersBigInt,
+      winner,
+      homeGoals,
+      awayGoals,
+    });
     const tx = await contract.emergencySettle(
       matchId,
       scorersBigInt,
@@ -392,7 +400,7 @@ export const contractService = {
       if (id.includes("-")) {
         throw new Error(
           `settleMatchOnChain: scorer ID "${id}" looks like a UUID. ` +
-          `Pass Goalserve external_player_id integers instead.`
+            `Pass Goalserve external_player_id integers instead.`,
         );
       }
       return BigInt(id);

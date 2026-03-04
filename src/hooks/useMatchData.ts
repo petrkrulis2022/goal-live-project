@@ -1,14 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { services } from "../services";
-import { mockBettingService } from "../services/mock/mockBettingService";
-import {
-  mockDataService,
-  createDataService,
-} from "../services/mock/mockDataService";
 import { realDataService } from "../services/real/dataService";
 import type { Match, Player, MatchWinnerOdds } from "../types";
 import type { MatchWinnerOutcome } from "../types";
-import { MATCH_ID } from "../data/matchData";
 import { MATCH_REGISTRY } from "../data/matchRegistry";
 
 export function useMatchData(matchKey?: string) {
@@ -22,27 +16,18 @@ export function useMatchData(matchKey?: string) {
   const [loading, setLoading] = useState(true);
   const goalWindowRef = useRef(0);
 
-  // When a matchKey is provided (extension picker), create a dedicated service
-  // instance for that config. Otherwise fall back to the global services.data.
+  // All matches use the real Supabase data service.
   const { dataService, activeMatchId } = useMemo(() => {
     if (matchKey) {
       const config = MATCH_REGISTRY[matchKey];
       if (config) {
-        // useRealData=true → live Supabase service (players + odds from DB)
-        // otherwise → MockDataService (simulation mode)
-        const svc = config.useRealData
-          ? realDataService
-          : createDataService(config);
-        return {
-          dataService: svc,
-          activeMatchId: config.matchId,
-        };
+        return { dataService: realDataService, activeMatchId: config.matchId };
       }
-      // Not in hardcoded registry — treat matchKey as external_match_id
-      // (set by dynamic popup fetching from Supabase)
+      // Not in hardcoded registry — treat matchKey as external_match_id directly
       return { dataService: realDataService, activeMatchId: matchKey };
     }
-    return { dataService: services.data, activeMatchId: MATCH_ID };
+    // No matchKey — use global services.data (also real)
+    return { dataService: services.data, activeMatchId: "" };
   }, [matchKey]);
 
   useEffect(() => {
@@ -94,9 +79,8 @@ export function useMatchData(matchKey?: string) {
         const gw = goalWindowRef.current;
         goalWindowRef.current = gw + 1;
         setMatch((prev) => (prev ? { ...prev, currentMinute: minute } : prev));
-        // Delegate to betting service to process the goal event
-        await mockBettingService.processGoalEvent(
-          matchId,
+        await services.betting.processGoalEvent(
+          activeMatchId,
           playerId,
           minute,
           gw,
@@ -113,11 +97,10 @@ export function useMatchData(matchKey?: string) {
         setMatch((prev) =>
           prev ? { ...prev, status: "finished", score } : prev,
         );
-        // Determine winner for MATCH_WINNER settlement
         let winner: MatchWinnerOutcome = "draw";
         if (score.home > score.away) winner = "home";
         else if (score.away > score.home) winner = "away";
-        await mockBettingService.settleBets(matchId, score, winner);
+        await services.betting.settleBets(activeMatchId, score, winner);
         window.dispatchEvent(new CustomEvent("gl:balanceRefresh"));
       },
       onStatusChange: (status) => {
@@ -133,27 +116,31 @@ export function useMatchData(matchKey?: string) {
   }, [dataService, activeMatchId]);
 
   // Use the cast-to-MockDataService for simulation controls; falls back gracefully
-  const localMockService = dataService as typeof mockDataService;
+  const localMockService = dataService as typeof realDataService;
 
   const startSimulation = useCallback(() => {
-    localMockService.startSimulation?.(activeMatchId);
-  }, [localMockService, activeMatchId]);
+    void localMockService;
+  }, [localMockService]);
 
   const resetSimulation = useCallback(() => {
     goalWindowRef.current = 0;
-    localMockService.resetSimulation?.(activeMatchId);
-    mockBettingService.reset();
-    dataService.getMatch(activeMatchId).then(setMatch);
-    dataService.getPlayers(activeMatchId).then(setPlayers);
-    dataService.getMatchWinnerOdds(activeMatchId).then(setMwOdds);
-  }, [localMockService, dataService, activeMatchId]);
+    dataService
+      .getMatch(activeMatchId)
+      .then(setMatch)
+      .catch(() => {});
+    dataService
+      .getPlayers(activeMatchId)
+      .then(setPlayers)
+      .catch(() => {});
+    dataService
+      .getMatchWinnerOdds(activeMatchId)
+      .then(setMwOdds)
+      .catch(() => {});
+  }, [dataService, activeMatchId]);
 
-  const triggerGoal = useCallback(
-    (playerId: string) => {
-      localMockService.triggerGoal?.(activeMatchId, playerId);
-    },
-    [localMockService, activeMatchId],
-  );
+  const triggerGoal = useCallback((_playerId: string) => {
+    /* no-op in real mode */
+  }, []);
 
   return {
     match,

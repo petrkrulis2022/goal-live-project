@@ -52,9 +52,9 @@ interface BetRow {
   id: string;
   bettor_wallet: string;
   bet_type: "NEXT_GOAL_SCORER" | "MATCH_WINNER" | "EXACT_GOALS";
-  current_player_id: string;         // Goalserve integer string for NGS
+  current_player_id: string; // Goalserve integer string for NGS
   outcome: "home" | "away" | "draw" | null; // for MATCH_WINNER
-  goals_target: number | null;       // for EXACT_GOALS (note: DB column name)
+  goals_target: number | null; // for EXACT_GOALS (note: DB column name)
   current_amount: string | number;
   total_penalties: string | number;
   odds: string | number;
@@ -100,20 +100,18 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const {
-      match_id,
-      goal_scorer_player_ids,
-      winner,
-      home_goals,
-      away_goals,
-    } = await req.json();
+    const { match_id, goal_scorer_player_ids, winner, home_goals, away_goals } =
+      await req.json();
 
     // ── Validate input ────────────────────────────────────────────────────
     if (!match_id) return json({ error: "match_id is required" }, 400);
     if (!winner || !(winner in WINNER_TO_UINT))
       return json({ error: "winner must be 'home', 'draw', or 'away'" }, 400);
     if (typeof home_goals !== "number" || typeof away_goals !== "number")
-      return json({ error: "home_goals and away_goals (numbers) are required" }, 400);
+      return json(
+        { error: "home_goals and away_goals (numbers) are required" },
+        400,
+      );
 
     const scorerIds: string[] = Array.isArray(goal_scorer_player_ids)
       ? goal_scorer_player_ids.map(String)
@@ -123,7 +121,9 @@ Deno.serve(async (req: Request) => {
     for (const id of scorerIds) {
       if (id.includes("-") || isNaN(Number(id))) {
         return json(
-          { error: `goal_scorer_player_ids must be Goalserve integer IDs; got "${id}"` },
+          {
+            error: `goal_scorer_player_ids must be Goalserve integer IDs; got "${id}"`,
+          },
           400,
         );
       }
@@ -135,12 +135,15 @@ Deno.serve(async (req: Request) => {
     // ── Verify match exists ───────────────────────────────────────────────
     const { data: match, error: matchErr } = await supabase
       .from("matches")
-      .select("id, status, home_team, away_team, contract_address, external_match_id")
+      .select(
+        "id, status, home_team, away_team, contract_address, external_match_id",
+      )
       .eq("id", match_id)
       .single();
 
     if (matchErr || !match) return json({ error: "Match not found" }, 404);
-    if (match.status === "finished") return json({ error: "Match already settled" }, 409);
+    if (match.status === "finished")
+      return json({ error: "Match already settled" }, 409);
 
     // ── Get all unsettled bets for this match ─────────────────────────────
     const { data: bets, error: betsErr } = await supabase
@@ -151,13 +154,16 @@ Deno.serve(async (req: Request) => {
       .eq("match_id", match_id)
       .in("status", ["active", "provisional_win", "provisional_loss"]);
 
-    if (betsErr) return json({ error: `bets query failed: ${betsErr.message}` }, 500);
+    if (betsErr)
+      return json({ error: `bets query failed: ${betsErr.message}` }, 500);
 
     const settled: SettledResult[] = [];
 
     for (const bet of (bets ?? []) as BetRow[]) {
       const won = didBetWin(bet, scorerSet, winner, totalGoals);
-      const newStatus: "settled_won" | "settled_lost" = won ? "settled_won" : "settled_lost";
+      const newStatus: "settled_won" | "settled_lost" = won
+        ? "settled_won"
+        : "settled_lost";
 
       const currentAmount = Number(bet.current_amount);
       const payout = won
@@ -190,10 +196,9 @@ Deno.serve(async (req: Request) => {
     // ── Settle on-chain via singleton GoalLiveBetting contract ────────────
     let settleTxHash: string | null = null;
     const contractAddress =
-      match.contract_address ??
-      Deno.env.get("VITE_CONTRACT_ADDRESS") ??
-      null;
-    const rpcUrl = Deno.env.get("SEPOLIA_RPC_URL") ?? "https://sepolia.drpc.org";
+      match.contract_address ?? Deno.env.get("VITE_CONTRACT_ADDRESS") ?? null;
+    const rpcUrl =
+      Deno.env.get("SEPOLIA_RPC_URL") ?? "https://sepolia.drpc.org";
     const oraclePrivateKey = Deno.env.get("ORACLE_PRIVATE_KEY") ?? null;
 
     if (contractAddress && oraclePrivateKey) {
@@ -228,7 +233,10 @@ Deno.serve(async (req: Request) => {
         }
       } catch (onChainErr) {
         // Log but don't fail — off-chain settlement is still recorded
-        console.error("[settle-match] on-chain call failed:", String(onChainErr));
+        console.error(
+          "[settle-match] on-chain call failed:",
+          String(onChainErr),
+        );
         settleTxHash = `ERROR: ${String(onChainErr)}`;
       }
     } else {
@@ -279,4 +287,3 @@ function json(body: unknown, status = 200): Response {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
-

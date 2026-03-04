@@ -243,10 +243,11 @@ class WalletBridgeService implements IWalletService {
   }
 
   async deductBalance(amount: number): Promise<void> {
-    if (!this.state) throw new Error("Wallet not connected");
     this.inAppBalance = Math.max(0, this.inAppBalance - amount);
     saveInAppBalance(this.inAppBalance);
-    this.emit({ ...this.state, inAppBalance: this.inAppBalance });
+    if (this.state) {
+      this.emit({ ...this.state, inAppBalance: this.inAppBalance });
+    }
   }
 
   async addBalance(amount: number): Promise<void> {
