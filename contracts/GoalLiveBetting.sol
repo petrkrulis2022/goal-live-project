@@ -96,6 +96,10 @@ contract GoalLiveBetting is ReentrancyGuard, Ownable {
 
     IERC20 public immutable usdc;
     address public oracle;
+    /// @dev Chainlink KeystoneForwarder that calls onReport(). Initially set
+    ///      to the oracle address so CRE simulation works out-of-the-box.
+    ///      Update to 0x15fc6ae953e024d975e77382eeec56a9101f9f88 (Sepolia) for production.
+    address public keystoneForwarder;
     uint256 public platformFeeRate = 200; // 2 % in basis points
 
     uint256 private _nextBetId;
@@ -144,6 +148,10 @@ contract GoalLiveBetting is ReentrancyGuard, Ownable {
         uint256 amount
     );
     event OracleUpdated(address indexed oldOracle, address indexed newOracle);
+    event KeystoneForwarderUpdated(
+        address indexed oldFwd,
+        address indexed newFwd
+    );
     event FeeRateUpdated(uint256 oldRate, uint256 newRate);
     event FeesWithdrawn(address indexed to, uint256 amount);
     event PoolEmergencyWithdrawn(
@@ -175,6 +183,10 @@ contract GoalLiveBetting is ReentrancyGuard, Ownable {
         require(_oracle != address(0), "GLB: zero oracle");
         usdc = IERC20(_usdc);
         oracle = _oracle;
+        // Allow oracle wallet to call onReport initially (for CRE simulation).
+        // Call setKeystoneForwarder(0x15fc6ae953e024d975e77382eeec56a9101f9f88)
+        // after deploying to Sepolia to require the real Chainlink forwarder.
+        keystoneForwarder = _oracle;
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -361,6 +373,45 @@ contract GoalLiveBetting is ReentrancyGuard, Ownable {
         uint8 homeGoals,
         uint8 awayGoals
     ) external onlyOracle {
+        _settleMatch(matchId, goalScorers, winner, homeGoals, awayGoals);
+    }
+
+    /**
+     * @notice CRE report handler — called by the Chainlink KeystoneForwarder.
+     * @dev    The `report` bytes must be ABI-encoded as:
+     *         abi.encode(matchId, goalScorers, winner, homeGoals, awayGoals)
+     *         mirroring encodeAbiParameters in the CRE TypeScript workflow.
+     * @param  metadata  Workflow provenance metadata (reserved for future auth).
+     * @param  report    ABI-encoded settlement payload.
+     */
+    function onReport(bytes calldata metadata, bytes calldata report) external {
+        require(
+            msg.sender == keystoneForwarder,
+            "GLB: only keystone forwarder"
+        );
+        (
+            string memory matchId,
+            uint256[] memory goalScorers,
+            uint8 winnerRaw,
+            uint8 homeGoals,
+            uint8 awayGoals
+        ) = abi.decode(report, (string, uint256[], uint8, uint8, uint8));
+        _settleMatch(
+            matchId,
+            goalScorers,
+            MatchOutcome(winnerRaw),
+            homeGoals,
+            awayGoals
+        );
+    }
+
+    function _settleMatch(
+        string memory matchId,
+        uint256[] memory goalScorers,
+        MatchOutcome winner,
+        uint8 homeGoals,
+        uint8 awayGoals
+    ) internal {
         Match storage m = matches[matchId];
         require(m.isActive, "GLB: match not active");
         require(!m.isSettled, "GLB: already settled");
@@ -460,27 +511,24 @@ contract GoalLiveBetting is ReentrancyGuard, Ownable {
         uint8 homeGoals,
         uint8 awayGoals
     ) external onlyOwner {
-        Match storage m = matches[matchId];
-        require(m.isActive, "GLB: match not active");
-        require(!m.isSettled, "GLB: already settled");
-
-        for (uint256 i; i < goalScorers.length; i++) {
-            m.goalScorers[goalScorers[i]] = true;
-        }
-
-        m.isActive = false;
-        m.finalOutcome = winner;
-        m.homeGoals = homeGoals;
-        m.awayGoals = awayGoals;
-        m.isSettled = true;
-
-        emit MatchSettled(matchId, goalScorers, winner, homeGoals, awayGoals);
+        _settleMatch(matchId, goalScorers, winner, homeGoals, awayGoals);
     }
 
     function setOracle(address newOracle) external onlyOwner {
         require(newOracle != address(0), "GLB: zero oracle");
         emit OracleUpdated(oracle, newOracle);
         oracle = newOracle;
+    }
+
+    /**
+     * @notice Update the Chainlink KeystoneForwarder address.
+     * @dev    Set to 0x15fc6ae953e024d975e77382eeec56a9101f9f88 on Sepolia for production.
+     * @param _fwd New forwarder address.
+     */
+    function setKeystoneForwarder(address _fwd) external onlyOwner {
+        require(_fwd != address(0), "GLB: zero forwarder");
+        emit KeystoneForwarderUpdated(keystoneForwarder, _fwd);
+        keystoneForwarder = _fwd;
     }
 
     function setPlatformFeeRate(uint256 newRate) external onlyOwner {
