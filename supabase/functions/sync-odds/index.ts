@@ -218,19 +218,33 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Fetch all three markets in one call — h2h + totals + player_goal_scorer
-    // (saves API quota vs previous approach of two separate requests)
-    const apiRes = await fetch(
-      `${ODDS_API_BASE}/sports/${sport}/events/${eventId}/odds` +
-        `?apiKey=${apiKey}&regions=uk,eu,us&markets=h2h,totals,player_goal_scorer&oddsFormat=decimal`,
-    );
+    // Fetch in two parallel calls:
+    // ① h2h + totals (outcome markets, same regions) — MW and EG odds
+    // ② player_goal_scorer (player props — needs separate request, us region)
+    const [outcomeRes, scorerRes] = await Promise.all([
+      fetch(
+        `${ODDS_API_BASE}/sports/${sport}/events/${eventId}/odds` +
+          `?apiKey=${apiKey}&regions=uk,eu&markets=h2h,totals&oddsFormat=decimal`,
+      ),
+      fetch(
+        `${ODDS_API_BASE}/sports/${sport}/events/${eventId}/odds` +
+          `?apiKey=${apiKey}&regions=uk,us&markets=player_goal_scorer&oddsFormat=decimal`,
+      ),
+    ]);
 
-    if (!apiRes.ok) {
-      const txt = await apiRes.text();
-      return json({ error: `Odds API ${apiRes.status}: ${txt}` }, 502);
+    if (!outcomeRes.ok) {
+      const txt = await outcomeRes.text();
+      return json(
+        { error: `Odds API outcomes ${outcomeRes.status}: ${txt}` },
+        502,
+      );
     }
 
-    const oddsData: OddsApiEvent = await apiRes.json();
+    const oddsData: OddsApiEvent = await outcomeRes.json();
+    // scorer data is best-effort — don't fail the whole call if unavailable
+    const scorerData: OddsApiEvent | null = scorerRes.ok
+      ? await scorerRes.json()
+      : null;
     const currentMinute =
       ((match as Record<string, unknown>).current_minute as number | null) ??
       null;
@@ -318,7 +332,7 @@ Deno.serve(async (req: Request) => {
 
     // ── Average player_goal_scorer odds across all bookmakers ─────────────
     const accumulator: Record<string, number[]> = {};
-    for (const bookmaker of oddsData.bookmakers ?? []) {
+    for (const bookmaker of scorerData?.bookmakers ?? []) {
       for (const market of bookmaker.markets ?? []) {
         if (market.key !== "player_goal_scorer") continue;
         for (const outcome of market.outcomes ?? []) {
@@ -408,6 +422,7 @@ Deno.serve(async (req: Request) => {
       source: "odds_api",
       event_id: eventId,
       bookmakers_checked: (oddsData.bookmakers ?? []).length,
+      scorer_bookmakers_checked: (scorerData?.bookmakers ?? []).length,
       players_updated: updated.length,
       updated,
       match_winner: matchWinnerResult,

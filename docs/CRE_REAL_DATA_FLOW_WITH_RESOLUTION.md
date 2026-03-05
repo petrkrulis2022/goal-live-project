@@ -9,18 +9,18 @@
 
 ## ✅ Build Progress — Where We Are
 
-| Phase                             | Status                     | What was built                                               |
-| --------------------------------- | -------------------------- | ------------------------------------------------------------ |
-| Migrations 007–010                | ✅ DONE — applied          | odds_history, match odds columns, pg_cron jobs, status cron  |
-| `sync-odds` edge function         | ✅ DONE — deployed         | Live odds (MW/EG/NGS) → Supabase Realtime → extension        |
-| `sync-match-status` edge function | ✅ DONE — deployed         | Goalserve livescores → status/minute/score in real time      |
-| pg_cron wiring (010)              | ✅ DONE — applied          | 3 jobs: Goalserve sync (primary) + 2 SQL safety nets         |
-| Extension manifest                | ✅ DONE                    | Bumped to v2.0.0 on `cre-chainlink`                          |
-| **`lock-bet` edge function**      | ❌ TODO — **NEXT SESSION** | Bet placement, DB insert, on-chain `lockBet()`               |
-| **`settle-match` edge function**  | ❌ TODO                    | Post-match resolution, payout calc, on-chain `settleMatch()` |
-| **Goal events feed**              | ❌ TODO                    | CRE Job #3 — goal detection → `goal_events` table            |
-| **`createMatch()` deployment**    | ❌ TODO                    | Per-match on-chain contract deployment                       |
-| **Admin panel: post result**      | ❌ TODO                    | Trigger `settle-match` from admin UI                         |
+| Phase                             | Status               | What was built                                                                                                                                                                                                                          |
+| --------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Migrations 007–010                | ✅ DONE — applied    | odds_history, match odds columns, pg_cron jobs, status cron                                                                                                                                                                             |
+| `sync-odds` edge function         | ✅ DONE — deployed   | Live odds (MW/EG/NGS) → Supabase Realtime → extension                                                                                                                                                                                   |
+| `sync-match-status` edge function | ✅ DONE — deployed   | Goalserve livescores → status/minute/score in real time                                                                                                                                                                                 |
+| pg_cron wiring (010)              | ✅ DONE — applied    | 3 jobs: Goalserve sync (primary) + 2 SQL safety nets                                                                                                                                                                                    |
+| Extension manifest                | ✅ DONE              | Bumped to v2.0.0 on `cre-chainlink`                                                                                                                                                                                                     |
+| **`lock-bet` edge function**      | ✅ DONE — deployed   | Bet placement, balance check, all 3 bet types, DB insert                                                                                                                                                                                |
+| **`settle-match` edge function**  | ✅ DONE — deployed   | Post-match resolution, payout calc, on-chain `settleMatch()`                                                                                                                                                                            |
+| **Goal events feed**              | ✅ DONE              | CRE Job #3 — `sync-match-status` detects score delta, inserts `goal_events` (source=chainlink_cre, confirmed=false). Goalserve commentary endpoint queried for scorer; falls back to player_id='unknown'. Admin confirms in Oracle tab. |
+| **`createMatch()` deployment**    | ✅ DONE              | Admin calls `createMatch()` on the singleton escrow contract via MetaMask to register each new match; contract address stored once and reused                                                                                           |
+| **Admin panel: post result**      | ✅ DONE — bugs fixed | Oracle tab: emit goals, confirm, settle → triggers edge fn                                                                                                                                                                              |
 
 ---
 
@@ -39,7 +39,7 @@ REAL ODDS API → SUPABASE DB → LIVE ODDS UPDATES → EDGE FUNCTION SETTLEMENT
 | Layer                        | Role                                                                                                    |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------- |
 | **Supabase Postgres**        | Source of truth: `matches`, `players`, `bets`, `player_balances`, `provisional_credits`, `goal_events`  |
-| **Supabase Edge Functions**  | ✅ `sync-odds` (live odds), ✅ `sync-match-status` (Goalserve status), ❌ `lock-bet`, ❌ `settle-match` |
+| **Supabase Edge Functions**  | ✅ `sync-odds` (live odds), ✅ `sync-match-status` (Goalserve status), ✅ `lock-bet`, ✅ `settle-match` |
 | **GoalLiveBetting contract** | `createMatch()` + `settleMatch()` only — no 15s polling                                                 |
 | **Frontend / Extension**     | React + Vite Chrome extension, reads Supabase, writes via Edge Functions                                |
 
@@ -50,13 +50,9 @@ REAL ODDS API → SUPABASE DB → LIVE ODDS UPDATES → EDGE FUNCTION SETTLEMENT
 
 ## Actual Contract: GoalLiveBetting.sol
 
-The contract is **deployed once per match** (not a singleton). Each deployed instance handles a single match. The contract address is stored in the `matches.contract_address` column after deployment.
+The contract is a **singleton** — deployed **once total** for the entire platform. All matches are registered inside it via `createMatch(matchId)` and stored in a `mapping(string => Match)` keyed by the match's external ID string.
 
-**There is no hardcoded global contract address.** The correct address is retrieved from the DB:
-
-```sql
-SELECT contract_address FROM matches WHERE id = $match_id;
-```
+`matches.contract_address` holds the **singleton's address** — the same value for every match row. On first use the admin deploys the contract (one MetaMask TX) and the address is saved to `localStorage`; every subsequent match only calls `createMatch(matchId)` on the already-deployed contract (one MetaMask TX, no redeploy).
 
 **USDC Contract (Sepolia):** `0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238`
 
@@ -341,31 +337,56 @@ Body (live sync from The Odds API):
 
 ## ⚠️ Phase 2: During Match — Bet Placement and Live Odds
 
-> **Live odds + status sync: ✅ DONE. Bet placement (`lock-bet`): ❌ NEXT SESSION.**
+> **Live odds + status sync: ✅ DONE. Bet placement (`lock-bet`): ✅ DONE — deployed.**
 
-### ❌ Placing a Bet — TODO (NEXT SESSION)
+### ✅ Placing a Bet — `lock-bet` deployed
 
 **`lock-bet` endpoint:**
 
 ```
 POST https://weryswulejhjkrmervnf.supabase.co/functions/v1/lock-bet
 
-Body:
+Body (NGS):
 {
   "bettor_wallet": "0x...",
   "match_id": "<uuid>",
-  "player_id": "<uuid>",
+  "bet_type": "NEXT_GOAL_SCORER",
+  "player_id": "<external_player_id>",
   "amount": 10.0,
-  "odds": 2.5,
+  "odds": 4.5,
   "current_minute": 34
+}
+
+Body (MATCH_WINNER):
+{
+  "bettor_wallet": "0x...",
+  "match_id": "<uuid>",
+  "bet_type": "MATCH_WINNER",
+  "outcome": "home" | "draw" | "away",
+  "amount": 10.0,
+  "odds": 2.0
+}
+
+Body (EXACT_GOALS):
+{
+  "bettor_wallet": "0x...",
+  "match_id": "<uuid>",
+  "bet_type": "EXACT_GOALS",
+  "goals_target": 3,
+  "amount": 10.0,
+  "odds": 5.5
 }
 ```
 
 **What it does:**
 
-1. Inserts a row into `bets` with `status = 'active'`
-2. Sets `current_amount = amount`, `original_amount = amount`
-3. Phase 3 (planned): Calls `lockBet()` on-chain and writes tx hash to `blockchain_lock_tx`
+1. Validates all fields and `bet_type`
+2. Checks `player_available_balance` — rejects if insufficient funds
+3. Prevents duplicate active NGS/MW bets from same wallet on same match
+4. For NGS: verifies player exists in `players` table for that match
+5. Inserts a row into `bets` with `status = 'active'`
+6. Sets `current_amount = original_amount = amount`
+7. Phase 3 (planned): Calls on-chain `lockBet*()` and writes tx hash to `blockchain_lock_tx`
 
 ### Changing a Pick
 
@@ -448,7 +469,7 @@ Supabase Realtime fires on matches UPDATE + players UPDATE
 
 ---
 
-## ❌ Phase 3: Post-Match — Automatic Resolution — TODO
+## ✅ Phase 3: Post-Match — Automatic Resolution — `settle-match` DEPLOYED
 
 **Trigger:** Match finishes (`matches.status` transitions to `finished`)
 
@@ -634,15 +655,15 @@ When a `VAR_OVERTURNED` event arrives, provisional credits for that goal window 
 
 ## Key Differences from Naive Architecture
 
-| Topic                | Wrong Assumption                                            | Actual System                                                     |
-| -------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------- |
-| Contract deployment  | One singleton for all matches                               | One contract **per match**; address in `matches.contract_address` |
-| On-chain odds        | Recorded on-chain every 15 seconds                          | Never on-chain; Supabase Postgres only                            |
-| Goal scorer tracking | `first_goalscorer`, `second_goalscorer`, `third_goalscorer` | `NEXT_GOAL_SCORER` per goal window; no ordinal tracking           |
-| Payout calculation   | `original_amount × odds`                                    | `current_amount × odds` (post-penalty)                            |
-| Table names          | `user_positions`, `user_balances`                           | `bets`, `player_balances`, `provisional_credits`                  |
-| Backend URLs         | Placeholder/fabricated                                      | `https://weryswulejhjkrmervnf.supabase.co/functions/v1/{fn}`      |
-| Contract address     | Hardcoded `0xF553...`                                       | Retrieved from DB per match; no global address                    |
+| Topic                | Wrong Assumption                                            | Actual System                                                                                                                       |
+| -------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Contract deployment  | One singleton for all matches                               | ✅ Correct — one singleton; all matches registered via `createMatch(matchId)`, same address in every `matches.contract_address` row |
+| On-chain odds        | Recorded on-chain every 15 seconds                          | Never on-chain; Supabase Postgres only                                                                                              |
+| Goal scorer tracking | `first_goalscorer`, `second_goalscorer`, `third_goalscorer` | `NEXT_GOAL_SCORER` per goal window; no ordinal tracking                                                                             |
+| Payout calculation   | `original_amount × odds`                                    | `current_amount × odds` (post-penalty)                                                                                              |
+| Table names          | `user_positions`, `user_balances`                           | `bets`, `player_balances`, `provisional_credits`                                                                                    |
+| Backend URLs         | Placeholder/fabricated                                      | `https://weryswulejhjkrmervnf.supabase.co/functions/v1/{fn}`                                                                        |
+| Contract address     | Hardcoded `0xF553...`                                       | Singleton address stored in `matches.contract_address` (same for all matches), saved to `localStorage` after first deploy           |
 
 ---
 
@@ -694,11 +715,11 @@ If `settle-match` is called twice for the same match:
 - [x] Migration 010: `sync-match-status` job + SQL safety nets
 - [x] `sync-odds` edge function deployed (split 2-request, The Odds API)
 - [x] `sync-match-status` edge function deployed (Goalserve livescores)
-- [ ] `lock-bet` edge function — **NEXT SESSION**
-- [ ] `settle-match` edge function
-- [ ] Goal events feed (CRE Job #3)
-- [ ] Per-match `createMatch()` deployment flow
-- [ ] Admin panel: post final result → trigger `settle-match`
+- [x] `lock-bet` edge function — all 3 bet types, balance check, duplicate prevention
+- [x] `settle-match` edge function
+- [x] Goal events feed (CRE Job #3)
+- [x] Singleton `createMatch()` registration flow (first match deploys; subsequent matches re-use same contract)
+- [x] Admin panel: post final result → trigger `settle-match`
 
 ### Per-Match Operational Checklist (run for every live match)
 
@@ -710,7 +731,7 @@ If `settle-match` is called twice for the same match:
 - [ ] Bets placed: `lock-bet` Edge Function, `bets` rows inserted
 - [ ] Live odds refresh: `sync-odds` running every 60s via pg_cron (no on-chain write)
 - [ ] Live status/score: `sync-match-status` running every 60s via pg_cron
-- [ ] Goal scored: `goal_events` row inserted, optional provisional credit
+- [x] Goal scored: `goal_events` row inserted, optional provisional credit
 - [ ] Match ends: `settle-match` called with full result
 - [ ] Bets resolved: `bets.status` updated, `provisional_credits` written
 - [ ] On-chain settled: `settleMatch()` tx confirmed, hash stored in `bets.blockchain_settle_tx`

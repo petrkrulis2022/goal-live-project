@@ -144,7 +144,7 @@ contracts/
     MockUSDC.sol
 foundry.toml               ← via_ir=true, OZ remapping, solc 0.8.24
 script/
-  Deploy.s.sol               ← forge script deploy, writes deployments/<network>.json
+  (Deploy.s.sol removed — singleton deployed via admin UI / MetaMask)
 test/
   GoalLiveBetting.t.sol      ← 31 Solidity tests (30/30 unit + 1 fuzz) ✅
 lib/
@@ -418,8 +418,8 @@ interface PredictResponse {
 - [x] `GoalLiveBetting.sol` — NGS + MATCH_WINNER + EXACT_GOALS
 - [x] `MockOracle.sol` — owner-only relay
 - [x] `MockUSDC.sol` for local tests
-- [x] `script/Deploy.s.sol` → writes `deployments/<network>.json`
 - [x] Foundry tests (`test/GoalLiveBetting.t.sol`): 30/30 unit + 1 fuzz ✅
+- [x] Singleton deployed via admin UI (MetaMask) — `script/Deploy.s.sol` removed (not needed)
 - [ ] Deploy to Sepolia → real contract + oracle addresses
 - [ ] Wire `contractService.ts` with real ABI + `SIMULATION_MODE = false`
 - [ ] Wire `bettingService.ts` → `lockBet()` / `changeBet()`
@@ -526,7 +526,7 @@ npm run dev:matchlive2   # MatchLive viewer dev (port 5177) — dynamic
 # TODO Phase 3:
 npm run build:all        # extension + admin combined
 npm run test:contracts   # forge test -vv
-npm run deploy:sepolia   # forge script script/Deploy.s.sol --rpc-url $RPC --broadcast --verify
+# deploy:sepolia removed — use admin UI (MetaMask) to deploy singleton
 npm run anvil            # local anvil node (chain-id 31337)
 ```
 

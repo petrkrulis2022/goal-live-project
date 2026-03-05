@@ -16,8 +16,8 @@
     "test:contracts": "forge test -vv",
     "test:contracts:v": "forge test -vvvv",
     "compile:contracts": "forge build",
-    "deploy:local": "forge script script/Deploy.s.sol --rpc-url http://localhost:8545 --broadcast",
-    "deploy:sepolia": "forge script script/Deploy.s.sol --rpc-url $VITE_SEPOLIA_RPC_URL --broadcast --verify",
+    "deploy:local": "echo 'Use contractService.deployContract() via admin UI (MetaMask). Forge script removed.'",
+    "deploy:sepolia": "echo 'Use contractService.deployContract() via admin UI (MetaMask). Forge script removed.'",
     "anvil": "anvil --chain-id 31337"
   },
   "dependencies": {

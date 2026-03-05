@@ -1,5 +1,6 @@
 /**
- * sync-match-status — Sync match status, score, and minute from Goalserve.
+ * sync-match-status — Sync match status, score, minute from Goalserve.
+ *                     Also detects score changes and inserts goal_events rows.
  *
  * Fetches `soccernew/home?json=1` (all today's matches) from Goalserve and
  * updates any of our `matches` rows that have a matching `goalserve_static_id`.
@@ -16,6 +17,10 @@
  * 'live', etc.) except for the halftime ↔ live second-half flip.
  *
  * Also updates: current_minute, score_home, score_away, updated_at
+ *
+ * Goal detection: when score_home or score_away increases, tries to identify
+ * the scorer from Goalserve commentary events feed. Inserts a goal_events row
+ * with source='chainlink_cre', confirmed=false. Admin confirms in Oracle tab.
  *
  * Called by pg_cron every minute via pg_net. Can also be triggered manually:
  *   POST /functions/v1/sync-match-status   (no body required)
@@ -92,9 +97,67 @@ interface GoalserveMatch {
 }
 
 interface GoalserveCategory {
+  "@id"?: string;
   matches?: {
     match?: GoalserveMatch | GoalserveMatch[];
   };
+}
+
+interface GoalPlayer {
+  player_id: string;
+  player_name: string;
+  minute: number;
+}
+
+// Fetches the Goalserve commentary endpoint for a specific match and tries to
+// extract goal scorers from the `goalscorer` node.
+// Returns empty arrays on any failure (network, parse, missing data) — callers
+// fall back to player_id='unknown'.
+async function tryGetGoalScorers(
+  apiKey: string,
+  staticId: string,
+  leagueId: string | null,
+): Promise<{ home: GoalPlayer[]; away: GoalPlayer[] }> {
+  if (!staticId || staticId === "0" || !leagueId) {
+    return { home: [], away: [] };
+  }
+  try {
+    const url = `${GOALSERVE_BASE}/${apiKey}/commentaries/match?id=${staticId}&league=${leagueId}&json=1`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+    if (!res.ok) return { home: [], away: [] };
+    const data = await res.json();
+    const raw =
+      data?.commentaries?.tournament?.match ??
+      data?.commentaries?.match ??
+      null;
+    if (!raw) return { home: [], away: [] };
+    const matchNode = Array.isArray(raw) ? raw[0] : raw;
+    const gs = matchNode?.goalscorer ?? {};
+
+    // deno-lint-ignore no-explicit-any
+    function parseScorerPlayers(node: any): GoalPlayer[] {
+      const players = toArray(node?.player);
+      return (
+        players
+          // Skip own-goals — they'll be attributed to the other team's side
+          // deno-lint-ignore no-explicit-any
+          .filter((p: any) => (p["@type"] ?? "").toLowerCase() !== "own")
+          // deno-lint-ignore no-explicit-any
+          .map((p: any) => ({
+            player_id: p["@id"] ?? p["@player_id"] ?? "unknown",
+            player_name: p["@name"] ?? p["@player_name"] ?? "Unknown scorer",
+            minute: parseInt(p["@minute"] ?? "0", 10) || 0,
+          }))
+      );
+    }
+
+    return {
+      home: parseScorerPlayers(gs?.localteam),
+      away: parseScorerPlayers(gs?.visitorteam),
+    };
+  } catch {
+    return { home: [], away: [] };
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -132,6 +195,7 @@ Deno.serve(async (req: Request) => {
         minute: number | null;
         scoreHome: number | null;
         scoreAway: number | null;
+        leagueId: string | null;
       }
     >();
 
@@ -149,6 +213,7 @@ Deno.serve(async (req: Request) => {
           minute: parsed.minute,
           scoreHome: isNaN(scoreHome) ? null : scoreHome,
           scoreAway: isNaN(scoreAway) ? null : scoreAway,
+          leagueId: cat["@id"] ?? null,
         });
       }
     }
@@ -261,6 +326,75 @@ Deno.serve(async (req: Request) => {
             new_status: newStatus,
             minute: gsInfo.minute,
           });
+        }
+
+        // ── Goal event detection ─────────────────────────────────────────────
+        // Detect score increases and insert goal_events rows (source=chainlink_cre,
+        // confirmed=false). The admin confirms them in the Oracle tab.
+        const prevHome = dbMatch.score_home ?? 0;
+        const prevAway = dbMatch.score_away ?? 0;
+        const newHome =
+          updates.score_home != null
+            ? (updates.score_home as number)
+            : prevHome;
+        const newAway =
+          updates.score_away != null
+            ? (updates.score_away as number)
+            : prevAway;
+
+        const homeGoalsDelta = Math.max(0, newHome - prevHome);
+        const awayGoalsDelta = Math.max(0, newAway - prevAway);
+
+        if (homeGoalsDelta > 0 || awayGoalsDelta > 0) {
+          // Try to get scorers from Goalserve commentary endpoint.
+          const scorers = await tryGetGoalScorers(
+            apiKey,
+            dbMatch.goalserve_static_id,
+            gsInfo.leagueId,
+          );
+
+          // deno-lint-ignore no-explicit-any
+          const eventsToInsert: any[] = [];
+          const rawPayload = {
+            score_before: `${prevHome}-${prevAway}`,
+            score_after: `${newHome}-${newAway}`,
+            goalserve_static_id: dbMatch.goalserve_static_id,
+          };
+
+          for (let i = 0; i < homeGoalsDelta; i++) {
+            // Take from the END of scorers.home — most recent goals if multiple
+            const s = scorers.home[scorers.home.length - homeGoalsDelta + i];
+            eventsToInsert.push({
+              match_id: dbMatch.id,
+              player_id: s?.player_id ?? "unknown",
+              player_name: s?.player_name ?? "Unknown scorer",
+              team: "home",
+              minute: s?.minute ?? gsInfo.minute ?? 0,
+              event_type: "GOAL",
+              confirmed: false,
+              source: "chainlink_cre",
+              raw_payload: rawPayload,
+            });
+          }
+
+          for (let i = 0; i < awayGoalsDelta; i++) {
+            const s = scorers.away[scorers.away.length - awayGoalsDelta + i];
+            eventsToInsert.push({
+              match_id: dbMatch.id,
+              player_id: s?.player_id ?? "unknown",
+              player_name: s?.player_name ?? "Unknown scorer",
+              team: "away",
+              minute: s?.minute ?? gsInfo.minute ?? 0,
+              event_type: "GOAL",
+              confirmed: false,
+              source: "chainlink_cre",
+              raw_payload: rawPayload,
+            });
+          }
+
+          if (eventsToInsert.length > 0) {
+            await supabase.from("goal_events").insert(eventsToInsert);
+          }
         }
       }
     }

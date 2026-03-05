@@ -10,7 +10,7 @@ import type {
 import { contractService } from "../services/contractService";
 import { MATCH_REGISTRY } from "@shared/data/matchRegistry";
 
-const ODDS_API_KEY = "46978d34dc5ac52756dd87ffbf9844b0";
+const ODDS_API_KEY = "069be437bad9795678cdc1c1cee711c3";
 // Note: Goalserve key is baked into the Vite proxy rewrite (vite.admin.config.ts)
 
 // Sepolia on-chain constants
@@ -868,7 +868,7 @@ export default function EventDetail() {
         minute: goalForm.minute,
         event_type: "GOAL",
         confirmed: false, // admin confirms via toggle below
-        source: "admin_manual",
+        source: "manual",
         raw_payload: {},
       });
       if (error) throw new Error(error.message);
@@ -919,9 +919,12 @@ export default function EventDetail() {
     const activeScorers = goals
       .filter((g) => g.event_type !== "VAR_OVERTURNED" && g.confirmed)
       .map((g) => g.player_id);
-    if (activeScorers.length === 0) {
+    const homeGoals = match.score_home ?? 0;
+    const awayGoals = match.score_away ?? 0;
+    // Allow 0-0 draws — just require the score has been set (not both 0 with no goals in a live match)
+    if (activeScorers.length === 0 && homeGoals + awayGoals > 0) {
       setOracleError(
-        "No confirmed goals yet. Confirm at least one goal before settling.",
+        "Score shows goals but no confirmed scorers. Confirm goal events before settling.",
       );
       return;
     }
@@ -930,8 +933,6 @@ export default function EventDetail() {
     setOracleTx(null);
     try {
       // 1. Call GoalLiveBetting.settleMatch on-chain
-      const homeGoals = match.score_home ?? 0;
-      const awayGoals = match.score_away ?? 0;
       const winner = homeGoals > awayGoals ? 0 : homeGoals < awayGoals ? 2 : 1;
       const txHash = await contractService.settleMatchOnChain(
         match.contract_address ?? "",
@@ -951,7 +952,18 @@ export default function EventDetail() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${anonKey}`,
           },
-          body: JSON.stringify({ match_id: match.id }),
+          body: JSON.stringify({
+            match_id: match.id,
+            goal_scorer_player_ids: activeScorers,
+            winner:
+              homeGoals > awayGoals
+                ? "home"
+                : homeGoals < awayGoals
+                  ? "away"
+                  : "draw",
+            home_goals: homeGoals,
+            away_goals: awayGoals,
+          }),
         });
         if (!res.ok) console.warn("settle-match edge fn:", await res.text());
       } catch (edgeErr) {

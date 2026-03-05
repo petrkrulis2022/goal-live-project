@@ -4,7 +4,7 @@ import { supabase } from "@shared/lib/supabase";
 import { contractService } from "../services/contractService";
 
 // ─── Odds API helpers ─────────────────────────────────────────────────────────
-const ODDS_API_KEY = "46978d34dc5ac52756dd87ffbf9844b0";
+const ODDS_API_KEY = "069be437bad9795678cdc1c1cee711c3";
 
 /** Goalserve league ID for each Odds API sport_key */
 const SPORT_TO_GS_LEAGUE: Record<string, string> = {

@@ -3,14 +3,11 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import {GoalLiveBetting} from "../contracts/GoalLiveBetting.sol";
-import {MockOracle} from "../contracts/MockOracle.sol";
-import {MockUSDC} from "../contracts/mocks/MockUSDC.sol";
 
 contract GoalLiveBettingTest is Test {
     // ─── Contracts ───────────────────────────────────────────────
     GoalLiveBetting betting;
-    MockOracle oracle;
-    MockUSDC usdc;
+    TestUSDC usdc;
 
     // ─── Actors ──────────────────────────────────────────────────
     address owner = makeAddr("owner");
@@ -33,12 +30,9 @@ contract GoalLiveBettingTest is Test {
     function setUp() public {
         vm.startPrank(owner);
 
-        usdc = new MockUSDC();
+        usdc = new TestUSDC();
         betting = new GoalLiveBetting(address(usdc), owner);
-        oracle = new MockOracle(address(betting));
-
-        // Route betting oracle to MockOracle
-        betting.setOracle(address(oracle));
+        // owner is already the oracle from the constructor
 
         // Fund actors
         usdc.mint(owner, HUNDRED * 100);
@@ -74,7 +68,7 @@ contract GoalLiveBettingTest is Test {
         uint8 away
     ) internal {
         vm.prank(owner);
-        oracle.settleMatch(MATCH_ID, scorers, outcome, home, away);
+        betting.settleMatch(MATCH_ID, scorers, outcome, home, away);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -472,7 +466,7 @@ contract GoalLiveBettingTest is Test {
         vm.prank(owner);
         // After settling, isActive = false, so "match not active" fires first
         vm.expectRevert("GLB: match not active");
-        oracle.settleMatch(
+        betting.settleMatch(
             MATCH_ID,
             s,
             GoalLiveBetting.MatchOutcome.HOME,
@@ -488,7 +482,7 @@ contract GoalLiveBettingTest is Test {
     function test_Admin_setOracle() public {
         vm.prank(owner);
         vm.expectEmit(true, true, false, false);
-        emit GoalLiveBetting.OracleUpdated(address(oracle), alice);
+        emit GoalLiveBetting.OracleUpdated(owner, alice);
         betting.setOracle(alice);
         assertEq(betting.oracle(), alice);
     }
@@ -603,5 +597,62 @@ contract GoalLiveBettingTest is Test {
             homeGoals,
             awayGoals
         ) = betting.matches(MATCH_ID);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Minimal ERC-20 token for tests only (lives in test/, not contracts/)
+// ─────────────────────────────────────────────────────────────
+contract TestUSDC {
+    string public name = "Test USDC";
+    string public symbol = "USDC";
+    uint8 public decimals = 6;
+    uint256 public totalSupply;
+
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 value
+    );
+
+    function mint(address to, uint256 amount) external {
+        totalSupply += amount;
+        balanceOf[to] += amount;
+        emit Transfer(address(0), to, amount);
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        emit Approval(msg.sender, spender, amount);
+        return true;
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        require(balanceOf[msg.sender] >= amount, "ERC20: insufficient balance");
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(msg.sender, to, amount);
+        return true;
+    }
+
+    function transferFrom(
+        address from,
+        address to,
+        uint256 amount
+    ) external returns (bool) {
+        require(balanceOf[from] >= amount, "ERC20: insufficient balance");
+        uint256 allowed = allowance[from][msg.sender];
+        if (allowed != type(uint256).max) {
+            require(allowed >= amount, "ERC20: insufficient allowance");
+            allowance[from][msg.sender] = allowed - amount;
+        }
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(from, to, amount);
+        return true;
     }
 }
