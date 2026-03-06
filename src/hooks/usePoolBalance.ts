@@ -5,10 +5,10 @@ const SEPOLIA_RPC = "https://sepolia.drpc.org";
 const POLL_MS = 60_000; // refresh every 60 s
 
 // Minimal ABI for the public matches(string) getter.
-// Solidity omits nested mappings from auto-generated getters, so the return
-// tuple is: matchId, isActive, isSettled, poolSize, createdAt, finalOutcome, homeGoals, awayGoals
+// V1 struct (mapping fields excluded from getter):
+//   (isActive, isSettled, balancesSettled, poolSize, createdAt, finalOutcome, homeGoals, awayGoals)
 const IFACE = new Interface([
-  "function matches(string matchId) view returns (string, bool, bool, uint256, uint256, uint8, uint8, uint8)",
+  "function matches(string) view returns (bool, bool, bool, uint256, uint256, uint8, uint8, uint8)",
 ]);
 
 /**

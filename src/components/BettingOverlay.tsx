@@ -30,6 +30,8 @@ const AD_VIBE_URL =
 import { useMatchData } from "../hooks/useMatchData";
 import { useBetting } from "../hooks/useBetting";
 import { usePoolBalance } from "../hooks/usePoolBalance";
+import { useMatchBalance } from "../hooks/useMatchBalance";
+import { matchContractService } from "../services/matchContract";
 import { MatchInfo } from "./MatchInfo";
 import { BalanceDisplay } from "./BalanceDisplay";
 import { PlayerButton } from "./PlayerButton";
@@ -79,6 +81,11 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     match?.dbId, // Supabase UUID — filters bets/balance to current match only
   );
   const poolBalance = usePoolBalance(match?.contractAddress, matchKey ?? null);
+  const matchBalanceInfo = useMatchBalance(
+    match?.contractAddress,
+    matchKey ?? null,
+    wallet?.address ?? null,
+  );
 
   const [modal, setModal] = useState<ModalState>(null);
   const [hidden, setHidden] = useState(false);
@@ -665,10 +672,29 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             balance={balance}
             walletAddress={wallet?.address ?? null}
             poolBalance={poolBalance}
+            matchBalanceInfo={matchBalanceInfo}
             onConnect={connect}
             onTopUp={wallet ? () => setModal({ type: "topup" }) : undefined}
             onWithdraw={
               wallet ? () => setModal({ type: "withdraw" }) : undefined
+            }
+            onWithdrawMatch={
+              wallet &&
+              matchBalanceInfo?.balancesSettled &&
+              !matchBalanceInfo.withdrawn &&
+              matchBalanceInfo.balance > 0
+                ? () => {
+                    if (!match?.contractAddress || !matchKey) return;
+                    matchContractService
+                      .withdraw(match.contractAddress, matchKey)
+                      .then(() =>
+                        window.dispatchEvent(new Event("gl:balanceRefresh")),
+                      )
+                      .catch((e: unknown) =>
+                        console.error("[withdraw match] failed", e),
+                      );
+                  }
+                : undefined
             }
           />
         </div>
