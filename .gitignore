@@ -34,5 +34,8 @@ broadcast/
 lib/
 deployments/
 
+# CRE build artifacts
+.cre_build_tmp.js
+
 # Supabase local temp
 supabase/.temp/
