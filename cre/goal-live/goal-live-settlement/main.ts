@@ -7,9 +7,10 @@
  *   3. HTTP → Goalserve commentary : get goal scorer IDs for first FT match
  *   4. EVM Write (onReport) : settle the match on-chain via GoalLiveBetting
  *
- * EVM Log Trigger (MatchCreated event on GoalLiveBetting):
- *   - Fires when a new match is registered on-chain
- *   - Logs the event details (matchId hash + timestamp)
+ * EVM Log Trigger (SettlementRequested event on GoalLiveBetting):
+ *   - Fires when admin calls requestSettlement(matchId) for instant settlement
+ *   - Runs the same Goalserve fetch + settlement logic as the cron trigger
+ *   - Provides sub-60 s settlement when admin manually requests it at FT
  *
  * Settlement payload uses encodeAbiParameters mirroring the Solidity
  * abi.decode in GoalLiveBetting.onReport():
@@ -271,16 +272,18 @@ const settlementAggregation = ConsensusAggregationByFields<SettlementData>({
 //  Trigger handlers
 // ─────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────
+//  Trigger handlers
+// ─────────────────────────────────────────────────────────────────────
+
 /**
- * Cron trigger handler — runs every `config.schedule` interval.
- * Fetches match data, checks for FT status, and writes settlement reports.
+ * Shared settlement logic used by both the cron trigger and the
+ * SettlementRequested log trigger. Fetches Goalserve, finds FT match,
+ * and writes a settlement report on-chain via CRE.
  */
-const onCronTrigger = (
-  runtime: Runtime<Config>,
-  _payload: CronPayload,
-): string => {
+const runSettlement = (runtime: Runtime<Config>, label: string): string => {
   runtime.log("═════════════════════════════════════════════════");
-  runtime.log("goal.live CRE: Settlement Check");
+  runtime.log(`goal.live CRE: ${label}`);
   runtime.log("═════════════════════════════════════════════════");
 
   // Run decentralised HTTP consensus across DON nodes
@@ -382,32 +385,35 @@ const onCronTrigger = (
 };
 
 /**
- * EVM Log trigger handler — fires when MatchCreated is emitted by GoalLiveBetting.
- * Used to track newly registered matches and prepare the settlement pipeline.
+ * Cron trigger handler — runs every `config.schedule` interval.
+ * Fetches match data, checks for FT status, and writes settlement reports.
+ */
+const onCronTrigger = (
+  runtime: Runtime<Config>,
+  _payload: CronPayload,
+): string => runSettlement(runtime, "Settlement Check (cron)");
+
+/**
+ * EVM Log trigger handler — fires when SettlementRequested is emitted by
+ * GoalLiveBetting (admin calls requestSettlement() at FT).
  *
- * MatchCreated(string indexed matchId, uint256 timestamp)
- *   topics[0] = keccak256("MatchCreated(string,uint256)")
- *   topics[1] = keccak256(matchId)     ← indexed string is hashed by Solidity
- *   data       = abi.encode(timestamp) ← non-indexed fields
+ * SettlementRequested(string indexed matchId, uint256 timestamp)
+ *   topics[0] = keccak256("SettlementRequested(string,uint256)")
+ *   topics[1] = keccak256(matchId)  ← indexed string is hashed by Solidity
+ *   data       = abi.encode(timestamp)
+ *
+ * The matchId cannot be recovered from the hash, but that's OK: we run the
+ * same Goalserve check as the cron. The log trigger just delivers it
+ * immediately (sub-60 s) instead of waiting for the next cron cycle.
  */
 const onLogTrigger = (runtime: Runtime<Config>, payload: EVMLog): string => {
-  runtime.log("═════════════════════════════════════════════════");
-  runtime.log("goal.live CRE: MatchCreated Log Trigger");
-  runtime.log("═════════════════════════════════════════════════");
-
   const topics = payload.topics;
-  if (topics.length < 2) {
-    runtime.log("Unexpected log — insufficient topics");
-    return "skip";
+  if (topics.length >= 2) {
+    const matchIdHash = bytesToHex(topics[1]);
+    runtime.log(`SettlementRequested received — matchId hash: ${matchIdHash}`);
+    runtime.log("Triggering immediate settlement check...");
   }
-
-  // topics[1] is keccak256(matchId) — Solidity hashes indexed strings
-  const matchIdHash = bytesToHex(topics[1]);
-  runtime.log(`New match created on-chain — matchId hash: ${matchIdHash}`);
-  runtime.log("CRE settlement pipeline is now active for this match");
-  runtime.log("═════════════════════════════════════════════════");
-
-  return matchIdHash;
+  return runSettlement(runtime, "Immediate Settlement (SettlementRequested)");
 };
 
 // ─────────────────────────────────────────────────────────────────────
@@ -436,7 +442,8 @@ const initWorkflow = (config: Config) => {
       cronTrigger.trigger({ schedule: config.schedule }),
       onCronTrigger,
     ),
-    // Listens for MatchCreated events from the GoalLiveBetting contract
+    // Listens for SettlementRequested events — fires when admin calls requestSettlement()
+    // for immediate (sub-60 s) settlement instead of waiting for the next cron cycle
     cre.handler(
       evmClient.logTrigger({
         addresses: [hexToBase64(config.contractAddress)],

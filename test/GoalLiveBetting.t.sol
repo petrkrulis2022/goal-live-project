@@ -11,6 +11,7 @@ contract GoalLiveBettingTest is Test {
 
     // ─── Actors ──────────────────────────────────────────────────
     address owner = makeAddr("owner");
+    address relayer = makeAddr("relayer");
     address alice = makeAddr("alice");
     address bob = makeAddr("bob");
 
@@ -19,9 +20,7 @@ contract GoalLiveBettingTest is Test {
     uint256 constant ONE_USDC = 1e6;
     uint256 constant TEN_USDC = 10e6;
     uint256 constant HUNDRED = 100e6;
-    uint256 constant ODDS_NGS = 45_000; // 4.50x
-    uint256 constant ODDS_MW = 30_200; // 3.02x
-    uint256 constant ODDS_EG = 22_000; // 2.20x
+    uint256 constant TWO_HUNDRED = 200e6;
 
     // ─────────────────────────────────────────────────────────────
     //  Setup
@@ -29,23 +28,17 @@ contract GoalLiveBettingTest is Test {
 
     function setUp() public {
         vm.startPrank(owner);
-
         usdc = new TestUSDC();
-        betting = new GoalLiveBetting(address(usdc), owner);
-        // owner is already the oracle from the constructor
+        betting = new GoalLiveBetting(address(usdc), owner, relayer);
 
-        // Fund actors
-        usdc.mint(owner, HUNDRED * 100);
-        usdc.mint(alice, HUNDRED);
-        usdc.mint(bob, HUNDRED);
-
-        // Max approvals
+        usdc.mint(owner, HUNDRED * 10);
+        usdc.mint(alice, TWO_HUNDRED);
+        usdc.mint(bob, TWO_HUNDRED);
         usdc.approve(address(betting), type(uint256).max);
         vm.stopPrank();
 
         vm.prank(alice);
         usdc.approve(address(betting), type(uint256).max);
-
         vm.prank(bob);
         usdc.approve(address(betting), type(uint256).max);
     }
@@ -54,10 +47,10 @@ contract GoalLiveBettingTest is Test {
     //  Helpers
     // ─────────────────────────────────────────────────────────────
 
-    function _createAndFund() internal {
+    function _createAndSeed() internal {
         vm.startPrank(owner);
         betting.createMatch(MATCH_ID);
-        betting.fundPool(MATCH_ID, HUNDRED);
+        betting.fundPool(MATCH_ID, HUNDRED); // platform seed
         vm.stopPrank();
     }
 
@@ -69,6 +62,14 @@ contract GoalLiveBettingTest is Test {
     ) internal {
         vm.prank(owner);
         betting.settleMatch(MATCH_ID, scorers, outcome, home, away);
+    }
+
+    function _distributeBalances(
+        address[] memory users,
+        uint256[] memory payouts
+    ) internal {
+        vm.prank(relayer);
+        betting.settleUserBalances(MATCH_ID, users, payouts);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -91,7 +92,7 @@ contract GoalLiveBettingTest is Test {
     function test_CreateMatch_revert_duplicate() public {
         vm.startPrank(owner);
         betting.createMatch(MATCH_ID);
-        vm.expectRevert("GLB: match already active");
+        vm.expectRevert("GLB: already active");
         betting.createMatch(MATCH_ID);
         vm.stopPrank();
     }
@@ -103,353 +104,160 @@ contract GoalLiveBettingTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  fundPool
+    //  fundMatch
+    // ─────────────────────────────────────────────────────────────
+
+    function test_FundMatch_updatesBalance() public {
+        _createAndSeed();
+        vm.prank(alice);
+        betting.fundMatch(MATCH_ID, HUNDRED);
+
+        assertEq(betting.matchBalance(MATCH_ID, alice), HUNDRED);
+        assertEq(betting.userDeposit(MATCH_ID, alice), HUNDRED);
+    }
+
+    function test_FundMatch_topUp() public {
+        _createAndSeed();
+        vm.startPrank(alice);
+        betting.fundMatch(MATCH_ID, HUNDRED);
+        betting.fundMatch(MATCH_ID, HUNDRED); // top-up
+        vm.stopPrank();
+        assertEq(betting.matchBalance(MATCH_ID, alice), TWO_HUNDRED);
+    }
+
+    function test_FundMatch_revert_zeroAmount() public {
+        _createAndSeed();
+        vm.prank(alice);
+        vm.expectRevert("GLB: zero amount");
+        betting.fundMatch(MATCH_ID, 0);
+    }
+
+    function test_FundMatch_revert_afterSettle() public {
+        _createAndSeed();
+        uint256[] memory s = new uint256[](0);
+        _settle(s, GoalLiveBetting.MatchOutcome.DRAW, 1, 1);
+        vm.prank(alice);
+        vm.expectRevert("GLB: not active");
+        betting.fundMatch(MATCH_ID, HUNDRED);
+    }
+
+    function test_FundMatch_emitsEvent() public {
+        _createAndSeed();
+        vm.prank(alice);
+        vm.expectEmit(true, true, false, true);
+        emit GoalLiveBetting.MatchFunded(MATCH_ID, alice, HUNDRED);
+        betting.fundMatch(MATCH_ID, HUNDRED);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  fundPool (admin seed)
     // ─────────────────────────────────────────────────────────────
 
     function test_FundPool_updatesPoolSize() public {
-        _createAndFund();
-        (, , uint256 poolSize, , , , , ) = _matchFields();
+        _createAndSeed();
+        (, , , uint256 poolSize, , , , ) = betting.matches(MATCH_ID);
+        // pool = HUNDRED (seed) because alice hasn't funded yet
         assertEq(poolSize, HUNDRED);
     }
 
     function test_FundPool_revert_zeroAmount() public {
-        vm.prank(owner);
+        vm.startPrank(owner);
         betting.createMatch(MATCH_ID);
-        vm.prank(owner);
         vm.expectRevert("GLB: zero amount");
         betting.fundPool(MATCH_ID, 0);
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    //  lockBetNGS
-    // ─────────────────────────────────────────────────────────────
-
-    function test_LockBetNGS_emitsBetPlaced() public {
-        _createAndFund();
-        vm.prank(alice);
-        vm.expectEmit(true, true, true, false);
-        emit GoalLiveBetting.BetPlaced(
-            0,
-            alice,
-            MATCH_ID,
-            GoalLiveBetting.BetType.NEXT_GOAL_SCORER,
-            TEN_USDC,
-            ODDS_NGS
-        );
-        betting.lockBetNGS(MATCH_ID, 42, TEN_USDC, ODDS_NGS);
-    }
-
-    function test_LockBetNGS_storesCorrectBetType() public {
-        _createAndFund();
-        vm.prank(alice);
-        betting.lockBetNGS(MATCH_ID, 42, TEN_USDC, ODDS_NGS);
-        (
-            ,
-            ,
-            uint256 pId,
-            ,
-            ,
-            ,
-            ,
-            ,
-            GoalLiveBetting.BetStatus st,
-            GoalLiveBetting.BetType bt,
-            ,
-
-        ) = betting.bets(0);
-        assertEq(uint8(bt), uint8(GoalLiveBetting.BetType.NEXT_GOAL_SCORER));
-        assertEq(pId, 42);
-        assertEq(uint8(st), uint8(GoalLiveBetting.BetStatus.Active));
-    }
-
-    function test_LockBetNGS_revert_zeroAmount() public {
-        _createAndFund();
-        vm.prank(alice);
-        vm.expectRevert("GLB: zero amount");
-        betting.lockBetNGS(MATCH_ID, 42, 0, ODDS_NGS);
-    }
-
-    function test_LockBetNGS_revert_oddsUnder1x() public {
-        _createAndFund();
-        vm.prank(alice);
-        vm.expectRevert("GLB: odds must be > 1x");
-        betting.lockBetNGS(MATCH_ID, 42, TEN_USDC, 9_000);
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    //  lockBetMW
-    // ─────────────────────────────────────────────────────────────
-
-    function test_LockBetMW_storesPrediction() public {
-        _createAndFund();
-        vm.prank(alice);
-        betting.lockBetMW(
-            MATCH_ID,
-            GoalLiveBetting.MatchOutcome.DRAW,
-            TEN_USDC,
-            ODDS_MW
-        );
-        (
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            GoalLiveBetting.BetType bt,
-            GoalLiveBetting.MatchOutcome pred,
-
-        ) = betting.bets(0);
-        assertEq(uint8(bt), uint8(GoalLiveBetting.BetType.MATCH_WINNER));
-        assertEq(uint8(pred), uint8(GoalLiveBetting.MatchOutcome.DRAW));
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    //  lockBetEG
-    // ─────────────────────────────────────────────────────────────
-
-    function test_LockBetEG_storesGoalsTarget() public {
-        _createAndFund();
-        vm.prank(alice);
-        betting.lockBetEG(MATCH_ID, 3, TEN_USDC, ODDS_EG);
-        (, , , , , , , , , GoalLiveBetting.BetType bt, , uint8 target) = betting
-            .bets(0);
-        assertEq(uint8(bt), uint8(GoalLiveBetting.BetType.EXACT_GOALS));
-        assertEq(target, 3);
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    //  changeBet
-    // ─────────────────────────────────────────────────────────────
-
-    function test_ChangeBet_10pct_penalty_at_minute20() public {
-        _createAndFund();
-        vm.prank(alice);
-        betting.lockBetNGS(MATCH_ID, 42, TEN_USDC, ODDS_NGS);
-
-        vm.prank(alice);
-        betting.changeBet(0, 99, 20); // minute 20 → 70 remaining → 10% penalty
-
-        (, , uint256 pId, , uint256 cur, , , uint256 cc, , , , ) = betting.bets(
-            0
-        );
-        assertEq(pId, 99);
-        assertEq(cc, 1);
-        // 10 USDC - 10% = 9 USDC
-        assertEq(cur, TEN_USDC - TEN_USDC / 10);
-    }
-
-    function test_ChangeBet_20pct_penalty_at_minute60() public {
-        _createAndFund();
-        vm.prank(alice);
-        betting.lockBetNGS(MATCH_ID, 42, TEN_USDC, ODDS_NGS);
-
-        vm.prank(alice);
-        betting.changeBet(0, 99, 60); // minute 60 → 30 remaining → 10%
-
-        (, , , , uint256 cur, , , , , , , ) = betting.bets(0);
-        // minutesRemaining = 30 >= 30 → still 10%
-        assertEq(cur, TEN_USDC - TEN_USDC / 10);
-    }
-
-    function test_ChangeBet_30pct_penalty_at_minute80() public {
-        _createAndFund();
-        vm.prank(alice);
-        betting.lockBetNGS(MATCH_ID, 42, TEN_USDC, ODDS_NGS);
-
-        vm.prank(alice);
-        betting.changeBet(0, 99, 80); // minute 80 → 10 remaining → 20%
-        // (PENALTY_MID_MINUTES = 15, PENALTY_HIGH_MINUTES = 5)
-        // 10 remaining: >= 5 but < 15 → PENALTY_HIGH_BP (30%)
-
-        (, , , , uint256 cur, , , , , , , ) = betting.bets(0);
-        assertEq(cur, TEN_USDC - (TEN_USDC * 3_000) / 10_000);
-    }
-
-    function test_ChangeBet_revert_maxChanges() public {
-        _createAndFund();
-        vm.prank(alice);
-        betting.lockBetNGS(MATCH_ID, 42, TEN_USDC, ODDS_NGS);
-
-        vm.startPrank(alice);
-        betting.changeBet(0, 99, 20);
-        betting.changeBet(0, 42, 20);
-        betting.changeBet(0, 99, 20);
-        vm.expectRevert("GLB: max changes reached");
-        betting.changeBet(0, 42, 20);
         vm.stopPrank();
     }
 
-    function test_ChangeBet_revert_notOwner() public {
-        _createAndFund();
-        vm.prank(alice);
-        betting.lockBetNGS(MATCH_ID, 42, TEN_USDC, ODDS_NGS);
-        vm.prank(bob);
-        vm.expectRevert("GLB: not bet owner");
-        betting.changeBet(0, 99, 20);
+    // ─────────────────────────────────────────────────────────────
+    //  requestSettlement
+    // ─────────────────────────────────────────────────────────────
+
+    function test_RequestSettlement_emitsEvent() public {
+        _createAndSeed();
+        vm.prank(owner);
+        vm.expectEmit(true, false, false, false);
+        emit GoalLiveBetting.SettlementRequested(MATCH_ID, block.timestamp);
+        betting.requestSettlement(MATCH_ID);
     }
 
-    function test_ChangeBet_revert_onlyNGS() public {
-        _createAndFund();
+    function test_RequestSettlement_revert_nonOwner() public {
+        _createAndSeed();
         vm.prank(alice);
-        betting.lockBetMW(
+        vm.expectRevert();
+        betting.requestSettlement(MATCH_ID);
+    }
+
+    function test_RequestSettlement_revert_afterSettle() public {
+        _createAndSeed();
+        uint256[] memory s = new uint256[](0);
+        _settle(s, GoalLiveBetting.MatchOutcome.HOME, 1, 0);
+        vm.prank(owner);
+        vm.expectRevert("GLB: not active");
+        betting.requestSettlement(MATCH_ID);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  recordBet
+    // ─────────────────────────────────────────────────────────────
+
+    function test_RecordBet_appendsToBetHistory() public {
+        _createAndSeed();
+        bytes32 sel = keccak256(abi.encodePacked(uint256(42)));
+        vm.prank(relayer);
+        betting.recordBet(MATCH_ID, alice, 0, sel, TEN_USDC, false);
+
+        GoalLiveBetting.BetRecord[] memory hist = betting.getBetHistory(
             MATCH_ID,
-            GoalLiveBetting.MatchOutcome.HOME,
-            TEN_USDC,
-            ODDS_MW
+            alice
         );
+        assertEq(hist.length, 1);
+        assertEq(hist[0].selection, sel);
+        assertEq(hist[0].amount, TEN_USDC);
+        assertEq(hist[0].isChange, false);
+    }
+
+    function test_RecordBet_isChange_flag() public {
+        _createAndSeed();
+        bytes32 sel = keccak256(abi.encodePacked(uint256(99)));
+        vm.prank(relayer);
+        betting.recordBet(MATCH_ID, alice, 0, sel, TEN_USDC, true);
+
+        GoalLiveBetting.BetRecord[] memory hist = betting.getBetHistory(
+            MATCH_ID,
+            alice
+        );
+        assertEq(hist[0].isChange, true);
+    }
+
+    function test_RecordBet_revert_nonRelayer() public {
+        _createAndSeed();
         vm.prank(alice);
-        vm.expectRevert("GLB: change only for NGS");
-        betting.changeBet(0, 99, 20);
+        vm.expectRevert("GLB: not relayer");
+        betting.recordBet(MATCH_ID, alice, 0, bytes32(0), TEN_USDC, false);
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  settleMatch + claimPayout — NGS
+    //  settleMatch (CRE oracle)
     // ─────────────────────────────────────────────────────────────
 
-    function test_NGS_winnerClaimsPayout() public {
-        _createAndFund();
-        vm.prank(alice);
-        betting.lockBetNGS(MATCH_ID, 42, TEN_USDC, ODDS_NGS); // betting on scorer 42
-
+    function test_Settle_setsSettled() public {
+        _createAndSeed();
         uint256[] memory scorers = new uint256[](1);
         scorers[0] = 42;
-        _settle(scorers, GoalLiveBetting.MatchOutcome.HOME, 1, 0);
+        _settle(scorers, GoalLiveBetting.MatchOutcome.AWAY, 0, 2);
 
-        uint256 before = usdc.balanceOf(alice);
-        vm.prank(alice);
-        betting.claimPayout(0);
-
-        // gross = 10 * 4.5 = 45 USDC; fee = 45 * 2% = 0.9; net = 44.1 USDC
-        uint256 gross = (TEN_USDC * ODDS_NGS) / 10_000;
-        uint256 fee = (gross * 200) / 10_000;
-        uint256 net = gross - fee;
-        assertEq(usdc.balanceOf(alice) - before, net);
+        (bool isActive, bool isSettled, , , , , , ) = betting.matches(MATCH_ID);
+        assertEq(isSettled, true);
+        assertEq(isActive, false);
+        assertEq(betting.isGoalScorer(MATCH_ID, 42), true);
+        assertEq(betting.isGoalScorer(MATCH_ID, 99), false);
     }
-
-    function test_NGS_loserGetNothing() public {
-        _createAndFund();
-        vm.prank(bob);
-        betting.lockBetNGS(MATCH_ID, 99, TEN_USDC, ODDS_NGS); // non-scorer
-
-        uint256[] memory scorers = new uint256[](1);
-        scorers[0] = 42;
-        _settle(scorers, GoalLiveBetting.MatchOutcome.HOME, 1, 0);
-
-        uint256 before = usdc.balanceOf(bob);
-        vm.prank(bob);
-        betting.claimPayout(0);
-        assertEq(usdc.balanceOf(bob), before);
-
-        (, , , , , , , , GoalLiveBetting.BetStatus st, , , ) = betting.bets(0);
-        assertEq(uint8(st), uint8(GoalLiveBetting.BetStatus.Lost));
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    //  settleMatch + claimPayout — Match Winner
-    // ─────────────────────────────────────────────────────────────
-
-    function test_MW_drawBetWinsOnDraw() public {
-        _createAndFund();
-        vm.prank(alice);
-        betting.lockBetMW(
-            MATCH_ID,
-            GoalLiveBetting.MatchOutcome.DRAW,
-            TEN_USDC,
-            ODDS_MW
-        ); // betId 0
-        vm.prank(bob);
-        betting.lockBetMW(
-            MATCH_ID,
-            GoalLiveBetting.MatchOutcome.HOME,
-            TEN_USDC,
-            ODDS_MW
-        ); // betId 1
-
-        uint256[] memory noScorers = new uint256[](0);
-        _settle(noScorers, GoalLiveBetting.MatchOutcome.DRAW, 1, 1);
-
-        uint256 aliceBefore = usdc.balanceOf(alice);
-        vm.prank(alice);
-        betting.claimPayout(0);
-        assertGt(usdc.balanceOf(alice), aliceBefore, "alice should win");
-
-        uint256 bobBefore = usdc.balanceOf(bob);
-        vm.prank(bob);
-        betting.claimPayout(1);
-        assertEq(usdc.balanceOf(bob), bobBefore, "bob should get nothing");
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    //  settleMatch + claimPayout — Exact Goals
-    // ─────────────────────────────────────────────────────────────
-
-    function test_EG_correctGoalCountWins() public {
-        _createAndFund();
-        vm.prank(alice);
-        betting.lockBetEG(MATCH_ID, 2, TEN_USDC, ODDS_EG); // betId 0 — 2 total goals
-        vm.prank(bob);
-        betting.lockBetEG(MATCH_ID, 3, TEN_USDC, ODDS_EG); // betId 1 — 3 total goals
-
-        uint256[] memory noScorers = new uint256[](0);
-        // Final score 1-1 → 2 total goals
-        _settle(noScorers, GoalLiveBetting.MatchOutcome.DRAW, 1, 1);
-
-        uint256 aliceBefore = usdc.balanceOf(alice);
-        vm.prank(alice);
-        betting.claimPayout(0);
-        assertGt(
-            usdc.balanceOf(alice),
-            aliceBefore,
-            "alice wins: 2 goals correct"
-        );
-
-        uint256 bobBefore = usdc.balanceOf(bob);
-        vm.prank(bob);
-        betting.claimPayout(1);
-        assertEq(usdc.balanceOf(bob), bobBefore, "bob loses: guessed 3");
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    //  batchClaim
-    // ─────────────────────────────────────────────────────────────
-
-    function test_BatchClaim() public {
-        _createAndFund();
-        vm.startPrank(alice);
-        betting.lockBetNGS(MATCH_ID, 42, TEN_USDC, ODDS_NGS); // betId 0 — wins
-        betting.lockBetNGS(MATCH_ID, 99, TEN_USDC, ODDS_NGS); // betId 1 — loses
-        vm.stopPrank();
-
-        uint256[] memory scorers = new uint256[](1);
-        scorers[0] = 42;
-        _settle(scorers, GoalLiveBetting.MatchOutcome.HOME, 1, 0);
-
-        uint256 before = usdc.balanceOf(alice);
-        uint256[] memory ids = new uint256[](2);
-        ids[0] = 0;
-        ids[1] = 1;
-        vm.prank(alice);
-        betting.batchClaim(ids);
-        assertGt(
-            usdc.balanceOf(alice),
-            before,
-            "alice got paid for winning bet"
-        );
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    //  Settlement access control
-    // ─────────────────────────────────────────────────────────────
 
     function test_Settle_revert_nonOracle() public {
-        _createAndFund();
+        _createAndSeed();
         uint256[] memory s = new uint256[](0);
         vm.prank(alice);
-        vm.expectRevert("GLB: caller is not oracle");
+        vm.expectRevert("GLB: not oracle");
         betting.settleMatch(
             MATCH_ID,
             s,
@@ -460,12 +268,11 @@ contract GoalLiveBettingTest is Test {
     }
 
     function test_Settle_revert_doubleSettle() public {
-        _createAndFund();
+        _createAndSeed();
         uint256[] memory s = new uint256[](0);
         _settle(s, GoalLiveBetting.MatchOutcome.HOME, 1, 0);
         vm.prank(owner);
-        // After settling, isActive = false, so "match not active" fires first
-        vm.expectRevert("GLB: match not active");
+        vm.expectRevert("GLB: not active");
         betting.settleMatch(
             MATCH_ID,
             s,
@@ -476,7 +283,174 @@ contract GoalLiveBettingTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  Admin
+    //  settleUserBalances
+    // ─────────────────────────────────────────────────────────────
+
+    function test_SettleBalances_setsPayouts() public {
+        _createAndSeed();
+
+        vm.prank(alice);
+        betting.fundMatch(MATCH_ID, HUNDRED); // alice deposits 100
+        vm.prank(bob);
+        betting.fundMatch(MATCH_ID, HUNDRED); // bob deposits 100
+
+        uint256[] memory s = new uint256[](0);
+        _settle(s, GoalLiveBetting.MatchOutcome.DRAW, 1, 1);
+
+        address[] memory users = new address[](2);
+        uint256[] memory payouts = new uint256[](2);
+        users[0] = alice;
+        payouts[0] = 150e6; // alice won → gets 150
+        users[1] = bob;
+        payouts[1] = 0; // bob lost → gets 0
+
+        _distributeBalances(users, payouts);
+
+        assertEq(betting.matchBalance(MATCH_ID, alice), 150e6);
+        assertEq(betting.matchBalance(MATCH_ID, bob), 0);
+
+        // platform revenue = poolSize (300 seed+alice+bob) - 150 = 150 + HUNDRED (seed)
+        // revenues were added to collectedFees
+        assertGt(betting.collectedFees(), 0);
+    }
+
+    function test_SettleBalances_revert_notSettled() public {
+        _createAndSeed();
+        vm.prank(alice);
+        betting.fundMatch(MATCH_ID, HUNDRED);
+
+        address[] memory users = new address[](1);
+        uint256[] memory payouts = new uint256[](1);
+        users[0] = alice;
+        payouts[0] = HUNDRED;
+
+        vm.prank(relayer);
+        vm.expectRevert("GLB: match not settled by CRE");
+        betting.settleUserBalances(MATCH_ID, users, payouts);
+    }
+
+    function test_SettleBalances_revert_doubleDistribute() public {
+        _createAndSeed();
+        vm.prank(alice);
+        betting.fundMatch(MATCH_ID, HUNDRED);
+
+        uint256[] memory s = new uint256[](0);
+        _settle(s, GoalLiveBetting.MatchOutcome.DRAW, 1, 1);
+
+        address[] memory users = new address[](1);
+        uint256[] memory payouts = new uint256[](1);
+        users[0] = alice;
+        payouts[0] = HUNDRED;
+
+        _distributeBalances(users, payouts);
+
+        vm.prank(relayer);
+        vm.expectRevert("GLB: balances already settled");
+        betting.settleUserBalances(MATCH_ID, users, payouts);
+    }
+
+    function test_SettleBalances_revert_nonRelayer() public {
+        _createAndSeed();
+        uint256[] memory s = new uint256[](0);
+        _settle(s, GoalLiveBetting.MatchOutcome.DRAW, 1, 1);
+
+        address[] memory users = new address[](1);
+        uint256[] memory payouts = new uint256[](1);
+        users[0] = alice;
+        payouts[0] = HUNDRED;
+
+        vm.prank(alice);
+        vm.expectRevert("GLB: not relayer");
+        betting.settleUserBalances(MATCH_ID, users, payouts);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  withdraw
+    // ─────────────────────────────────────────────────────────────
+
+    function test_Withdraw_transfersBalance() public {
+        _createAndSeed();
+        vm.prank(alice);
+        betting.fundMatch(MATCH_ID, HUNDRED);
+
+        uint256[] memory s = new uint256[](0);
+        _settle(s, GoalLiveBetting.MatchOutcome.DRAW, 1, 1);
+
+        address[] memory users = new address[](1);
+        uint256[] memory payouts = new uint256[](1);
+        users[0] = alice;
+        payouts[0] = 120e6; // alice won, gets back 120
+        _distributeBalances(users, payouts);
+
+        uint256 before = usdc.balanceOf(alice);
+        vm.prank(alice);
+        betting.withdraw(MATCH_ID);
+
+        assertEq(usdc.balanceOf(alice) - before, 120e6);
+        assertEq(betting.matchBalance(MATCH_ID, alice), 0);
+        assertEq(betting.hasWithdrawn(MATCH_ID, alice), true);
+    }
+
+    function test_Withdraw_zeroBalance_stillMarksWithdrawn() public {
+        _createAndSeed();
+        vm.prank(bob);
+        betting.fundMatch(MATCH_ID, HUNDRED);
+
+        uint256[] memory s = new uint256[](0);
+        _settle(s, GoalLiveBetting.MatchOutcome.DRAW, 1, 1);
+
+        address[] memory users = new address[](1);
+        uint256[] memory payouts = new uint256[](1);
+        users[0] = bob;
+        payouts[0] = 0; // bob lost everything
+        _distributeBalances(users, payouts);
+
+        uint256 before = usdc.balanceOf(bob);
+        vm.prank(bob);
+        betting.withdraw(MATCH_ID);
+
+        assertEq(usdc.balanceOf(bob), before); // no transfer
+        assertEq(betting.hasWithdrawn(MATCH_ID, bob), true);
+    }
+
+    function test_Withdraw_revert_doubleWithdraw() public {
+        _createAndSeed();
+        vm.prank(alice);
+        betting.fundMatch(MATCH_ID, HUNDRED);
+
+        uint256[] memory s = new uint256[](0);
+        _settle(s, GoalLiveBetting.MatchOutcome.DRAW, 1, 1);
+
+        address[] memory users = new address[](1);
+        uint256[] memory payouts = new uint256[](1);
+        users[0] = alice;
+        payouts[0] = HUNDRED;
+        _distributeBalances(users, payouts);
+
+        vm.prank(alice);
+        betting.withdraw(MATCH_ID);
+
+        vm.prank(alice);
+        vm.expectRevert("GLB: already withdrawn");
+        betting.withdraw(MATCH_ID);
+    }
+
+    function test_Withdraw_revert_balancesNotSettled() public {
+        _createAndSeed();
+        vm.prank(alice);
+        betting.fundMatch(MATCH_ID, HUNDRED);
+
+        uint256[] memory s = new uint256[](0);
+        _settle(s, GoalLiveBetting.MatchOutcome.HOME, 1, 0);
+        // Did NOT call settleUserBalances yet
+
+        vm.prank(alice);
+        vm.expectRevert("GLB: balances not settled yet");
+        betting.withdraw(MATCH_ID);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  Admin — config
     // ─────────────────────────────────────────────────────────────
 
     function test_Admin_setOracle() public {
@@ -487,9 +461,17 @@ contract GoalLiveBettingTest is Test {
         assertEq(betting.oracle(), alice);
     }
 
+    function test_Admin_setRelayer() public {
+        vm.prank(owner);
+        vm.expectEmit(true, true, false, false);
+        emit GoalLiveBetting.RelayerUpdated(relayer, alice);
+        betting.setRelayer(alice);
+        assertEq(betting.relayer(), alice);
+    }
+
     function test_Admin_setPlatformFeeRate() public {
         vm.prank(owner);
-        betting.setPlatformFeeRate(500); // 5%
+        betting.setPlatformFeeRate(500);
         assertEq(betting.platformFeeRate(), 500);
     }
 
@@ -500,16 +482,18 @@ contract GoalLiveBettingTest is Test {
     }
 
     function test_Admin_withdrawFees() public {
-        _createAndFund();
+        _createAndSeed();
         vm.prank(alice);
-        betting.lockBetNGS(MATCH_ID, 99, TEN_USDC, ODDS_NGS); // will lose
+        betting.fundMatch(MATCH_ID, HUNDRED);
 
-        uint256[] memory scorers = new uint256[](1);
-        scorers[0] = 42; // different scorer → alice loses
-        _settle(scorers, GoalLiveBetting.MatchOutcome.HOME, 1, 0);
+        uint256[] memory s = new uint256[](0);
+        _settle(s, GoalLiveBetting.MatchOutcome.HOME, 1, 0);
 
-        vm.prank(alice);
-        betting.claimPayout(0); // triggers Lost, adds stake to fees
+        address[] memory users = new address[](1);
+        uint256[] memory payouts = new uint256[](1);
+        users[0] = alice;
+        payouts[0] = 0; // alice lost everything
+        _distributeBalances(users, payouts);
 
         uint256 before = usdc.balanceOf(owner);
         vm.prank(owner);
@@ -517,91 +501,114 @@ contract GoalLiveBettingTest is Test {
         assertGt(usdc.balanceOf(owner), before);
     }
 
-    function test_Admin_getUserBets() public {
-        _createAndFund();
-        vm.startPrank(alice);
-        betting.lockBetNGS(MATCH_ID, 1, TEN_USDC, ODDS_NGS);
-        betting.lockBetMW(
-            MATCH_ID,
-            GoalLiveBetting.MatchOutcome.HOME,
-            TEN_USDC,
-            ODDS_MW
-        );
-        vm.stopPrank();
+    // ─────────────────────────────────────────────────────────────
+    //  emergencySettle
+    // ─────────────────────────────────────────────────────────────
 
-        uint256[] memory ids = betting.getUserBets(alice);
-        assertEq(ids.length, 2);
+    function test_EmergencySettle_onlyOwner() public {
+        _createAndSeed();
+        uint256[] memory s = new uint256[](0);
+        vm.prank(alice);
+        vm.expectRevert();
+        betting.emergencySettle(
+            MATCH_ID,
+            s,
+            GoalLiveBetting.MatchOutcome.HOME,
+            1,
+            0
+        );
+    }
+
+    function test_EmergencySettle_settlesMatch() public {
+        _createAndSeed();
+        uint256[] memory s = new uint256[](1);
+        s[0] = 77;
+        vm.prank(owner);
+        betting.emergencySettle(
+            MATCH_ID,
+            s,
+            GoalLiveBetting.MatchOutcome.HOME,
+            1,
+            0
+        );
+        (bool settled, , , ) = betting.getMatchResult(MATCH_ID);
+        assertEq(settled, true);
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  Fuzz
+    //  getMatchResult view
     // ─────────────────────────────────────────────────────────────
 
-    /// @dev Bet amount and odds should produce a valid payout without overflow.
-    function testFuzz_Payout_noOverflow(uint256 amount, uint256 odds) public {
-        amount = bound(amount, ONE_USDC, HUNDRED);
-        odds = bound(odds, 10_001, 100_000); // 1.0001x – 10x
+    function test_GetMatchResult_afterSettle() public {
+        _createAndSeed();
+        uint256[] memory scorers = new uint256[](2);
+        scorers[0] = 10;
+        scorers[1] = 20;
+        _settle(scorers, GoalLiveBetting.MatchOutcome.AWAY, 0, 2);
 
-        // Mint and fund pool with enough to cover the fuzz payout
-        uint256 poolNeeded = (amount * odds) / 10_000 + ONE_USDC;
-        vm.startPrank(owner);
-        betting.createMatch(MATCH_ID);
-        usdc.mint(owner, poolNeeded);
-        usdc.approve(address(betting), poolNeeded);
-        betting.fundPool(MATCH_ID, poolNeeded);
-        vm.stopPrank();
+        (
+            bool settled,
+            GoalLiveBetting.MatchOutcome outcome,
+            uint8 home,
+            uint8 away
+        ) = betting.getMatchResult(MATCH_ID);
+
+        assertEq(settled, true);
+        assertEq(uint8(outcome), uint8(GoalLiveBetting.MatchOutcome.AWAY));
+        assertEq(home, 0);
+        assertEq(away, 2);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  Fuzz: fundMatch + settleUserBalances + withdraw
+    // ─────────────────────────────────────────────────────────────
+
+    function testFuzz_FullCycle(
+        uint256 depositAmount,
+        uint256 payoutPct
+    ) public {
+        depositAmount = bound(depositAmount, ONE_USDC, HUNDRED);
+        payoutPct = bound(payoutPct, 0, 200); // 0–200% of deposit
 
         vm.prank(owner);
-        usdc.mint(alice, amount);
+        usdc.mint(alice, depositAmount);
         vm.prank(alice);
-        usdc.approve(address(betting), amount);
+        usdc.approve(address(betting), type(uint256).max);
+
+        vm.startPrank(owner);
+        betting.createMatch(MATCH_ID);
+        betting.fundPool(MATCH_ID, depositAmount * 2); // enough to cover any payout
+        vm.stopPrank();
 
         vm.prank(alice);
-        betting.lockBetNGS(MATCH_ID, 42, amount, odds);
+        betting.fundMatch(MATCH_ID, depositAmount);
 
-        uint256[] memory scorers = new uint256[](1);
-        scorers[0] = 42;
-        _settle(scorers, GoalLiveBetting.MatchOutcome.HOME, 1, 0);
+        uint256[] memory s = new uint256[](0);
+        _settle(s, GoalLiveBetting.MatchOutcome.HOME, 1, 0);
+
+        uint256 payout = (depositAmount * payoutPct) / 100;
+
+        address[] memory users = new address[](1);
+        uint256[] memory payouts = new uint256[](1);
+        users[0] = alice;
+        payouts[0] = payout;
+
+        // Ensure contract holds enough USDC for the payout
+        if (payout > depositAmount) {
+            // Already seeded 2x deposit, so this is covered
+        }
+        _distributeBalances(users, payouts);
 
         uint256 before = usdc.balanceOf(alice);
         vm.prank(alice);
-        betting.claimPayout(0);
-        assertGt(usdc.balanceOf(alice), before, "winner should receive payout");
-    }
+        betting.withdraw(MATCH_ID);
 
-    // ─────────────────────────────────────────────────────────────
-    //  Internal view helper (avoids "stack too deep" on struct decode)
-    // ─────────────────────────────────────────────────────────────
-
-    function _matchFields()
-        internal
-        view
-        returns (
-            string memory matchId,
-            bool isActive,
-            uint256 poolSize,
-            uint256 createdAt,
-            GoalLiveBetting.MatchOutcome finalOutcome,
-            uint8 homeGoals,
-            uint8 awayGoals,
-            bool isSettled
-        )
-    {
-        (
-            matchId,
-            isActive,
-            isSettled,
-            poolSize,
-            createdAt,
-            finalOutcome,
-            homeGoals,
-            awayGoals
-        ) = betting.matches(MATCH_ID);
+        assertEq(usdc.balanceOf(alice) - before, payout);
     }
 }
 
 // ─────────────────────────────────────────────────────────────
-//  Minimal ERC-20 token for tests only (lives in test/, not contracts/)
+//  Minimal ERC-20 for tests only
 // ─────────────────────────────────────────────────────────────
 contract TestUSDC {
     string public name = "Test USDC";
@@ -648,7 +655,7 @@ contract TestUSDC {
         uint256 allowed = allowance[from][msg.sender];
         if (allowed != type(uint256).max) {
             require(allowed >= amount, "ERC20: insufficient allowance");
-            allowance[from][msg.sender] = allowed - amount;
+            allowance[from][msg.sender] -= amount;
         }
         balanceOf[from] -= amount;
         balanceOf[to] += amount;

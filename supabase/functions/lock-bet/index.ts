@@ -21,8 +21,10 @@
  *
  * Returns: { success: true, bet: BetRow }
  *
- * Phase 3 note: After this runs, call the appropriate on-chain lockBet*()
- * and write the tx hash back with PATCH /bets/{id} → blockchain_lock_tx.
+ * V1 on-chain note: This function only writes to Supabase (instant, free).
+ * The platform relayer calls GoalLiveBetting.recordBet() asynchronously ~2-3 s
+ * later to build an immutable on-chain audit trail. The user never signs a
+ * per-bet transaction. The only user MetaMask txs are fundMatch() and withdraw().
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";

@@ -1,14 +1,22 @@
 /**
- * contractService — GoalLiveBetting escrow interactions via MetaMask (ethers v6).
+ * contractService — GoalLiveBetting V1 Match-Pool interactions via MetaMask (ethers v6).
  *
- * Architecture: singleton contract (one deployment for all matches).
- *   1. deployContract(matchId)  — deploy GoalLiveBetting + createMatch [once]
- *   2. createMatch(matchId)     — register additional matches
- *   3. fundPool(matchId, usdc)  — admin deposits liquidity (approve + fund)
- *   4. settleMatchOnChain(...)  — admin settles at FT (deployer = initial oracle)
+ * V1 Architecture (one deployment for all matches):
+ *   Admin:
+ *     1. deployContract()           — deploy singleton (once); deployer = owner, oracle, relayer in dev
+ *     2. createMatch(matchId)       — register a match so users can fund
+ *     3. fundPool(matchId, usdc)    — seed liquidity from platform treasury
+ *     4. requestSettlement(matchId) — emit SettlementRequested for CRE Log Trigger
+ *     5. emergencySettleOnChain()   — manual override if CRE doesn't settle in time
+ *     6. settleMatchOnChain()       — direct oracle settle (dev / simulation)
  *
- * Contract address stored in localStorage['gl_contract_address'] and optionally
- * overridden by VITE_CONTRACT_ADDRESS env var.
+ *   Relayer (platform wallet, not user-facing):
+ *     recordBet(...)               — async audit trail per bet
+ *     settleUserBalances(...)      — distribute P&L after CRE settles result
+ *
+ *   User (MetaMask, 2 txs per match):
+ *     fundMatch(matchId, usdc)     — deposit USDC into match pool (1 tx)
+ *     withdraw(matchId)            — pull final payout after settlement (1 tx)
  *
  * USDC on Sepolia: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238 (Circle)
  */
@@ -63,6 +71,17 @@ function getContract(
   return new ethers.Contract(address, GLB_ABI as ethers.InterfaceAbi, signer);
 }
 
+function requireContract(): string {
+  const address = getStoredContractAddress();
+  if (!address)
+    throw new Error("Contract not deployed yet. Run deployContract first.");
+  return address;
+}
+
+function toUsdc6(amountHuman: number): bigint {
+  return ethers.parseUnits(amountHuman.toString(), 6);
+}
+
 // ─── Contract service ─────────────────────────────────────────────────────────
 
 export const contractService = {
@@ -71,59 +90,39 @@ export const contractService = {
     return getStoredContractAddress();
   },
 
-  /**
-   * Get the user's locked USDC amount for a specific match (sum of active bets).
-   * Reads userBetIds[] on-chain and sums currentAmount for bets matching matchId.
-   * Returns amount in human-readable USDC units.
-   */
-  async getUserLockedForMatch(
-    userAddress: string,
-    matchId: string,
-  ): Promise<number> {
-    const address = getStoredContractAddress();
-    if (!address) return 0;
-    const provider = getProvider();
-    const contract = new ethers.Contract(
-      address,
-      GLB_ABI as ethers.InterfaceAbi,
-      provider,
-    );
-    const betIds: bigint[] = await contract.getUserBets(userAddress);
-    let total = 0n;
-    for (const betId of betIds) {
-      const bet = await contract.bets(betId);
-      // bet[1] = matchId (string), bet[4] = currentAmount, bet[8] = status (0=Active)
-      if (bet.matchId === matchId && Number(bet.status) === 0) {
-        total += bet.currentAmount;
-      }
-    }
-    return Number(ethers.formatUnits(total, 6));
-  },
+  // ──────────────────────────────────────────────────────────────
+  //  Admin — Deploy & Match Lifecycle
+  // ──────────────────────────────────────────────────────────────
 
   /**
    * Deploy the GoalLiveBetting singleton (first time only), then call
-   * createMatch(externalMatchId) to register the match.
+   * createMatch(matchId) to register the first match.
    *
-   * If a contract address is already stored, skips deploy and only
-   * calls createMatch.
+   * In dev/staging: deployer wallet acts as owner, oracle AND relayer.
+   * In production: set oracle to CRE address and relayer to a separate
+   * platform hot wallet via setOracle() / setRelayer() after deploy.
    *
    * Returns the contract address.
    */
-  async deployContract(externalMatchId: string): Promise<string> {
+  async deployContract(firstMatchId?: string): Promise<string> {
     const signer = await getSigner();
     let address = getStoredContractAddress();
 
     if (!address) {
-      console.log("[contractService] deploying GoalLiveBetting singleton…");
+      console.log("[contractService] deploying GoalLiveBetting V1 singleton…");
       const factory = new ethers.ContractFactory(
         GLB_ABI as ethers.InterfaceAbi,
         GLB_BYTECODE,
         signer,
       );
-      // constructor: GoalLiveBetting(address _usdcToken, address _initialOracle)
-      // Use the deployer wallet as the initial oracle (admin can call settleMatch directly)
+      // constructor(address _usdc, address _oracle, address _relayer)
+      // Dev: deployer = owner/oracle/relayer; override via setOracle()/setRelayer() later.
       const signerAddress = await signer.getAddress();
-      const contract = await factory.deploy(USDC_ADDRESS, signerAddress);
+      const contract = await factory.deploy(
+        USDC_ADDRESS,
+        signerAddress, // oracle
+        signerAddress, // relayer
+      );
       await contract.waitForDeployment();
       address = await contract.getAddress();
       saveContractAddress(address);
@@ -132,19 +131,18 @@ export const contractService = {
       console.log("[contractService] using existing contract at", address);
     }
 
-    // Register the match inside the contract
-    await this.createMatch(externalMatchId);
+    if (firstMatchId) {
+      await this.createMatch(firstMatchId);
+    }
     return address;
   },
 
   /**
    * Register a match in the existing singleton contract.
-   * Calls createMatch(matchId) on-chain. Returns the tx hash.
+   * Calls createMatch(matchId) on-chain. Returns tx hash.
    */
   async createMatch(matchId: string): Promise<string> {
-    const address = getStoredContractAddress();
-    if (!address)
-      throw new Error("Contract not deployed yet. Run deployContract first.");
+    const address = requireContract();
     const signer = await getSigner();
     const contract = getContract(address, signer);
     console.log("[contractService] createMatch", matchId);
@@ -154,32 +152,20 @@ export const contractService = {
   },
 
   /**
-   * Fund the match pool: approve USDC spend then call fundPool(matchId, amount).
-   *
-   * Opens MetaMask twice:
-   *   1. USDC.approve(contractAddress, amount)
-   *   2. contract.fundPool(matchId, amount)
-   *
-   * amountUsdc is in human-readable USDC units (e.g. 1000 = $1 000).
+   * Seed the match liquidity pool from the platform treasury.
+   * approve → fundPool.  2 MetaMask prompts.
+   * amountUsdc in human units (e.g. 1000 = $1 000).
    */
   async fundPool(matchId: string, amountUsdc: number): Promise<string> {
-    const address = getStoredContractAddress();
-    if (!address) throw new Error("Contract not deployed yet.");
+    const address = requireContract();
     const signer = await getSigner();
-    const amount = ethers.parseUnits(amountUsdc.toString(), 6); // USDC = 6 decimals
+    const amount = toUsdc6(amountUsdc);
 
-    // Step 1: approve
     const usdc = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, signer);
-    console.log(
-      "[contractService] USDC approve",
-      amountUsdc,
-      "USDC for",
-      address,
-    );
+    console.log("[contractService] USDC approve", amountUsdc, "for", address);
     const approveTx = await usdc.approve(address, amount);
     await approveTx.wait();
 
-    // Step 2: fund
     const contract = getContract(address, signer);
     console.log("[contractService] fundPool", matchId, amountUsdc);
     const fundTx = await contract.fundPool(matchId, amount);
@@ -188,65 +174,24 @@ export const contractService = {
   },
 
   /**
-   * Lock a bet on-chain.  Routes to the correct ABI call based on betType:
-   *   NGS (default) → lockBetNGS(matchId, playerId, amount, odds)
-   *   MW             → lockBetMW(matchId, prediction, amount, odds)
-   *   EG             → lockBetEG(matchId, goalsTarget, amount, odds)
-   *
-   * amounts in USDC human units; odds as integer (e.g. 175 = 1.75×).
+   * Emit SettlementRequested so the CRE Log Trigger fires immediately.
+   * Faster than waiting up to 60 s for the cron-triggered automation.
+   * Returns tx hash.
    */
-  async lockBet(
-    _contractAddress: string,
-    betId: string,
-    playerId: string,
-    amountUsdc: number,
-    odds: number,
-    matchId?: string,
-    betType?: string,
-    mwPrediction?: number,
-    goalsTarget?: number,
-  ): Promise<{ blockchainBetId: string; txHash: string }> {
-    const address = getStoredContractAddress();
-    if (!address) throw new Error("Contract not deployed yet.");
-    if (!matchId) throw new Error("lockBet: matchId is required.");
+  async requestSettlement(matchId: string): Promise<string> {
+    const address = requireContract();
     const signer = await getSigner();
     const contract = getContract(address, signer);
-    const amount = ethers.parseUnits(amountUsdc.toString(), 6);
-    const oddsInt = Math.round(odds * 100);
-
-    let tx;
-    if (betType === "MW") {
-      const prediction = mwPrediction ?? 1; // 0=home,1=draw,2=away
-      tx = await contract.lockBetMW(matchId, prediction, amount, oddsInt);
-    } else if (betType === "EG") {
-      const gt = goalsTarget ?? 0;
-      tx = await contract.lockBetEG(matchId, gt, amount, oddsInt);
-    } else {
-      // NGS — playerId must be the Goalserve static integer (external_player_id).
-      // Reject UUIDs: if the string contains '-' it's a UUID, not a numeric ID.
-      if (playerId.includes("-")) {
-        throw new Error(
-          `lockBet NGS: playerId must be a Goalserve integer (external_player_id), got UUID "${playerId}". ` +
-            `Make sure the UI passes player.external_player_id, not player.id.`,
-        );
-      }
-      const playerIdNum = BigInt(playerId);
-      tx = await contract.lockBetNGS(matchId, playerIdNum, amount, oddsInt);
-    }
-    const receipt = await tx.wait();
-    const blockchainBetId =
-      receipt?.logs?.[0]?.topics?.[1] ??
-      ethers.keccak256(ethers.toUtf8Bytes(betId));
-    return {
-      blockchainBetId: blockchainBetId as string,
-      txHash: tx.hash as string,
-    };
+    console.log("[contractService] requestSettlement", matchId);
+    const tx = await contract.requestSettlement(matchId);
+    await tx.wait();
+    return tx.hash as string;
   },
 
   /**
-   * Emergency settle: owner override when CRE oracle fails to settle.
-   * Calls emergencySettle(matchId, goalScorers[], winner, homeGoals, awayGoals).
-   * Same parameters as settleMatchOnChain.
+   * Manual admin bypass: settle match result when CRE oracle has not settled
+   * within ~15 min of FT and admin has verified the Goalserve API result.
+   * scorerPlayerIds: Goalserve external_player_id integers as strings.
    */
   async emergencySettleOnChain(
     matchId: string,
@@ -255,25 +200,17 @@ export const contractService = {
     homeGoals: number,
     awayGoals: number,
   ): Promise<string> {
-    const address = getStoredContractAddress();
-    if (!address) throw new Error("Contract not deployed yet.");
+    const address = requireContract();
     const signer = await getSigner();
     const contract = getContract(address, signer);
     const scorersBigInt = scorerPlayerIds.map((id) => {
-      if (id.includes("-")) {
+      if (id.includes("-"))
         throw new Error(
           `emergencySettle: scorer ID "${id}" looks like a UUID. Pass Goalserve external_player_id integers.`,
         );
-      }
       return BigInt(id);
     });
-    console.log("[contractService] emergencySettle", {
-      matchId,
-      scorersBigInt,
-      winner,
-      homeGoals,
-      awayGoals,
-    });
+    console.log("[contractService] emergencySettle", matchId);
     const tx = await contract.emergencySettle(
       matchId,
       scorersBigInt,
@@ -286,28 +223,236 @@ export const contractService = {
   },
 
   /**
-   * batchSettle is superseded by settleMatchOnChain in the new architecture.
-   * Throws immediately to surface the upgrade requirement.
+   * Direct oracle settle — triggers the same internal logic as CRE onReport().
+   * Used during development / CRE simulation. Deployer wallet = initial oracle.
    */
-  async batchSettle(
-    _contractAddress: string,
-    _winnerPlayerId: string,
+  async settleMatchOnChain(
+    matchId: string,
+    scorerPlayerIds: string[],
+    winner: 0 | 1 | 2,
+    homeGoals: number,
+    awayGoals: number,
   ): Promise<string> {
-    throw new Error(
-      "batchSettle is not supported. Use settleMatchOnChain(matchId, scorers, winner, homeGoals, awayGoals) instead.",
+    const address = requireContract();
+    const signer = await getSigner();
+    const contract = getContract(address, signer);
+    const scorersBigInt = scorerPlayerIds.map((id) => {
+      if (id.includes("-"))
+        throw new Error(
+          `settleMatchOnChain: scorer ID "${id}" looks like a UUID. Pass Goalserve external_player_id integers.`,
+        );
+      return BigInt(id);
+    });
+    console.log("[contractService] settleMatch", matchId);
+    const tx = await contract.settleMatch(
+      matchId,
+      scorersBigInt,
+      winner,
+      homeGoals,
+      awayGoals,
     );
+    await tx.wait();
+    return tx.hash as string;
+  },
+
+  // ──────────────────────────────────────────────────────────────
+  //  Relayer — called by platform wallet, not user-facing
+  // ──────────────────────────────────────────────────────────────
+
+  /**
+   * Write one bet or change to the on-chain audit trail.
+   * Called by the platform relayer wallet ~2-3 s after Supabase records the bet.
+   * Relayer pays gas; the user never sees this transaction.
+   *
+   * betType: 0=NGS, 1=MW, 2=EG
+   * selection: keccak256 of playerId | outcome | goals (encode off-chain)
+   */
+  async recordBet(
+    matchId: string,
+    userAddress: string,
+    betType: 0 | 1 | 2,
+    selection: string, // bytes32 hex string
+    amountUsdc: number,
+    isChange: boolean,
+  ): Promise<string> {
+    const address = requireContract();
+    const signer = await getSigner();
+    const contract = getContract(address, signer);
+    const amount = toUsdc6(amountUsdc);
+    console.log("[contractService] recordBet", matchId, userAddress, betType);
+    const tx = await contract.recordBet(
+      matchId,
+      userAddress,
+      betType,
+      selection,
+      amount,
+      isChange,
+    );
+    await tx.wait();
+    return tx.hash as string;
   },
 
   /**
-   * Assign a new oracle address to the contract (e.g. Chainlink CRE address).
-   * Calls setOracle(newOracle) on-chain.
+   * Distribute final USDC balances after CRE has settled the match result.
+   * Called by the platform relayer after computing user P&L from Supabase bets.
+   *
+   * users:   all addresses that called fundMatch() (include 0-payout losers).
+   * payouts: final USDC for each user in human units (0 for all-lost).
+   *
+   * After this call, users can call withdraw() to pull their balance.
    */
-  async setOracle(
-    _contractAddress: string,
-    oracleAddress: string,
+  async settleUserBalances(
+    matchId: string,
+    users: string[],
+    payoutsUsdc: number[],
   ): Promise<string> {
+    const address = requireContract();
+    const signer = await getSigner();
+    const contract = getContract(address, signer);
+    if (users.length !== payoutsUsdc.length)
+      throw new Error("settleUserBalances: users and payouts length mismatch.");
+
+    const payoutsBigInt = payoutsUsdc.map(toUsdc6);
+    console.log(
+      "[contractService] settleUserBalances",
+      matchId,
+      users.length,
+      "users",
+    );
+    const tx = await contract.settleUserBalances(
+      matchId,
+      users,
+      payoutsBigInt,
+    );
+    await tx.wait();
+    return tx.hash as string;
+  },
+
+  // ──────────────────────────────────────────────────────────────
+  //  User — 2 MetaMask txs per match
+  // ──────────────────────────────────────────────────────────────
+
+  /**
+   * User funds their match deposit.
+   * If the user has never approved, we call USDC.approve(contract, MAX_UINT) first
+   * so all future fundMatch calls only need 1 MetaMask prompt.
+   *
+   * amountUsdc in human units (e.g. 150 = $150).
+   */
+  async fundMatch(matchId: string, amountUsdc: number): Promise<string> {
+    const address = requireContract();
+    const signer = await getSigner();
+    const userAddress = await signer.getAddress();
+    const amount = toUsdc6(amountUsdc);
+
+    // Check allowance; approve MAX_UINT once if needed
+    const usdc = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, signer);
+    const allowance: bigint = await usdc.allowance(userAddress, address);
+    if (allowance < amount) {
+      console.log("[contractService] USDC approve MAX_UINT for", address);
+      const approveTx = await usdc.approve(address, ethers.MaxUint256);
+      await approveTx.wait();
+    }
+
+    const contract = getContract(address, signer);
+    console.log("[contractService] fundMatch", matchId, amountUsdc);
+    const tx = await contract.fundMatch(matchId, amount);
+    await tx.wait();
+    return tx.hash as string;
+  },
+
+  /**
+   * User withdraws their final payout after the relayer has distributed balances.
+   * Requires balancesSettled == true for the match.
+   * Returns tx hash.
+   */
+  async withdraw(matchId: string): Promise<string> {
+    const address = requireContract();
+    const signer = await getSigner();
+    const contract = getContract(address, signer);
+    console.log("[contractService] withdraw", matchId);
+    const tx = await contract.withdraw(matchId);
+    await tx.wait();
+    return tx.hash as string;
+  },
+
+  // ──────────────────────────────────────────────────────────────
+  //  Read / View
+  // ──────────────────────────────────────────────────────────────
+
+  /**
+   * Return user's current USDC balance for a match (deposit before settlement,
+   * payout after settleUserBalances). Returns human-readable units.
+   */
+  async getUserMatchBalance(
+    matchId: string,
+    userAddress: string,
+  ): Promise<number> {
     const address = getStoredContractAddress();
-    if (!address) throw new Error("Contract not deployed yet.");
+    if (!address) return 0;
+    const provider = getProvider();
+    const contract = new ethers.Contract(
+      address,
+      GLB_ABI as ethers.InterfaceAbi,
+      provider,
+    );
+    const raw: bigint = await contract.matchBalance(matchId, userAddress);
+    return Number(ethers.formatUnits(raw, 6));
+  },
+
+  /**
+   * Return user's original deposit for a match (immutable after fundMatch).
+   */
+  async getUserDeposit(
+    matchId: string,
+    userAddress: string,
+  ): Promise<number> {
+    const address = getStoredContractAddress();
+    if (!address) return 0;
+    const provider = getProvider();
+    const contract = new ethers.Contract(
+      address,
+      GLB_ABI as ethers.InterfaceAbi,
+      provider,
+    );
+    const raw: bigint = await contract.userDeposit(matchId, userAddress);
+    return Number(ethers.formatUnits(raw, 6));
+  },
+
+  /**
+   * Return settled match result from contract.
+   */
+  async getMatchResult(matchId: string): Promise<{
+    settled: boolean;
+    outcome: 0 | 1 | 2;
+    homeGoals: number;
+    awayGoals: number;
+  }> {
+    const address = getStoredContractAddress();
+    if (!address)
+      return { settled: false, outcome: 1, homeGoals: 0, awayGoals: 0 };
+    const provider = getProvider();
+    const contract = new ethers.Contract(
+      address,
+      GLB_ABI as ethers.InterfaceAbi,
+      provider,
+    );
+    const [settled, outcome, home, away] =
+      await contract.getMatchResult(matchId);
+    return {
+      settled: settled as boolean,
+      outcome: Number(outcome) as 0 | 1 | 2,
+      homeGoals: Number(home),
+      awayGoals: Number(away),
+    };
+  },
+
+  // ──────────────────────────────────────────────────────────────
+  //  Admin — Config
+  // ──────────────────────────────────────────────────────────────
+
+  async setOracle(oracleAddress: string): Promise<string> {
+    const address = requireContract();
     const signer = await getSigner();
     const contract = getContract(address, signer);
     console.log("[contractService] setOracle", oracleAddress);
@@ -316,13 +461,28 @@ export const contractService = {
     return tx.hash as string;
   },
 
-  /**
-   * Withdraw accumulated fees to admin wallet.
-   * Calls withdrawFees(to) on-chain.
-   */
+  async setRelayer(relayerAddress: string): Promise<string> {
+    const address = requireContract();
+    const signer = await getSigner();
+    const contract = getContract(address, signer);
+    console.log("[contractService] setRelayer", relayerAddress);
+    const tx = await contract.setRelayer(relayerAddress);
+    await tx.wait();
+    return tx.hash as string;
+  },
+
+  async setKeystoneForwarder(fwdAddress: string): Promise<string> {
+    const address = requireContract();
+    const signer = await getSigner();
+    const contract = getContract(address, signer);
+    console.log("[contractService] setKeystoneForwarder", fwdAddress);
+    const tx = await contract.setKeystoneForwarder(fwdAddress);
+    await tx.wait();
+    return tx.hash as string;
+  },
+
   async withdrawFees(to?: string): Promise<string> {
-    const address = getStoredContractAddress();
-    if (!address) throw new Error("Contract not deployed yet.");
+    const address = requireContract();
     const signer = await getSigner();
     const dest = to ?? (await signer.getAddress());
     const contract = getContract(address, signer);
@@ -333,92 +493,16 @@ export const contractService = {
   },
 
   /**
-   * Emergency drain: withdraw the entire pool for a match back to `to`.
-   * Calls emergencyWithdrawPool(matchId, to) on-chain (owner only).
-   *
-   * Safe to use during testing.  In production, only call this before any
-   * user bets have been placed — the contract marks the match as inactive
-   * and all active bets would be unclaimable.
-   *
-   * @param matchId   The match whose pool is being drained.
-   * @param to        Recipient (defaults to connected wallet).
+   * Emergency drain of an unsettled match pool back to `to`.
+   * Deactivates the match; use only in genuine emergencies or during testing.
    */
   async emergencyWithdrawPool(matchId: string, to?: string): Promise<string> {
-    const address = getStoredContractAddress();
-    if (!address) throw new Error("Contract not deployed yet.");
+    const address = requireContract();
     const signer = await getSigner();
     const dest = to ?? (await signer.getAddress());
     const contract = getContract(address, signer);
     console.log("[contractService] emergencyWithdrawPool", matchId, "->", dest);
     const tx = await contract.emergencyWithdrawPool(matchId, dest);
-    await tx.wait();
-    return tx.hash as string;
-  },
-
-  /**
-   * emitGoal — goals are now tracked in Supabase and passed to settleMatch at FT.
-   * This method only authenticates via MetaMask (no on-chain call).
-   * Returns a zero hash.
-   *
-   * Phase 4: replaced entirely by Chainlink CRE oracle.
-   */
-  async emitGoal(
-    _oracleAddress: string,
-    _matchId: string,
-    _playerId: string,
-    _minute: number,
-  ): Promise<string> {
-    await getSigner(); // ensures MetaMask is connected
-    return ethers.ZeroHash;
-  },
-
-  /**
-   * Settle all bets after a match finishes.
-   *
-   * Calls settleMatch(matchId, goalScorers[], winner, homeGoals, awayGoals)
-   * on the singleton contract.
-   *
-   * scorerPlayerIds: array of player ID strings (numeric part used as uint256)
-   * winner: 0=home, 1=draw, 2=away  (use MatchOutcome constants)
-   *
-   * Phase 4: called automatically by Chainlink CRE oracle—no admin action needed.
-   */
-  async settleMatchOnChain(
-    _contractAddress: string,
-    matchId: string,
-    scorerPlayerIds: string[],
-    winner: 0 | 1 | 2,
-    homeGoals: number,
-    awayGoals: number,
-  ): Promise<string> {
-    const address = getStoredContractAddress();
-    if (!address) throw new Error("Contract not deployed yet.");
-    const signer = await getSigner();
-    const contract = getContract(address, signer);
-    // scorerPlayerIds must be Goalserve static integer strings (external_player_id)
-    const scorersBigInt = scorerPlayerIds.map((id) => {
-      if (id.includes("-")) {
-        throw new Error(
-          `settleMatchOnChain: scorer ID "${id}" looks like a UUID. ` +
-            `Pass Goalserve external_player_id integers instead.`,
-        );
-      }
-      return BigInt(id);
-    });
-    console.log("[contractService] settleMatch", {
-      matchId,
-      scorersBigInt,
-      winner,
-      homeGoals,
-      awayGoals,
-    });
-    const tx = await contract.settleMatch(
-      matchId,
-      scorersBigInt,
-      winner,
-      homeGoals,
-      awayGoals,
-    );
     await tx.wait();
     return tx.hash as string;
   },
