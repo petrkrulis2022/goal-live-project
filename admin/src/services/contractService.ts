@@ -227,13 +227,14 @@ export const contractService = {
    * Used during development / CRE simulation. Deployer wallet = initial oracle.
    */
   async settleMatchOnChain(
+    contractAddress: string,
     matchId: string,
     scorerPlayerIds: string[],
     winner: 0 | 1 | 2,
     homeGoals: number,
     awayGoals: number,
   ): Promise<string> {
-    const address = requireContract();
+    const address = contractAddress || requireContract();
     const signer = await getSigner();
     const contract = getContract(address, signer);
     const scorersBigInt = scorerPlayerIds.map((id) => {
@@ -513,7 +514,13 @@ export const contractService = {
     const signer = await getSigner();
     const dest = to ?? (await signer.getAddress());
     const contract = getContract(contractAddress, signer);
-    console.log("[contractService] drainOldContract", contractAddress, matchId, "->", dest);
+    console.log(
+      "[contractService] drainOldContract",
+      contractAddress,
+      matchId,
+      "->",
+      dest,
+    );
     const tx = await contract.emergencyWithdrawPool(matchId, dest);
     await tx.wait();
     return tx.hash as string;

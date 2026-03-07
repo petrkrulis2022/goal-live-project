@@ -258,6 +258,10 @@ Deno.serve(async (req: Request) => {
       // - Allow any forward transition
       // - Allow halftime → live (second half starts)
       // - Never go backwards past finished/cancelled
+      // - live → finished is NEVER done by this sync function.
+      //   Only the admin settle flow (settle-match Edge Function) marks a match finished.
+      //   This prevents premature FT signals from Goalserve (e.g. brief "FT" blip during
+      //   stoppage time) from incorrectly closing the match.
       const shouldUpdate = (() => {
         if (currentStatus === newStatus) {
           // Same status — still update minute/score if changed
@@ -268,6 +272,11 @@ Deno.serve(async (req: Request) => {
         }
         if (currentStatus === "halftime" && newStatus === "live") {
           return true; // second half kickoff
+        }
+        // Do NOT auto-transition live → finished from the feed.
+        // Settlement is an explicit admin/oracle action.
+        if (newStatus === "finished") {
+          return false;
         }
         // Only allow forward progress
         return (

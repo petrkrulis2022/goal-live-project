@@ -2,8 +2,5 @@
   "schedule": "*/60 * * * * *",
   "supabaseUrl": "https://weryswulejhjkrmervnf.supabase.co",
   "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlcnlzd3VsZWpoamtybWVydm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjEyODEsImV4cCI6MjA4NzU5NzI4MX0.fxMn2LMdoFuYAln-34WUo1uUiWjSnlSzJlDS-sepdtc",
-  "goalserveApiKey": "5dc9cf20aca34682682708de71344f52",
-  "contractAddress": "0x5E8Aa6C48008B787B432764A7943e07A68b3c098",
-  "chainSelectorName": "ethereum-testnet-sepolia",
-  "gasLimit": "800000"
+  "goalserveApiKey": "5dc9cf20aca34682682708de71344f52"
 }

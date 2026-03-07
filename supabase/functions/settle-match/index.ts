@@ -21,10 +21,11 @@
  *     MATCH_WINNER → predicted outcome matches winner
  *     EXACT_GOALS  → goalsTarget === home_goals + away_goals
  *  3. Calls settleMatch() on the singleton GoalLiveBetting contract.
- *  4. Upserts provisional_credits for winners.
- *  5. Marks match status = 'finished', writes blockchain_settle_tx.
+ *  4. Calls settleUserBalances() so users can withdraw() their USDC.
+ *  5. Upserts provisional_credits for winners.
+ *  6. Marks match status = 'finished', writes blockchain_settle_tx.
  *
- * Returns: { success, match_id, scorers[], bets_settled, winners, total_payout, settled[] }
+ * Returns: { success, match_id, scorers[], bets_settled, winners, total_payout, blockchain_settle_tx, blockchain_balances_tx, settled[] }
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -39,6 +40,7 @@ const corsHeaders = {
 // ── Minimal ABI: only the functions this edge function calls ────────────────
 const GLB_ABI = [
   "function settleMatch(string calldata matchId, uint256[] calldata goalScorers, uint8 winner, uint8 homeGoals, uint8 awayGoals) external",
+  "function settleUserBalances(string calldata matchId, address[] calldata users, uint256[] calldata payouts) external",
 ];
 
 // Match winner outcome → uint8 (must match contract enum: HOME=0, DRAW=1, AWAY=2)
@@ -52,9 +54,8 @@ interface BetRow {
   id: string;
   bettor_wallet: string;
   bet_type: "NEXT_GOAL_SCORER" | "MATCH_WINNER" | "EXACT_GOALS";
-  current_player_id: string; // Goalserve integer string for NGS
+  current_player_id: string; // Goalserve integer string for NGS; numeric string for EXACT_GOALS (goal count target)
   outcome: "home" | "away" | "draw" | null; // for MATCH_WINNER
-  goals_target: number | null; // for EXACT_GOALS (note: DB column name)
   current_amount: string | number;
   total_penalties: string | number;
   odds: string | number;
@@ -83,7 +84,8 @@ function didBetWin(
     case "MATCH_WINNER":
       return bet.outcome === winner;
     case "EXACT_GOALS":
-      return bet.goals_target === totalGoals;
+      // current_player_id stores the goals target count as a numeric string
+      return parseInt(bet.current_player_id, 10) === totalGoals;
     default:
       return false;
   }
@@ -100,8 +102,14 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { match_id, goal_scorer_player_ids, winner, home_goals, away_goals } =
-      await req.json();
+    const {
+      match_id,
+      goal_scorer_player_ids,
+      winner,
+      home_goals,
+      away_goals,
+      force,
+    } = await req.json();
 
     // ── Validate input ────────────────────────────────────────────────────
     if (!match_id) return json({ error: "match_id is required" }, 400);
@@ -117,18 +125,23 @@ Deno.serve(async (req: Request) => {
       ? goal_scorer_player_ids.map(String)
       : [];
 
-    // Validate scorer IDs are integers (Goalserve static IDs, not UUIDs)
+    // Reject UUID-like IDs (those cause on-chain BigInt issues) but allow:
+    //  - Numeric Goalserve IDs (e.g. "123456")    → on-chain + Supabase matching
+    //  - Synthetic gs_xxx IDs (e.g. "gs_budimir") → Supabase matching only
     for (const id of scorerIds) {
-      if (id.includes("-") || isNaN(Number(id))) {
+      if (id.includes("-")) {
         return json(
           {
-            error: `goal_scorer_player_ids must be Goalserve integer IDs; got "${id}"`,
+            error: `goal_scorer_player_ids must not be UUIDs; got "${id}"`,
           },
           400,
         );
       }
     }
 
+    // On-chain: only send numeric IDs (contract expects uint256)
+    const onChainScorerIds = scorerIds.filter((id) => /^\d+$/.test(id));
+    // Supabase matching: use all IDs (numeric + gs_xxx synthetic IDs)
     const scorerSet = new Set<string>(scorerIds);
     const totalGoals = home_goals + away_goals;
 
@@ -142,17 +155,28 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (matchErr || !match) return json({ error: "Match not found" }, 404);
-    if (match.status === "finished")
+    if (match.status === "finished" && !force)
       return json({ error: "Match already settled" }, 409);
 
     // ── Get all unsettled bets for this match ─────────────────────────────
     const { data: bets, error: betsErr } = await supabase
       .from("bets")
       .select(
-        "id, bettor_wallet, bet_type, current_player_id, outcome, goals_target, current_amount, total_penalties, odds, status, change_count",
+        "id, bettor_wallet, bet_type, current_player_id, outcome, current_amount, total_penalties, odds, status, change_count",
       )
       .eq("match_id", match_id)
-      .in("status", ["active", "provisional_win", "provisional_loss"]);
+      .in(
+        "status",
+        force
+          ? [
+              "active",
+              "provisional_win",
+              "provisional_loss",
+              "settled_won",
+              "settled_lost",
+            ]
+          : ["active", "provisional_win", "provisional_loss"],
+      );
 
     if (betsErr)
       return json({ error: `bets query failed: ${betsErr.message}` }, 500);
@@ -195,21 +219,22 @@ Deno.serve(async (req: Request) => {
 
     // ── Settle on-chain via singleton GoalLiveBetting contract ────────────
     let settleTxHash: string | null = null;
+    let balanceTxHash: string | null = null;
     const contractAddress =
-      match.contract_address ?? Deno.env.get("VITE_CONTRACT_ADDRESS") ?? null;
+      match.contract_address ?? Deno.env.get("CONTRACT_ADDRESS") ?? null;
     const rpcUrl =
       Deno.env.get("SEPOLIA_RPC_URL") ?? "https://sepolia.drpc.org";
     const oraclePrivateKey = Deno.env.get("ORACLE_PRIVATE_KEY") ?? null;
 
     if (contractAddress && oraclePrivateKey) {
-      try {
-        const provider = new ethers.JsonRpcProvider(rpcUrl);
-        const wallet = new ethers.Wallet(oraclePrivateKey, provider);
-        const contract = new ethers.Contract(contractAddress, GLB_ABI, wallet);
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      const wallet = new ethers.Wallet(oraclePrivateKey, provider);
+      const contract = new ethers.Contract(contractAddress, GLB_ABI, wallet);
+      const onChainMatchId = match.external_match_id ?? match_id;
 
-        // external_match_id is the string matchId stored in the contract
-        const onChainMatchId = match.external_match_id ?? match_id;
-        const scorersBigInt = scorerIds.map((id) => BigInt(id));
+      // ── Step A: settleMatch() — records outcome on-chain ──────────────────
+      try {
+        const scorersBigInt = onChainScorerIds.map((id) => BigInt(id));
         const winnerUint = WINNER_TO_UINT[winner];
 
         const tx = await contract.settleMatch(
@@ -221,28 +246,77 @@ Deno.serve(async (req: Request) => {
         );
         await tx.wait();
         settleTxHash = tx.hash;
-        console.log("[settle-match] on-chain settled:", settleTxHash);
+        console.log("[settle-match] settleMatch on-chain:", settleTxHash);
 
-        // Write tx hash to all settled bets
-        if (settleTxHash) {
-          await supabase
-            .from("bets")
-            .update({ blockchain_settle_tx: settleTxHash })
-            .eq("match_id", match_id)
-            .in("status", ["settled_won", "settled_lost"]);
-        }
+        // Write settle tx hash to all settled bets
+        await supabase
+          .from("bets")
+          .update({ blockchain_settle_tx: settleTxHash })
+          .eq("match_id", match_id)
+          .in("status", ["settled_won", "settled_lost"]);
       } catch (onChainErr) {
-        // Log but don't fail — off-chain settlement is still recorded
-        console.error(
-          "[settle-match] on-chain call failed:",
-          String(onChainErr),
-        );
-        settleTxHash = `ERROR: ${String(onChainErr)}`;
+        const msg = String(onChainErr);
+        if (msg.includes("already settled")) {
+          console.log(
+            "[settle-match] settleMatch: already settled on-chain, continuing to settleUserBalances",
+          );
+          settleTxHash = "already_settled";
+        } else {
+          console.error("[settle-match] settleMatch failed:", msg);
+          settleTxHash = `ERROR: ${msg}`;
+        }
+      }
+
+      // ── Step B: settleUserBalances() — distribute per-user USDC balances ──
+      // oracle wallet = relayer wallet (same key), so this works with ORACLE_PRIVATE_KEY.
+      // Required so users can call withdraw(). Losers get 0, winners get payout.
+      // Must be called after settleMatch(). Safe to retry (reverts if already done).
+      try {
+        // Build user → total payout map (in USDC micro-units, 6 decimals)
+        const userPayoutMap = new Map<string, bigint>();
+        for (const s of settled) {
+          const prev = userPayoutMap.get(s.bettor) ?? 0n;
+          // Convert dollar amount to USDC micro-units (× 1_000_000)
+          const microUsdc = BigInt(Math.round(s.payout * 1_000_000));
+          userPayoutMap.set(s.bettor, prev + microUsdc);
+        }
+        // Include losers with 0 payout so their deposit balance is overwritten to 0
+        for (const bet of (bets ?? []) as BetRow[]) {
+          if (!userPayoutMap.has(bet.bettor_wallet)) {
+            userPayoutMap.set(bet.bettor_wallet, 0n);
+          }
+        }
+
+        const users = [...userPayoutMap.keys()];
+        const payouts = users.map((u) => userPayoutMap.get(u)!);
+
+        if (users.length > 0) {
+          const tx2 = await contract.settleUserBalances(
+            onChainMatchId,
+            users,
+            payouts,
+          );
+          await tx2.wait();
+          balanceTxHash = tx2.hash;
+          console.log(
+            "[settle-match] settleUserBalances on-chain:",
+            balanceTxHash,
+          );
+        }
+      } catch (balanceErr) {
+        const msg = String(balanceErr);
+        if (msg.includes("balances already settled")) {
+          console.log("[settle-match] settleUserBalances: already done");
+          balanceTxHash = "already_settled";
+        } else {
+          console.error("[settle-match] settleUserBalances failed:", msg);
+          balanceTxHash = `ERROR: ${msg}`;
+        }
       }
     } else {
       console.warn(
         "[settle-match] skipping on-chain: missing contract_address or ORACLE_PRIVATE_KEY.",
-        "Set ORACLE_PRIVATE_KEY in Supabase secrets and VITE_CONTRACT_ADDRESS.",
+        "Set ORACLE_PRIVATE_KEY and CONTRACT_ADDRESS in Supabase secrets.",
       );
     }
 
@@ -273,6 +347,7 @@ Deno.serve(async (req: Request) => {
       winners: winners.length,
       total_payout: winners.reduce((acc, b) => acc + b.payout, 0),
       blockchain_settle_tx: settleTxHash,
+      blockchain_balances_tx: balanceTxHash,
       settled,
     });
   } catch (err) {

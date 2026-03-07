@@ -9,6 +9,7 @@ import type {
 } from "@shared/lib/supabase";
 import { contractService } from "../services/contractService";
 import { MATCH_REGISTRY } from "@shared/data/matchRegistry";
+import { CREWorkflowPanel } from "../components/CREWorkflowPanel";
 
 const ODDS_API_KEY = "069be437bad9795678cdc1c1cee711c3";
 // Note: Goalserve key is baked into the Vite proxy rewrite (vite.admin.config.ts)
@@ -973,18 +974,18 @@ export default function EventDetail() {
 
   async function handleSettleMatch() {
     if (!match) return;
+    // Only pass numeric IDs on-chain (BigInt-safe); pass all confirmed non-UUID IDs to edge function
     const activeScorers = goals
-      .filter((g) => g.event_type !== "VAR_OVERTURNED" && g.confirmed)
+      .filter(
+        (g) =>
+          g.event_type !== "VAR_OVERTURNED" &&
+          g.confirmed &&
+          g.player_id !== "unknown" &&
+          !g.player_id.includes("-"), // exclude UUIDs
+      )
       .map((g) => g.player_id);
     const homeGoals = match.score_home ?? 0;
     const awayGoals = match.score_away ?? 0;
-    // Allow 0-0 draws — just require the score has been set (not both 0 with no goals in a live match)
-    if (activeScorers.length === 0 && homeGoals + awayGoals > 0) {
-      setOracleError(
-        "Score shows goals but no confirmed scorers. Confirm goal events before settling.",
-      );
-      return;
-    }
     setOracleBusy(true);
     setOracleError(null);
     setOracleTx(null);
@@ -1446,6 +1447,9 @@ export default function EventDetail() {
 
       {tab === "oracle" && (
         <div className="space-y-5">
+          {/* CRE Workflow live tracker */}
+          <CREWorkflowPanel match={match} bets={bets} goals={goals} />
+
           {/* Note banner */}
           <div className="flex items-start gap-3 bg-blue-500/6 border border-blue-500/15 rounded-xl px-4 py-3 text-sm">
             <span className="text-blue-400 mt-0.5">ℹ️</span>

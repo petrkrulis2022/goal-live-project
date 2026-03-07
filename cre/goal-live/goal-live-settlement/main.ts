@@ -2,41 +2,40 @@
  * goal.live — Match Settlement Workflow
  *
  * Cron Trigger (every 60 s):
- *   1. HTTP → Supabase REST  : fetch matches with status IN ('live','halftime')
- *   2. HTTP → Goalserve feed : check each match for 'FT' status
- *   3. HTTP → Goalserve commentary : get goal scorer IDs for first FT match
- *   4. EVM Write (onReport) : settle the match on-chain via GoalLiveBetting
+ *   1. HTTP → Supabase REST       : fetch matches with status IN ('live','halftime')
+ *   2. HTTP → Goalserve feed      : check each match for 'FT' status
+ *   3. HTTP → Goalserve commentary: get goal scorer IDs for first FT match
+ *   4. HTTP → settle-match edge fn: POST result → updates Supabase bets + calls
+ *                                   GoalLiveBetting.settleMatch() on-chain
  *
- * EVM Log Trigger (SettlementRequested event on GoalLiveBetting):
- *   - Fires when admin calls requestSettlement(matchId) for instant settlement
- *   - Runs the same Goalserve fetch + settlement logic as the cron trigger
- *   - Provides sub-60 s settlement when admin manually requests it at FT
+ * Each DON node independently runs steps 1–4 during the consensus phase.
+ * settle-match is idempotent: the first node to succeed settles the match
+ * (status → finished, bets → settled_won/lost). Subsequent nodes receive
+ * HTTP 409 "Match already settled" and return `settled = 0` — no-op.
  *
- * Settlement payload uses encodeAbiParameters mirroring the Solidity
- * abi.decode in GoalLiveBetting.onReport():
- *   abi.encode(matchId, goalScorers[], winner, homeGoals, awayGoals)
+ * Why HTTP → settle-match instead of EVM write → onReport():
+ *   The settle-match Supabase Edge Function is the single source of truth for
+ *   settlement. It handles both Supabase (bets, provisional_credits, match
+ *   status) and the on-chain call (GoalLiveBetting.settleMatch via oracle key).
+ *   Writing directly to onReport() bypasses Supabase entirely, leaving bets
+ *   and match status in an inconsistent state.
  *
- * KeystoneForwarder on Sepolia: 0x15fc6ae953e024d975e77382eeec56a9101f9f88
- * (Deployer sets keystoneForwarder = oracle initially so CRE simulation works
- *  out-of-the-box; call setKeystoneForwarder() in production.)
+ * settle-match endpoint:
+ *   POST {supabaseUrl}/functions/v1/settle-match
+ *   Headers: apikey, Authorization: Bearer <anonKey>
+ *   Body: { match_id, winner, home_goals, away_goals, goal_scorer_player_ids }
  */
 
 import {
-  bytesToHex,
   ConsensusAggregationByFields,
   type CronPayload,
   cre,
-  type EVMLog,
-  getNetwork,
-  hexToBase64,
   identical,
   type HTTPSendRequester,
   median,
   Runner,
   type Runtime,
-  TxStatus,
 } from "@chainlink/cre-sdk";
-import { type Address, encodeAbiParameters } from "viem";
 import { z } from "zod";
 
 // ─────────────────────────────────────────────────────────────────────
@@ -44,71 +43,50 @@ import { z } from "zod";
 // ─────────────────────────────────────────────────────────────────────
 
 const configSchema = z.object({
-  // Cron schedule, e.g. "*/60 * * * * *"
+  /** Cron schedule, e.g. "*/60 * * * * *" */
   schedule: z.string(),
   /** Supabase project URL, e.g. https://xyz.supabase.co */
   supabaseUrl: z.string(),
-  /** Supabase anon (public) key for read-only REST queries */
+  /** Supabase anon key — used as apikey header for both REST and edge fn calls */
   supabaseAnonKey: z.string(),
   /** Goalserve API key */
   goalserveApiKey: z.string(),
-  /** GoalLiveBetting singleton contract address on Sepolia */
-  contractAddress: z.string(),
-  /** Chainlink chain selector name, e.g. "ethereum-testnet-sepolia" */
-  chainSelectorName: z.string(),
-  /** Gas limit for onReport EVM write */
-  gasLimit: z.string(),
 });
 
 type Config = z.infer<typeof configSchema>;
-
-// ─────────────────────────────────────────────────────────────────────
-//  ABI parameters for settlement payload
-//  Must mirror GoalLiveBetting.onReport abi.decode(report, (string, uint256[], uint8, uint8, uint8))
-// ─────────────────────────────────────────────────────────────────────
-
-const SETTLE_ABI_PARAMS = [
-  { type: "string", name: "matchId" },
-  { type: "uint256[]", name: "goalScorers" },
-  { type: "uint8", name: "winner" },
-  { type: "uint8", name: "homeGoals" },
-  { type: "uint8", name: "awayGoals" },
-] as const;
-
-// ─────────────────────────────────────────────────────────────────────
-//  Consensus helpers
-// ─────────────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────────────
 //  Data shapes
 // ─────────────────────────────────────────────────────────────────────
 
 interface SupabaseMatch {
-  id: string;
+  id: string;               // Supabase UUID — used as match_id in settle-match POST
   external_match_id: string;
   goalserve_static_id: string;
-  contract_address: string | null;
 }
 
 /**
  * Consensus-aggregatable settlement payload.
- * `found = 1` and the rest is populated only when a FT match is ready.
- * `found = 0` means nothing to settle this cycle.
+ * `found = 1` when a FT match is ready; `found = 0` means nothing this cycle.
+ * `settled = 1` when settle-match returned 200 (settled now) or 409 (already settled).
  */
 interface SettlementData {
   found: number;
+  /** Supabase UUID used in the settle-match POST body */
+  supabaseMatchId: string;
   externalMatchId: string;
   /** 0 = HOME, 1 = DRAW, 2 = AWAY */
   winner: number;
   homeGoals: number;
   awayGoals: number;
-  /** Comma-separated Goalserve player IDs, e.g. "1234,5678" */
+  /** Comma-separated Goalserve numeric player IDs, e.g. "1234,5678" */
   scorerIdsStr: string;
-  contractAddress: string;
+  /** 1 if settle-match returned 200 or 409 (both mean settlement is done) */
+  settled: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────
-//  HTTP fetch function (runs on each DON node, results are aggregated)
+//  HTTP fetch + settle function (runs on each DON node, results aggregated)
 // ─────────────────────────────────────────────────────────────────────
 
 /** Normalise Goalserve arrays/objects to always-array. */
@@ -119,32 +97,44 @@ function toArray<T>(val: T | T[] | undefined | null): T[] {
 
 /**
  * Called by cre.capabilities.HTTPClient.sendRequest() on each DON node.
- * Queries Supabase for live matches, checks Goalserve for FT status,
- * fetches goal scorers from commentary, and returns structured settlement data.
+ *
+ * Steps:
+ *  1. Query Supabase for live/halftime matches.
+ *  2. Query Goalserve livescores to find FT status.
+ *  3. Fetch goal scorer IDs from Goalserve commentary.
+ *  4. POST to settle-match edge function.
+ *     - 200: match settled now (bets updated + on-chain settleMatch() called)
+ *     - 409: match already settled by an earlier node — idempotent no-op
+ *     - other: error, return settled=0
+ *
+ * Returns SettlementData for consensus aggregation.
  */
-const fetchSettlementData = (
+const fetchAndSettle = (
   sendRequester: HTTPSendRequester,
   config: Config,
 ): SettlementData => {
   const empty: SettlementData = {
     found: 0,
+    supabaseMatchId: "",
     externalMatchId: "",
     winner: 1,
     homeGoals: 0,
     awayGoals: 0,
     scorerIdsStr: "",
-    contractAddress: config.contractAddress,
+    settled: 0,
   };
 
-  // ── Step 1: Supabase — get live/halftime matches ────────────────────────
+  const authHeaders = {
+    apikey: config.supabaseAnonKey,
+    Authorization: `Bearer ${config.supabaseAnonKey}`,
+  };
+
+  // ── Step 1: Supabase — get live/halftime matches ────────────────────
   const sbResp = sendRequester
     .sendRequest({
       method: "GET",
-      url: `${config.supabaseUrl}/rest/v1/matches?status=in.(live,halftime)&select=id,external_match_id,goalserve_static_id,contract_address`,
-      headers: {
-        apikey: config.supabaseAnonKey,
-        Authorization: `Bearer ${config.supabaseAnonKey}`,
-      },
+      url: `${config.supabaseUrl}/rest/v1/matches?status=in.(live,halftime)&select=id,external_match_id,goalserve_static_id`,
+      headers: authHeaders,
     })
     .result();
 
@@ -243,14 +233,43 @@ const fetchSettlementData = (
         }
       }
 
+      // ── Step 4: POST to settle-match edge function ──────────────────
+      const winnerStr = winner === 0 ? "home" : winner === 1 ? "draw" : "away";
+      const scorerIds = scorerIdsStr
+        ? scorerIdsStr.split(",").filter(Boolean)
+        : [];
+
+      const settleResp = sendRequester
+        .sendRequest({
+          method: "POST",
+          url: `${config.supabaseUrl}/functions/v1/settle-match`,
+          headers: {
+            ...authHeaders,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            match_id: dbMatch.id,
+            winner: winnerStr,
+            home_goals: homeGoals,
+            away_goals: awayGoals,
+            goal_scorer_player_ids: scorerIds,
+          }),
+        })
+        .result();
+
+      // 200 = settled now; 409 = already settled by another node — both are success
+      const settled =
+        settleResp.statusCode === 200 || settleResp.statusCode === 409 ? 1 : 0;
+
       return {
         found: 1,
+        supabaseMatchId: dbMatch.id,
         externalMatchId: dbMatch.external_match_id,
         winner,
         homeGoals,
         awayGoals,
         scorerIdsStr,
-        contractAddress: dbMatch.contract_address ?? config.contractAddress,
+        settled,
       };
     }
   }
@@ -260,161 +279,60 @@ const fetchSettlementData = (
 
 const settlementAggregation = ConsensusAggregationByFields<SettlementData>({
   found: median,
+  supabaseMatchId: identical,
   externalMatchId: identical,
   winner: median,
   homeGoals: median,
   awayGoals: median,
   scorerIdsStr: identical,
-  contractAddress: identical,
+  settled: median,
 });
 
 // ─────────────────────────────────────────────────────────────────────
-//  Trigger handlers
-// ─────────────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────────
-//  Trigger handlers
+//  Trigger handler
 // ─────────────────────────────────────────────────────────────────────
 
 /**
- * Shared settlement logic used by both the cron trigger and the
- * SettlementRequested log trigger. Fetches Goalserve, finds FT match,
- * and writes a settlement report on-chain via CRE.
+ * Runs on every cron tick. Each DON node independently queries Supabase +
+ * Goalserve, finds any FT match, and POSTs to the settle-match edge function.
+ * First node to succeed settles; the rest receive 409 and return settled=0.
  */
 const runSettlement = (runtime: Runtime<Config>, label: string): string => {
   runtime.log("═════════════════════════════════════════════════");
   runtime.log(`goal.live CRE: ${label}`);
   runtime.log("═════════════════════════════════════════════════");
 
-  // Run decentralised HTTP consensus across DON nodes
   const httpClient = new cre.capabilities.HTTPClient();
-  const settlementData = httpClient
-    .sendRequest(runtime, fetchSettlementData, settlementAggregation)(
-      runtime.config,
-    )
+  const result = httpClient
+    .sendRequest(runtime, fetchAndSettle, settlementAggregation)(runtime.config)
     .result();
 
-  if (!settlementData.found) {
+  if (!result.found) {
     runtime.log("No FT matches found — nothing to settle this cycle");
     return "no-op";
   }
 
-  runtime.log(`FT match detected: ${settlementData.externalMatchId}`);
-  runtime.log(
-    `Final score: ${settlementData.homeGoals}–${settlementData.awayGoals}`,
-  );
-  const winnerLabel = (["HOME", "DRAW", "AWAY"] as const)[
-    settlementData.winner
-  ];
-  runtime.log(`Winner: ${winnerLabel}`);
-  runtime.log(
-    `Goal scorers: ${settlementData.scorerIdsStr || "(none recorded)"}`,
-  );
+  const winnerLabel = (["HOME", "DRAW", "AWAY"] as const)[result.winner];
+  runtime.log(`FT match: ${result.externalMatchId}`);
+  runtime.log(`Score: ${result.homeGoals}–${result.awayGoals}  Winner: ${winnerLabel}`);
+  runtime.log(`Scorers: ${result.scorerIdsStr || "(none recorded)"}`);
 
-  // Parse scorer IDs (Goalserve integer IDs → uint256)
-  const scorerIds = settlementData.scorerIdsStr
-    ? settlementData.scorerIdsStr
-        .split(",")
-        .filter(Boolean)
-        .map((id) => BigInt(id))
-    : [];
-
-  // Get EVM network descriptor
-  const network = getNetwork({
-    chainFamily: "evm",
-    chainSelectorName: runtime.config.chainSelectorName,
-    isTestnet: true,
-  });
-  if (!network) {
-    throw new Error(
-      `Network not found for selector: ${runtime.config.chainSelectorName}`,
+  if (result.settled) {
+    runtime.log(`✓ settle-match succeeded (supabaseMatchId: ${result.supabaseMatchId})`);
+  } else {
+    runtime.log(
+      "settle-match returned an unexpected status — check edge function logs",
     );
   }
 
-  const evmClient = new cre.capabilities.EVMClient(
-    network.chainSelector.selector,
-  );
-
-  // Encode settlement payload — mirrors GoalLiveBetting.onReport abi.decode
-  const reportData = encodeAbiParameters(SETTLE_ABI_PARAMS, [
-    settlementData.externalMatchId,
-    scorerIds,
-    settlementData.winner,
-    settlementData.homeGoals,
-    settlementData.awayGoals,
-  ]);
-
-  runtime.log("Generating signed CRE report...");
-
-  // Generate cryptographically signed report (DON consensus + ECDSA)
-  const reportResponse = runtime
-    .report({
-      encodedPayload: hexToBase64(reportData),
-      encoderName: "evm",
-      signingAlgo: "ecdsa",
-      hashingAlgo: "keccak256",
-    })
-    .result();
-
-  runtime.log(
-    `Writing settlement report to contract: ${settlementData.contractAddress}`,
-  );
-
-  // Submit via CRE EVM Write → Chainlink KeystoneForwarder → GoalLiveBetting.onReport()
-  const writeResult = evmClient
-    .writeReport(runtime, {
-      receiver: settlementData.contractAddress as Address,
-      report: reportResponse,
-      gasConfig: {
-        gasLimit: runtime.config.gasLimit,
-      },
-    })
-    .result();
-
-  if (writeResult.txStatus !== TxStatus.SUCCESS) {
-    throw new Error(
-      `EVM write failed: ${writeResult.errorMessage ?? writeResult.txStatus}`,
-    );
-  }
-
-  const txHash = bytesToHex(writeResult.txHash ?? new Uint8Array(32));
-  runtime.log(`✓ Match settled on-chain! txHash: ${txHash}`);
   runtime.log("═════════════════════════════════════════════════");
-
-  return txHash;
+  return result.settled ? "settled" : "error";
 };
 
-/**
- * Cron trigger handler — runs every `config.schedule` interval.
- * Fetches match data, checks for FT status, and writes settlement reports.
- */
 const onCronTrigger = (
   runtime: Runtime<Config>,
   _payload: CronPayload,
 ): string => runSettlement(runtime, "Settlement Check (cron)");
-
-/**
- * EVM Log trigger handler — fires when SettlementRequested is emitted by
- * GoalLiveBetting (admin calls requestSettlement() at FT).
- *
- * SettlementRequested(string indexed matchId, uint256 timestamp)
- *   topics[0] = keccak256("SettlementRequested(string,uint256)")
- *   topics[1] = keccak256(matchId)  ← indexed string is hashed by Solidity
- *   data       = abi.encode(timestamp)
- *
- * The matchId cannot be recovered from the hash, but that's OK: we run the
- * same Goalserve check as the cron. The log trigger just delivers it
- * immediately (sub-60 s) instead of waiting for the next cron cycle.
- */
-const onLogTrigger = (runtime: Runtime<Config>, payload: EVMLog): string => {
-  const topics = payload.topics;
-  if (topics.length >= 2) {
-    const matchIdHash = bytesToHex(topics[1]);
-    runtime.log(`SettlementRequested received — matchId hash: ${matchIdHash}`);
-    runtime.log("Triggering immediate settlement check...");
-  }
-  return runSettlement(runtime, "Immediate Settlement (SettlementRequested)");
-};
 
 // ─────────────────────────────────────────────────────────────────────
 //  Workflow initialisation
@@ -423,32 +341,12 @@ const onLogTrigger = (runtime: Runtime<Config>, payload: EVMLog): string => {
 const initWorkflow = (config: Config) => {
   const cronTrigger = new cre.capabilities.CronCapability();
 
-  const network = getNetwork({
-    chainFamily: "evm",
-    chainSelectorName: config.chainSelectorName,
-    isTestnet: true,
-  });
-  if (!network) {
-    throw new Error(`Chain selector not found: ${config.chainSelectorName}`);
-  }
-
-  const evmClient = new cre.capabilities.EVMClient(
-    network.chainSelector.selector,
-  );
-
   return [
-    // Polls Goalserve every minute — settles any FT matches on-chain
+    // Polls Goalserve every `config.schedule` seconds.
+    // When a tracked match shows FT, POSTs to settle-match edge function.
     cre.handler(
       cronTrigger.trigger({ schedule: config.schedule }),
       onCronTrigger,
-    ),
-    // Listens for SettlementRequested events — fires when admin calls requestSettlement()
-    // for immediate (sub-60 s) settlement instead of waiting for the next cron cycle
-    cre.handler(
-      evmClient.logTrigger({
-        addresses: [hexToBase64(config.contractAddress)],
-      }),
-      onLogTrigger,
     ),
   ];
 };

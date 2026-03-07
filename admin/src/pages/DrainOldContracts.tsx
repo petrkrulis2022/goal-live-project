@@ -23,12 +23,19 @@ type RowStatus = "idle" | "draining" | "done" | "error";
 export default function DrainOldContracts() {
   const [rows, setRows] = useState<
     Record<string, { status: RowStatus; txHash?: string; error?: string }>
-  >(Object.fromEntries(STUCK_MATCHES.map((m) => [m.matchId, { status: "idle" }])));
+  >(
+    Object.fromEntries(
+      STUCK_MATCHES.map((m) => [m.matchId, { status: "idle" }]),
+    ),
+  );
 
   async function drain(matchId: string) {
     setRows((r) => ({ ...r, [matchId]: { status: "draining" } }));
     try {
-      const txHash = await contractService.drainOldContract(OLD_CONTRACT, matchId);
+      const txHash = await contractService.drainOldContract(
+        OLD_CONTRACT,
+        matchId,
+      );
       setRows((r) => ({ ...r, [matchId]: { status: "done", txHash } }));
     } catch (e: unknown) {
       const error = e instanceof Error ? e.message : String(e);
@@ -44,8 +51,12 @@ export default function DrainOldContracts() {
     }
   }
 
-  const allDone = STUCK_MATCHES.every((m) => rows[m.matchId]?.status === "done");
-  const anyDraining = STUCK_MATCHES.some((m) => rows[m.matchId]?.status === "draining");
+  const allDone = STUCK_MATCHES.every(
+    (m) => rows[m.matchId]?.status === "done",
+  );
+  const anyDraining = STUCK_MATCHES.some(
+    (m) => rows[m.matchId]?.status === "draining",
+  );
 
   return (
     <div className="p-8 max-w-2xl mx-auto">
