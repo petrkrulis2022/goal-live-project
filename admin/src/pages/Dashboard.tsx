@@ -7,6 +7,7 @@ export default function Dashboard() {
   const [matches, setMatches] = useState<DbMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -19,6 +20,23 @@ export default function Dashboard() {
         setLoading(false);
       });
   }, []);
+
+  async function handleDelete(matchId: string, label: string) {
+    if (
+      !confirm(
+        `Delete "${label}"?\n\nThis removes the match, all bets, players and balance records. Cannot be undone.`,
+      )
+    )
+      return;
+    setDeleting(matchId);
+    const { error } = await supabase.from("matches").delete().eq("id", matchId);
+    if (error) {
+      alert("Delete failed: " + error.message);
+    } else {
+      setMatches((prev) => prev.filter((m) => m.id !== matchId));
+    }
+    setDeleting(null);
+  }
 
   const statusStyles: Record<string, { dot: string; badge: string }> = {
     "pre-match": {
@@ -137,6 +155,16 @@ export default function Dashboard() {
                   >
                     Manage →
                   </Link>
+                  <button
+                    onClick={() =>
+                      handleDelete(m.id, `${m.home_team} vs ${m.away_team}`)
+                    }
+                    disabled={deleting === m.id}
+                    className="text-xs font-medium text-gray-600 hover:text-red-400 transition-colors px-2 py-1 disabled:opacity-40"
+                    title="Delete match"
+                  >
+                    {deleting === m.id ? "…" : "✕"}
+                  </button>
                 </div>
               </div>
             );

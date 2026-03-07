@@ -120,6 +120,7 @@ class SupabaseDataService implements IDataService {
   subscribeToMatch(matchId: string, callbacks: MatchCallbacks): () => void {
     let matchUuid = "";
     let minuteTimer: ReturnType<typeof setInterval> | null = null;
+    let cachedPlayers: Awaited<ReturnType<typeof this.getPlayers>> = [];
 
     // Resolve uuid then set up Realtime subscriptions
     supabase
