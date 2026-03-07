@@ -118,7 +118,7 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
               cursor: "pointer",
             }}
           >
-            + Fund
+            Fund App
           </button>
         )}
         {onFundMatch && (
@@ -136,7 +136,7 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
               cursor: "pointer",
             }}
           >
-            ⚡ Match
+            Fund Match
           </button>
         )}
         {sep}
