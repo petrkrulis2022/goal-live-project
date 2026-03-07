@@ -1057,7 +1057,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
       {modal?.type === "fundmatch" && wallet && match?.contractAddress && (
         <FundMatchModal
           contractAddress={match.contractAddress}
-          matchId={matchKey ?? match.externalId ?? match.dbId}
+          matchId={matchKey ?? match.id ?? match.dbId}
           matchLabel={`${match.homeTeam} vs ${match.awayTeam}`}
           onClose={() => setModal(null)}
           onSuccess={() => window.dispatchEvent(new Event("gl:balanceRefresh"))}

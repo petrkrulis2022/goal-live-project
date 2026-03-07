@@ -66,9 +66,11 @@ class SupabaseDataService implements IDataService {
   }
 
   // ── getMatchWinnerOdds ────────────────────────
-  // Calls sync-odds (h2h_only) to get a fresh quote from The Odds API,
-  // which also writes the result back to DB. Falls back to the cached DB
-  // value if the edge function call fails (quota exceeded, network, etc.).
+  // Reads the dedicated odds columns written by:
+  //  • admin panel fetchMatchOdds (live Betfair call → writes odds_home/draw/away)
+  //  • pg_cron sync-odds every 60 s for all live matches
+  //  • sync-odds edge function when called directly
+  // Supabase Realtime pushes changes to these columns to the extension instantly.
   async getMatchWinnerOdds(matchId: string): Promise<MatchWinnerOdds> {
     const { data, error } = await supabase
       .from("matches")
@@ -77,37 +79,7 @@ class SupabaseDataService implements IDataService {
       .single();
     if (error || !data) throw new Error(`Match not found: ${matchId}`);
 
-    // Try to get a fresh quote via the sync-odds edge function.
-    try {
-      const res = await fetch(
-        `https://weryswulejhjkrmervnf.supabase.co/functions/v1/sync-odds`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey:
-              "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlcnlzd3VsZWpoamtybWVydm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjEyODEsImV4cCI6MjA4NzU5NzI4MX0.fxMn2LMdoFuYAln-34WUo1uUiWjSnlSzJlDS-sepdtc",
-          },
-          body: JSON.stringify({ match_id: data.id, h2h_only: true }),
-        },
-      );
-      if (res.ok) {
-        const json = await res.json();
-        const mw = json.match_winner as Record<string, number> | undefined;
-        if (mw && (mw.home || mw.draw || mw.away)) {
-          return {
-            home: mw.home ?? 1,
-            away: mw.away ?? 1,
-            draw: mw.draw ?? 1,
-          };
-        }
-      }
-    } catch {
-      // Fall through to cached value
-    }
-
-    // Fallback: dedicated columns (written by pg_cron + every successful sync-odds call)
-    // These are more reliable than the legacy odds_api_config JSON blob.
+    // Dedicated columns — written by admin, pg_cron, and sync-odds.
     if (data.odds_home || data.odds_draw || data.odds_away) {
       return {
         home: (data.odds_home as number) ?? 1,
@@ -116,7 +88,7 @@ class SupabaseDataService implements IDataService {
       };
     }
 
-    // Final fallback: legacy JSON blob.
+    // Fallback: legacy JSON blob (written by older admin versions).
     const cfg = (data.odds_api_config ?? {}) as Record<string, unknown>;
     const mw = (cfg.match_winner_odds ?? {}) as Record<string, number>;
     return {

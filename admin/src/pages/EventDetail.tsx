@@ -327,12 +327,16 @@ export default function EventDetail() {
             ?.price ?? 0,
       };
       setH2h({ ...newH2h, bookmaker: bm.title });
-      // Write back to Supabase so extension picks up live match odds
+      // Write back to Supabase — update BOTH dedicated columns (triggers Realtime
+      // to extension instantly) and legacy JSON blob for backward compat.
       const existingCfg = (m.odds_api_config ?? {}) as Record<string, unknown>;
       await supabase
         .from("matches")
         .update({
           odds_api_config: { ...existingCfg, match_winner_odds: newH2h },
+          odds_home: newH2h.home,
+          odds_draw: newH2h.draw,
+          odds_away: newH2h.away,
         })
         .eq("id", m.id);
     } catch {
