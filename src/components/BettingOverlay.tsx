@@ -453,7 +453,8 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
                 style={{ display: "flex", alignItems: "center", gap: "3px" }}
               >
                 {(() => {
-                  const totalGoals = (match?.score.home ?? 0) + (match?.score.away ?? 0);
+                  const totalGoals =
+                    (match?.score.home ?? 0) + (match?.score.away ?? 0);
                   // Filter out goals counts that are already impossible (fewer than goals already scored).
                   // For 5+, it's only impossible if we already have ≥5 goals AND want exactly 5 (it becomes settled).
                   return EG_TARGETS.filter(({ goals }) => {

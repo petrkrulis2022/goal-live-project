@@ -127,7 +127,8 @@ export const matchContractService = {
       contractAddress,
     );
     if (allowance < amount) {
-      const approveTx = await usdc.approve(contractAddress, ethers.MaxUint256);
+      // Approve exact amount — avoids MetaMask "unlimited approval" security alert.
+      const approveTx = await usdc.approve(contractAddress, amount);
       await approveTx.wait();
     }
 
