@@ -8,6 +8,25 @@ goal.live is a real-time, decentralized prediction market for live football. Use
 
 ---
 
+## 🚨 The Problem
+
+Live football prediction markets today rely on a **trusted admin or centralised oracle** to report the final score and trigger payouts. A single compromised private key — or a malicious operator — can manipulate results, delay withdrawals, or drain the pool entirely. Users have no on-chain guarantee the outcome is honest.
+
+---
+
+## ✅ How We've Solved It
+
+goal.live eliminates the trusted admin by replacing it with a **Chainlink CRE (Compute Runtime Environment) Workflow** running on a 7-node Decentralised Oracle Network (DON):
+
+- Each CRE node **independently** fetches live match scores from the Goalserve API and match metadata from Supabase
+- Results are aggregated via **DON consensus** — no single node can report a false score
+- The cryptographically signed settlement report is written directly to the smart contract via `KeystoneForwarder.report()` → `GoalLiveBetting.onReport()`
+- No admin key is involved in settlement — the contract only accepts reports signed by the DON
+
+This makes the core trust assumption of the platform — _"who decides the winner?"_ — fully verifiable on-chain.
+
+---
+
 ## 🏆 Hackathon Category
 
 **Prediction Markets** — Chainlink Hackathon 2026
@@ -43,7 +62,7 @@ This project demonstrates automated, verifiable settlement of prediction markets
                      ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  GoalLiveBetting.sol  (Sepolia)                             │
-│  0x4434528dBbD8376BDDb7ca189B7e20cfe4b3c435                │
+│  0x0ac469B0DE6C5d67fb904C54A1f7cA8c8bf347Bc                │
 │                                                             │
 │  fundMatch()  recordBet()  settleUserBalances()  withdraw() │
 │  ← onReport() called by Chainlink KeystoneForwarder        │
@@ -312,6 +331,6 @@ Users deposit once per match (`fundMatch`) rather than locking funds per individ
 
 | Contract                    | Address                                                                                                                         |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| GoalLiveBetting V1          | [`0x4434528dBbD8376BDDb7ca189B7e20cfe4b3c435`](https://sepolia.etherscan.io/address/0x4434528dBbD8376BDDb7ca189B7e20cfe4b3c435) |
+| GoalLiveBetting V1          | [`0x0ac469B0DE6C5d67fb904C54A1f7cA8c8bf347Bc`](https://sepolia.etherscan.io/address/0x0ac469B0DE6C5d67fb904C54A1f7cA8c8bf347Bc) |
 | Chainlink KeystoneForwarder | `0x15fc6ae953e024d975e77382eeec56a9101f9f88`                                                                                    |
 | USDC (Circle Sepolia)       | `0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238`                                                                                    |

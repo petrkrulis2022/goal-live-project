@@ -9,6 +9,7 @@ interface BalanceDisplayProps {
   matchBalanceInfo?: MatchBalanceInfo | null;
   onConnect: () => void;
   onTopUp?: () => void;
+  onFundMatch?: () => void;
   onWithdraw?: () => void;
   onWithdrawMatch?: () => void;
 }
@@ -20,6 +21,7 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   matchBalanceInfo,
   onConnect,
   onTopUp,
+  onFundMatch,
   onWithdraw,
   onWithdrawMatch,
 }) => {
@@ -117,6 +119,24 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
             }}
           >
             + Fund
+          </button>
+        )}
+        {onFundMatch && (
+          <button
+            onClick={onFundMatch}
+            className="gl-interactive"
+            style={{
+              background: "rgba(79,46,165,0.6)",
+              border: "1px solid rgba(167,139,250,0.45)",
+              borderRadius: "4px",
+              color: "#a78bfa",
+              fontSize: "11px",
+              fontWeight: 700,
+              padding: "2px 8px",
+              cursor: "pointer",
+            }}
+          >
+            ⚡ Match
           </button>
         )}
         {sep}

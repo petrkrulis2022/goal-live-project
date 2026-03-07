@@ -70,6 +70,15 @@ export function useWallet() {
     await services.wallet.getBalance();
   }, []);
 
+  // Poll in-app balance every 15 s when wallet is connected
+  useEffect(() => {
+    if (!wallet?.connected) return;
+    const iv = setInterval(() => {
+      services.wallet.getBalance().catch(() => {});
+    }, 15_000);
+    return () => clearInterval(iv);
+  }, [wallet?.connected]);
+
   return {
     wallet,
     connect,

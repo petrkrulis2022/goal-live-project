@@ -13,6 +13,38 @@ import { MATCH_REGISTRY } from "@shared/data/matchRegistry";
 const ODDS_API_KEY = "069be437bad9795678cdc1c1cee711c3";
 // Note: Goalserve key is baked into the Vite proxy rewrite (vite.admin.config.ts)
 
+// Goalserve league ID ↔ Odds-API sport key (used as bidirectional fallback)
+const GS_LEAGUE_TO_SPORT: Record<string, string> = {
+  "1204": "soccer_epl",
+  "1399": "soccer_spain_la_liga",
+  "1269": "soccer_italy_serie_a",
+  "1007": "soccer_uefa_europa_league",
+  "1009": "soccer_uefa_europa_conference_league",
+};
+
+// Last-resort: goalserve static_id → Odds-API sport (for old rows with no odds_api_config)
+const STATIC_ID_TO_ODDSAPI_SPORT: Record<string, string> = {
+  "3693262": "soccer_spain_la_liga", // Osasuna vs Mallorca
+};
+
+/** Resolve Odds-API sport string from a DB match row */
+function resolveOddsApiSport(m: {
+  goalserve_static_id?: string | null;
+  odds_api_config?: unknown;
+}): string {
+  const cfg = m.odds_api_config as Record<string, string> | undefined;
+  return (
+    cfg?.sport ??
+    (cfg?.goalserve_league
+      ? GS_LEAGUE_TO_SPORT[cfg.goalserve_league]
+      : undefined) ??
+    (m.goalserve_static_id
+      ? STATIC_ID_TO_ODDSAPI_SPORT[m.goalserve_static_id]
+      : undefined) ??
+    "soccer_epl"
+  );
+}
+
 // Sepolia on-chain constants
 const SEPOLIA_RPC = "https://sepolia.drpc.org";
 const USDC_SEPOLIA = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
@@ -272,8 +304,7 @@ export default function EventDetail() {
 
   async function fetchMatchOdds(m: DbMatch) {
     try {
-      const sport =
-        (m.odds_api_config as Record<string, string>)?.sport ?? "soccer_epl";
+      const sport = resolveOddsApiSport(m);
       const res = await fetch(
         `/api/odds/sports/${sport}/events/${m.external_match_id}/odds?apiKey=${ODDS_API_KEY}&markets=h2h&bookmakers=betfair_ex_eu&oddsFormat=decimal`,
       );
@@ -337,9 +368,21 @@ export default function EventDetail() {
         soccer_uefa_europa_league: "1007",
         soccer_uefa_europa_conference_league: "1009",
       };
+      // Fallback map: static_id → league, for matches not in MATCH_REGISTRY
+      const STATIC_ID_TO_LEAGUE: Record<string, string> = {
+        "3693262": "1399", // Osasuna vs Mallorca (La Liga)
+      };
       const sport = (m.odds_api_config as Record<string, string>)?.sport ?? "";
+      const gsLeagueFromDb = (m.odds_api_config as Record<string, string>)
+        ?.goalserve_league;
+      const staticIdForLeague =
+        m.goalserve_static_id ?? cfg?.goalserveStaticId ?? "0";
       const league =
-        cfg?.goalserveLeague ?? SPORT_TO_GS_LEAGUE[sport] ?? "1204";
+        cfg?.goalserveLeague ??
+        gsLeagueFromDb ??
+        SPORT_TO_GS_LEAGUE[sport] ??
+        STATIC_ID_TO_LEAGUE[staticIdForLeague] ??
+        "1204";
       // Use persisted static_id from DB first (most reliable)
       let staticId = m.goalserve_static_id ?? cfg?.goalserveStaticId ?? "0";
 
@@ -512,8 +555,7 @@ export default function EventDetail() {
     lineupData?: MatchLineup | null,
   ) {
     try {
-      const sport =
-        (m.odds_api_config as Record<string, string>)?.sport ?? "soccer_epl";
+      const sport = resolveOddsApiSport(m);
       const eventId = m.external_match_id;
       const res = await fetch(
         `/api/odds/sports/${sport}/events/${eventId}/odds?apiKey=${ODDS_API_KEY}&markets=player_first_goal_scorer&regions=us,uk,eu&oddsFormat=decimal`,

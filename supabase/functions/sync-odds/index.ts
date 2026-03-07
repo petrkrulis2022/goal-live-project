@@ -166,15 +166,41 @@ Deno.serve(async (req: Request) => {
 
     // ── h2h_only mode: just refresh match-winner odds, skip player stuff ──
     if (h2h_only) {
-      const h2hUrl =
+      // Try betfair first (best liquidity), then fall back to any available bookmaker.
+      const betfairUrl =
         `${ODDS_API_BASE}/sports/${sport}/events/${eventId}/odds` +
         `?apiKey=${apiKey}&regions=uk,eu&markets=h2h&bookmakers=betfair_ex_eu&oddsFormat=decimal`;
-      const h2hRes = await fetch(h2hUrl);
-      if (!h2hRes.ok) {
-        const txt = await h2hRes.text();
-        return json({ error: `Odds API h2h ${h2hRes.status}: ${txt}` }, 502);
+      const anyBookmakerUrl =
+        `${ODDS_API_BASE}/sports/${sport}/events/${eventId}/odds` +
+        `?apiKey=${apiKey}&regions=eu,uk&markets=h2h&oddsFormat=decimal`;
+
+      let h2hData: OddsApiEvent | null = null;
+      for (const url of [betfairUrl, anyBookmakerUrl]) {
+        const h2hRes = await fetch(url);
+        if (!h2hRes.ok) {
+          const txt = await h2hRes.text();
+          // If betfair-specific call fails, try the broader one
+          if (url === betfairUrl) continue;
+          return json({ error: `Odds API h2h ${h2hRes.status}: ${txt}` }, 502);
+        }
+        const candidate: OddsApiEvent = await h2hRes.json();
+        const bm = candidate.bookmakers?.[0];
+        const mkt = bm?.markets?.find((m: OddsApiMarket) => m.key === "h2h");
+        if (mkt) {
+          h2hData = candidate;
+          break;
+        }
+        // No market in this response — if it was betfair-specific, try broader
+        if (url === betfairUrl) continue;
       }
-      const h2hData: OddsApiEvent = await h2hRes.json();
+
+      if (!h2hData) {
+        return json(
+          { error: "h2h market not found in any bookmaker response" },
+          404,
+        );
+      }
+
       const bm = h2hData.bookmakers?.[0];
       const mkt = bm?.markets?.find((m: OddsApiMarket) => m.key === "h2h");
       if (!mkt) {

@@ -476,6 +476,8 @@ export default function CreateEvent() {
     try {
       // ── Step 1: Save event to Supabase ─────────────────────────────────────
       setStep({ id: "db", label: "Saving event to database…" });
+      const sportKey = selectedEvent?.sport_key ?? "soccer_epl";
+      const gsLeague = SPORT_TO_GS_LEAGUE[sportKey] ?? "1204";
       const { error: dbErr, data: match } = await supabase
         .from("matches")
         .insert({
@@ -491,6 +493,7 @@ export default function CreateEvent() {
           score_home: 0,
           score_away: 0,
           half: 1,
+          odds_api_config: { sport: sportKey, goalserve_league: gsLeague },
         })
         .select()
         .single();
@@ -505,11 +508,14 @@ export default function CreateEvent() {
         form.awayTeam,
         selectedEvent?.sport_key ?? "soccer_epl",
       ).catch(() => "");
-      // Persist the discovered Goalserve static_id so EventDetail can use it later
+      // Persist the discovered Goalserve static_id (and ensure odds_api_config is current)
       if (gsStaticId) {
         await supabase
           .from("matches")
-          .update({ goalserve_static_id: gsStaticId })
+          .update({
+            goalserve_static_id: gsStaticId,
+            odds_api_config: { sport: sportKey, goalserve_league: gsLeague },
+          })
           .eq("id", match.id);
       }
 

@@ -497,6 +497,31 @@ contract GoalLiveBetting is ReentrancyGuard, Ownable {
     }
 
     /**
+     * @notice Cancel an active match and optionally refund the pool.
+     *         Works even when pool is empty (useful for dev/testing reset).
+     *         Resets isActive = false so the same matchId can be re-used.
+     */
+    function adminCancelMatch(
+        string calldata matchId,
+        address refundTo
+    ) external onlyOwner nonReentrant {
+        Match storage m = matches[matchId];
+        require(m.isActive, "GLB: not active");
+        require(!m.isSettled, "GLB: already settled");
+
+        uint256 amount = m.poolSize;
+        m.poolSize = 0;
+        m.isActive = false;
+
+        if (amount > 0) {
+            require(refundTo != address(0), "GLB: zero address");
+            usdc.safeTransfer(refundTo, amount);
+        }
+
+        emit PoolEmergencyWithdrawn(matchId, refundTo, amount);
+    }
+
+    /**
      * @notice Emergency drain of a match pool back to `to`.
      *         Only when match is NOT yet settled. Resets isActive = false.
      *         Use only for genuine emergencies or during testing.

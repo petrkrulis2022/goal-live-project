@@ -40,6 +40,7 @@ import { BetChangeModal } from "./BetChangeModal";
 import { SettlementDisplay } from "./SettlementDisplay";
 import { TopUpModal } from "./TopUpModal";
 import { WithdrawModal } from "./WithdrawModal";
+import { FundMatchModal } from "./FundMatchModal";
 import type { Player, Bet } from "../types";
 import type { MatchWinnerOutcome } from "../types";
 import { tryUnmuteVideo } from "../utils/videoUtils";
@@ -50,6 +51,7 @@ type ModalState =
   | { type: "eg"; goals: number }
   | { type: "change"; bet: Bet; toPlayer?: Player }
   | { type: "topup" }
+  | { type: "fundmatch" }
   | { type: "withdraw" }
   | null;
 
@@ -117,10 +119,13 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     tryUnmuteVideo();
   }, []);
   useEffect(() => {
-    const h = () => refresh();
+    const h = () => {
+      refresh();
+      refreshBalance();
+    };
     window.addEventListener("gl:balanceRefresh", h);
     return () => window.removeEventListener("gl:balanceRefresh", h);
-  }, [refresh]);
+  }, [refresh, refreshBalance]);
 
   // ── In-game ad popup: CubePay 5s → gap 3s → Vibe 5s → wait → repeat ──
   const [adVisible, setAdVisible] = useState(false);
@@ -675,6 +680,11 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             matchBalanceInfo={matchBalanceInfo}
             onConnect={connect}
             onTopUp={wallet ? () => setModal({ type: "topup" }) : undefined}
+            onFundMatch={
+              wallet && match?.contractAddress
+                ? () => setModal({ type: "fundmatch" })
+                : undefined
+            }
             onWithdraw={
               wallet ? () => setModal({ type: "withdraw" }) : undefined
             }
@@ -1042,6 +1052,15 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           availableBalance={balance.wallet}
           onConfirm={handleConfirmChange}
           onClose={() => setModal(null)}
+        />
+      )}
+      {modal?.type === "fundmatch" && wallet && match?.contractAddress && (
+        <FundMatchModal
+          contractAddress={match.contractAddress}
+          matchId={matchKey ?? match.externalId ?? match.dbId}
+          matchLabel={`${match.homeTeam} vs ${match.awayTeam}`}
+          onClose={() => setModal(null)}
+          onSuccess={() => window.dispatchEvent(new Event("gl:balanceRefresh"))}
         />
       )}
       {modal?.type === "topup" && wallet && (

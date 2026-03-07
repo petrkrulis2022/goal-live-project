@@ -72,7 +72,7 @@ class SupabaseDataService implements IDataService {
   async getMatchWinnerOdds(matchId: string): Promise<MatchWinnerOdds> {
     const { data, error } = await supabase
       .from("matches")
-      .select("id, odds_api_config")
+      .select("id, odds_api_config, odds_home, odds_draw, odds_away")
       .eq("external_match_id", matchId)
       .single();
     if (error || !data) throw new Error(`Match not found: ${matchId}`);
@@ -106,7 +106,17 @@ class SupabaseDataService implements IDataService {
       // Fall through to cached value
     }
 
-    // Fallback: return whatever is in DB (may be stale but better than nothing).
+    // Fallback: dedicated columns (written by pg_cron + every successful sync-odds call)
+    // These are more reliable than the legacy odds_api_config JSON blob.
+    if (data.odds_home || data.odds_draw || data.odds_away) {
+      return {
+        home: (data.odds_home as number) ?? 1,
+        draw: (data.odds_draw as number) ?? 1,
+        away: (data.odds_away as number) ?? 1,
+      };
+    }
+
+    // Final fallback: legacy JSON blob.
     const cfg = (data.odds_api_config ?? {}) as Record<string, unknown>;
     const mw = (cfg.match_winner_odds ?? {}) as Record<string, number>;
     return {

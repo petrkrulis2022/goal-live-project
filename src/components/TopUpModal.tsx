@@ -117,21 +117,9 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({
             {/* Match escrow contract address (unique per game) */}
             {contractAddress && (
               <div className="bg-indigo-950/40 border border-indigo-500/30 rounded-xl px-4 py-3 mb-3">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-indigo-300 text-[10px] font-semibold uppercase tracking-wide">
-                    Match Escrow Contract
-                  </p>
-                  <button
-                    onClick={handleCopyContract}
-                    className={`text-[10px] px-2 py-0.5 rounded font-bold transition-colors ${
-                      copiedContract
-                        ? "bg-emerald-600 text-black"
-                        : "bg-indigo-700/60 text-indigo-200 hover:bg-indigo-600/80"
-                    }`}
-                  >
-                    {copiedContract ? "✓ Copied" : "Copy"}
-                  </button>
-                </div>
+                <p className="text-indigo-300 text-[10px] font-semibold uppercase tracking-wide mb-1">
+                  Match Escrow Contract
+                </p>
                 {matchLabel && (
                   <p className="text-indigo-400 text-[10px] mb-1">
                     {matchLabel}
@@ -153,9 +141,21 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({
 
             {/* In-app wallet address */}
             <div className="bg-gray-900 border border-white/12 rounded-xl px-4 py-3 mb-3">
-              <p className="text-gray-500 text-[10px] mb-1 font-semibold uppercase tracking-wide">
-                Your In-App Wallet Address
-              </p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-gray-500 text-[10px] font-semibold uppercase tracking-wide">
+                  Your In-App Wallet Address
+                </p>
+                <button
+                  onClick={handleCopy}
+                  className={`text-[10px] px-2 py-0.5 rounded font-bold transition-colors ${
+                    copied
+                      ? "bg-emerald-600 text-black"
+                      : "bg-gray-700/80 text-gray-200 hover:bg-gray-600"
+                  }`}
+                >
+                  {copied ? "✓ Copied" : "Copy"}
+                </button>
+              </div>
               <p className="text-white font-mono text-xs break-all leading-relaxed">
                 {depositAddress}
               </p>

@@ -319,11 +319,7 @@ export const contractService = {
       users.length,
       "users",
     );
-    const tx = await contract.settleUserBalances(
-      matchId,
-      users,
-      payoutsBigInt,
-    );
+    const tx = await contract.settleUserBalances(matchId, users, payoutsBigInt);
     await tx.wait();
     return tx.hash as string;
   },
@@ -403,10 +399,7 @@ export const contractService = {
   /**
    * Return user's original deposit for a match (immutable after fundMatch).
    */
-  async getUserDeposit(
-    matchId: string,
-    userAddress: string,
-  ): Promise<number> {
+  async getUserDeposit(matchId: string, userAddress: string): Promise<number> {
     const address = getStoredContractAddress();
     if (!address) return 0;
     const provider = getProvider();
@@ -503,6 +496,21 @@ export const contractService = {
     const contract = getContract(address, signer);
     console.log("[contractService] emergencyWithdrawPool", matchId, "->", dest);
     const tx = await contract.emergencyWithdrawPool(matchId, dest);
+    await tx.wait();
+    return tx.hash as string;
+  },
+
+  /**
+   * Cancel an active (unsettled) match. Refunds pool to `to` if non-empty.
+   * Works even on an empty pool — useful for dev reset / re-creation of same matchId.
+   */
+  async adminCancelMatch(matchId: string, to?: string): Promise<string> {
+    const address = requireContract();
+    const signer = await getSigner();
+    const dest = to ?? (await signer.getAddress());
+    const contract = getContract(address, signer);
+    console.log("[contractService] adminCancelMatch", matchId, "->", dest);
+    const tx = await contract.adminCancelMatch(matchId, dest);
     await tx.wait();
     return tx.hash as string;
   },
