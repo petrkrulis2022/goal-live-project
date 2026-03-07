@@ -18,16 +18,16 @@ This project demonstrates automated, verifiable settlement of prediction markets
 
 ## 🔗 Chainlink Files Reference
 
-| File | Usage |
-|---|---|
-| [`cre/goal-live/goal-live-settlement/main.ts`](./cre/goal-live/goal-live-settlement/main.ts) | **CRE Workflow** — settlement logic, HTTP consensus, EVM write |
-| [`cre/goal-live/goal-live-settlement/workflow.yaml`](./cre/goal-live/goal-live-settlement/workflow.yaml) | CRE workflow deployment config |
-| [`cre/goal-live/goal-live-settlement/config.staging.json`](./cre/goal-live/goal-live-settlement/config.staging.json) | CRE runtime config (Supabase URL, contract address, schedule) |
-| [`cre/goal-live/project.yaml`](./cre/goal-live/project.yaml) | CRE project settings (RPC endpoints) |
-| [`contracts/GoalLiveBetting.sol`](./contracts/GoalLiveBetting.sol) | Smart contract — `onReport()` receives CRE settlement |
-| [`test/GoalLiveBetting.t.sol`](./test/GoalLiveBetting.t.sol) | Foundry tests (37 passing) |
-| [`admin/src/services/contractService.ts`](./admin/src/services/contractService.ts) | Admin: deploy contract, `requestSettlement()` (fires CRE Log Trigger) |
-| [`src/hooks/useMatchBalance.ts`](./src/hooks/useMatchBalance.ts) | Frontend: reads on-chain payout state after CRE settles |
+| File                                                                                                                 | Usage                                                                 |
+| -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| [`cre/goal-live/goal-live-settlement/main.ts`](./cre/goal-live/goal-live-settlement/main.ts)                         | **CRE Workflow** — settlement logic, HTTP consensus, EVM write        |
+| [`cre/goal-live/goal-live-settlement/workflow.yaml`](./cre/goal-live/goal-live-settlement/workflow.yaml)             | CRE workflow deployment config                                        |
+| [`cre/goal-live/goal-live-settlement/config.staging.json`](./cre/goal-live/goal-live-settlement/config.staging.json) | CRE runtime config (Supabase URL, contract address, schedule)         |
+| [`cre/goal-live/project.yaml`](./cre/goal-live/project.yaml)                                                         | CRE project settings (RPC endpoints)                                  |
+| [`contracts/GoalLiveBetting.sol`](./contracts/GoalLiveBetting.sol)                                                   | Smart contract — `onReport()` receives CRE settlement                 |
+| [`test/GoalLiveBetting.t.sol`](./test/GoalLiveBetting.t.sol)                                                         | Foundry tests (37 passing)                                            |
+| [`admin/src/services/contractService.ts`](./admin/src/services/contractService.ts)                                   | Admin: deploy contract, `requestSettlement()` (fires CRE Log Trigger) |
+| [`src/hooks/useMatchBalance.ts`](./src/hooks/useMatchBalance.ts)                                                     | Frontend: reads on-chain payout state after CRE settles               |
 
 ---
 
@@ -257,29 +257,34 @@ goal.live/
 ## 🚀 Running Locally
 
 ### Prerequisites
-- Node.js 18+, Bun, Foundry
+
+- Node.js 20+, Bun, Foundry
 - MetaMask with Sepolia ETH + USDC
 - Supabase project (or use the existing staging instance)
 
 ### Admin Panel
+
 ```bash
 npm install
 npm run dev:admin          # → http://localhost:5174
 ```
 
 ### Chrome Extension
+
 ```bash
 npm run build              # builds dist/ + dist-content/
 # Chrome → Extensions → Load Unpacked → select dist/
 ```
 
 ### Smart Contract (Foundry)
+
 ```bash
 forge build
 forge test                 # 37 tests, all passing
 ```
 
 ### CRE Workflow (Chainlink CRE CLI)
+
 ```bash
 cd cre/goal-live/goal-live-settlement
 # Deploy workflow to CRE network:
@@ -305,9 +310,8 @@ Users deposit once per match (`fundMatch`) rather than locking funds per individ
 
 ## 🌐 Deployed Contracts (Sepolia Testnet)
 
-| Contract | Address |
-|---|---|
-| GoalLiveBetting V1 | [`0x4434528dBbD8376BDDb7ca189B7e20cfe4b3c435`](https://sepolia.etherscan.io/address/0x4434528dBbD8376BDDb7ca189B7e20cfe4b3c435) |
-| Chainlink KeystoneForwarder | `0x15fc6ae953e024d975e77382eeec56a9101f9f88` |
-| USDC (Circle Sepolia) | `0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238` |
-
+| Contract                    | Address                                                                                                                         |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| GoalLiveBetting V1          | [`0x4434528dBbD8376BDDb7ca189B7e20cfe4b3c435`](https://sepolia.etherscan.io/address/0x4434528dBbD8376BDDb7ca189B7e20cfe4b3c435) |
+| Chainlink KeystoneForwarder | `0x15fc6ae953e024d975e77382eeec56a9101f9f88`                                                                                    |
+| USDC (Circle Sepolia)       | `0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238`                                                                                    |
