@@ -853,7 +853,18 @@ export default function EventDetail() {
               filter: `id=eq.${matchId}`,
             },
             (payload) => {
-              setMatch(payload.new as DbMatch);
+              const updated = payload.new as DbMatch;
+              setMatch(updated);
+              // Keep h2h display in sync with DB — pg_cron or extension may have
+              // written newer odds since this page loaded.
+              if (updated.odds_home || updated.odds_draw || updated.odds_away) {
+                setH2h((prev) => ({
+                  home: updated.odds_home ?? prev?.home ?? 0,
+                  draw: updated.odds_draw ?? prev?.draw ?? 0,
+                  away: updated.odds_away ?? prev?.away ?? 0,
+                  bookmaker: prev?.bookmaker ?? "DB",
+                }));
+              }
             },
           )
           .subscribe();

@@ -77,7 +77,10 @@ const _bridgeEip1193 = {
 function getProvider(): ethers.BrowserProvider {
   // In a regular page (admin panel), window.ethereum is available directly.
   // In the content-script isolated world it is undefined — use the bridge.
-  if (typeof window !== "undefined" && (window as Window & { ethereum?: unknown }).ethereum) {
+  if (
+    typeof window !== "undefined" &&
+    (window as Window & { ethereum?: unknown }).ethereum
+  ) {
     return new ethers.BrowserProvider(
       (window as Window & { ethereum: ethers.Eip1193Provider }).ethereum,
     );

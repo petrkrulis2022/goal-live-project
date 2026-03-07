@@ -452,55 +452,63 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
               <div
                 style={{ display: "flex", alignItems: "center", gap: "3px" }}
               >
-                {EG_TARGETS.map(({ goals, label, odds: fallbackOdds }) => {
-                  // Use live odds from Odds API if available, else fall back to static values
-                  const odds = mwOdds.egOdds?.[String(goals)] ?? fallbackOdds;
-                  const egBet = getEgBet(goals);
-                  return (
-                    <button
-                      key={goals}
-                      onClick={() =>
-                        wallet ? setModal({ type: "eg", goals }) : connect()
-                      }
-                      className="gl-interactive"
-                      style={{
-                        pointerEvents: "auto",
-                        background: egBet
-                          ? "rgba(6,78,59,0.7)"
-                          : "rgba(30,20,50,0.85)",
-                        border: `1px solid ${egBet ? "rgba(52,211,153,0.5)" : "rgba(255,255,255,0.13)"}`,
-                        borderRadius: "5px",
-                        cursor: "pointer",
-                        padding: "4px 8px",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        minWidth: "36px",
-                      }}
-                    >
-                      <span
+                {(() => {
+                  const totalGoals = (match?.score.home ?? 0) + (match?.score.away ?? 0);
+                  // Filter out goals counts that are already impossible (fewer than goals already scored).
+                  // For 5+, it's only impossible if we already have ≥5 goals AND want exactly 5 (it becomes settled).
+                  return EG_TARGETS.filter(({ goals }) => {
+                    if (goals < 5) return goals >= totalGoals;
+                    return true; // 5+ stays visible — could still be betting higher
+                  }).map(({ goals, label, odds: fallbackOdds }) => {
+                    // Use live odds from Odds API if available, else fall back to static values
+                    const odds = mwOdds.egOdds?.[String(goals)] ?? fallbackOdds;
+                    const egBet = getEgBet(goals);
+                    return (
+                      <button
+                        key={goals}
+                        onClick={() =>
+                          wallet ? setModal({ type: "eg", goals }) : connect()
+                        }
+                        className="gl-interactive"
                         style={{
-                          color: egBet ? "#34d399" : "#e5e7eb",
-                          fontSize: "11px",
-                          fontWeight: 700,
-                          lineHeight: 1.2,
+                          pointerEvents: "auto",
+                          background: egBet
+                            ? "rgba(6,78,59,0.7)"
+                            : "rgba(30,20,50,0.85)",
+                          border: `1px solid ${egBet ? "rgba(52,211,153,0.5)" : "rgba(255,255,255,0.13)"}`,
+                          borderRadius: "5px",
+                          cursor: "pointer",
+                          padding: "4px 8px",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          minWidth: "36px",
                         }}
                       >
-                        {label}
-                      </span>
-                      <span
-                        style={{
-                          color: "#fde047",
-                          fontSize: "10px",
-                          fontWeight: 600,
-                          lineHeight: 1.2,
-                        }}
-                      >
-                        {odds}×
-                      </span>
-                    </button>
-                  );
-                })}
+                        <span
+                          style={{
+                            color: egBet ? "#34d399" : "#e5e7eb",
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            lineHeight: 1.2,
+                          }}
+                        >
+                          {label}
+                        </span>
+                        <span
+                          style={{
+                            color: "#fde047",
+                            fontSize: "10px",
+                            fontWeight: 600,
+                            lineHeight: 1.2,
+                          }}
+                        >
+                          {odds}×
+                        </span>
+                      </button>
+                    );
+                  });
+                })()}
               </div>
             </div>
           )}
