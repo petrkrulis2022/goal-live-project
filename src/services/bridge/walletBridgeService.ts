@@ -4,6 +4,7 @@
 //  Content-script world cannot see window.ethereum directly — this bridges it.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { IWalletService, WalletState } from "../../types/services.types";
+import { supabase } from "../../lib/supabase";
 
 const SEPOLIA_CHAIN_ID = "0xaa36a7";
 const USDC_CONTRACT = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
@@ -247,6 +248,27 @@ class WalletBridgeService implements IWalletService {
     saveInAppBalance(this.inAppBalance);
     if (this.state) {
       this.emit({ ...this.state, inAppBalance: this.inAppBalance });
+      // Persist to Supabase so balance survives refresh
+      const addr = this.state.address.toLowerCase();
+      void (async () => {
+        try {
+          const { data } = await supabase
+            .from("player_balances")
+            .select("total_withdrawn")
+            .eq("wallet_address", addr)
+            .maybeSingle();
+          const current = Number(data?.total_withdrawn ?? 0);
+          await supabase.from("player_balances").upsert(
+            {
+              wallet_address: addr,
+              total_withdrawn: Math.round((current + amount) * 1e6) / 1e6,
+            },
+            { onConflict: "wallet_address" },
+          );
+        } catch {
+          // non-critical, balance is already updated in localStorage
+        }
+      })();
     }
   }
 

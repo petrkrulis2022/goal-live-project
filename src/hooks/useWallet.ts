@@ -70,6 +70,10 @@ export function useWallet() {
     await services.wallet.getBalance();
   }, []);
 
+  const deductBalance = useCallback(async (amount: number) => {
+    await services.wallet.deductBalance(amount);
+  }, []);
+
   // Poll in-app balance every 15 s when wallet is connected
   useEffect(() => {
     if (!wallet?.connected) return;
@@ -93,5 +97,6 @@ export function useWallet() {
     withdrawError,
     setPlayerAddress,
     refreshBalance,
+    deductBalance,
   };
 }

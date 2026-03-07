@@ -74,7 +74,7 @@ const EG_TARGETS = [
 export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
   matchKey,
 }) => {
-  const { wallet, connect, topUp, withdraw, setPlayerAddress, refreshBalance } =
+  const { wallet, connect, topUp, withdraw, setPlayerAddress, refreshBalance, deductBalance } =
     useWallet();
   const { match, players, mwOdds, loading, currentGoalWindow } =
     useMatchData(matchKey);
@@ -1069,6 +1069,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           matchId={matchKey ?? match.id ?? match.dbId}
           matchLabel={`${match.homeTeam} vs ${match.awayTeam}`}
           onClose={() => setModal(null)}
+          onFunded={(amt) => deductBalance(amt)}
           onSuccess={() => window.dispatchEvent(new Event("gl:balanceRefresh"))}
         />
       )}

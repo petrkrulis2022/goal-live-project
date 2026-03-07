@@ -7,6 +7,7 @@ interface FundMatchModalProps {
   matchLabel: string;
   onClose: () => void;
   onSuccess: () => void;
+  onFunded: (amount: number) => void;
 }
 
 export const FundMatchModal: React.FC<FundMatchModalProps> = ({
@@ -15,6 +16,7 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
   matchLabel,
   onClose,
   onSuccess,
+  onFunded,
 }) => {
   const [amount, setAmount] = useState("");
   const [step, setStep] = useState<
@@ -38,6 +40,7 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
       );
       setTxHash(hash);
       setStep("done");
+      onFunded(parsed);
       setTimeout(() => {
         onSuccess();
         onClose();
