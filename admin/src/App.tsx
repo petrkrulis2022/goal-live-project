@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import CreateEvent from "./pages/CreateEvent";
 import EventDetail from "./pages/EventDetail";
 import FundPool from "./pages/FundPool";
+import DrainOldContracts from "./pages/DrainOldContracts";
 import { useAdminWallet } from "./hooks/useAdminWallet";
 
 /** Shared full-screen wrapper for auth screens */
@@ -127,6 +128,7 @@ export default function App() {
         <Route path="/events/new" element={<CreateEvent />} />
         <Route path="/events/:matchId" element={<EventDetail />} />
         <Route path="/events/:matchId/fund" element={<FundPool />} />
+        <Route path="/drain" element={<DrainOldContracts />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Layout>

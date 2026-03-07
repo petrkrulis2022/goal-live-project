@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: "▦" },
   { to: "/events/new", label: "Create Event", icon: "＋" },
+  { to: "/drain", label: "Drain Old Contracts", icon: "⬇" },
 ];
 
 interface LayoutProps {

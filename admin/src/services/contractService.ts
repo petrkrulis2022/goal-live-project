@@ -501,6 +501,25 @@ export const contractService = {
   },
 
   /**
+   * Drain a specific contract address (for old/orphaned contracts).
+   * Calls emergencyWithdrawPool(matchId, to) on the GIVEN contractAddress,
+   * regardless of what's stored in localStorage.
+   */
+  async drainOldContract(
+    contractAddress: string,
+    matchId: string,
+    to?: string,
+  ): Promise<string> {
+    const signer = await getSigner();
+    const dest = to ?? (await signer.getAddress());
+    const contract = getContract(contractAddress, signer);
+    console.log("[contractService] drainOldContract", contractAddress, matchId, "->", dest);
+    const tx = await contract.emergencyWithdrawPool(matchId, dest);
+    await tx.wait();
+    return tx.hash as string;
+  },
+
+  /**
    * Cancel an active (unsettled) match. Refunds pool to `to` if non-empty.
    * Works even on an empty pool — useful for dev reset / re-creation of same matchId.
    */
