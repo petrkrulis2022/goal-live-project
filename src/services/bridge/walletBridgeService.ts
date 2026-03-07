@@ -2,46 +2,25 @@
 //  Wallet Bridge Service
 //  Talks to MetaMask via the injected.js page-world bridge (postMessage).
 //  Content-script world cannot see window.ethereum directly — this bridges it.
+//
+//  inAppBalance === real on-chain USDC balance of the connected wallet.
+//  No separate tracking — what MetaMask shows is what we show.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { IWalletService, WalletState } from "../../types/services.types";
-import { supabase } from "../../lib/supabase";
 
 const SEPOLIA_CHAIN_ID = "0xaa36a7";
 const USDC_CONTRACT = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
 const USDC_DECIMALS = 6;
-const PLATFORM_WALLET: string =
-  (import.meta.env.VITE_PLATFORM_WALLET as string) ?? "";
-const INAPP_BAL_KEY = "gl_inapp_balance";
 const PLAYER_ADDR_KEY = "gl_player_address";
-const LAST_CHAIN_BAL_KEY = "gl_last_chain_balance";
 
-function loadLastChainBalance(): number {
-  try {
-    return parseFloat(localStorage.getItem(LAST_CHAIN_BAL_KEY) ?? "0") || 0;
-  } catch {
-    return 0;
-  }
-}
-function saveLastChainBalance(v: number) {
-  localStorage.setItem(
-    LAST_CHAIN_BAL_KEY,
-    String(Math.max(0, Math.round(v * 100) / 100)),
-  );
+// Clear any stale fake-balance keys from previous builds
+try {
+  localStorage.removeItem("gl_inapp_balance");
+  localStorage.removeItem("gl_last_chain_balance");
+} catch {
+  /* ignore */
 }
 
-function loadInAppBalance(): number {
-  try {
-    return parseFloat(localStorage.getItem(INAPP_BAL_KEY) ?? "0") || 0;
-  } catch {
-    return 0;
-  }
-}
-function saveInAppBalance(v: number) {
-  localStorage.setItem(
-    INAPP_BAL_KEY,
-    String(Math.max(0, Math.round(v * 100) / 100)),
-  );
-}
 function loadPlayerAddress(): string {
   try {
     return localStorage.getItem(PLAYER_ADDR_KEY) ?? "";
@@ -121,31 +100,8 @@ function transferData(to: string, rawAmount: bigint) {
 
 class WalletBridgeService implements IWalletService {
   private state: WalletState | null = null;
-  private inAppBalance: number = loadInAppBalance();
   private playerAddress: string = loadPlayerAddress();
-  private lastChainBalance: number = loadLastChainBalance();
   private listeners: Array<(s: WalletState | null) => void> = [];
-
-  /** Credit any on-chain deposit that arrived since last known chain balance.
-   *  On first run (lastChainBalance === 0) just establishes the baseline —
-   *  no credit, because we don't know how much was already tracked. */
-  private reconcileDeposit(onChainBalance: number): void {
-    if (this.lastChainBalance === 0) {
-      // First run: set baseline only, do not credit anything
-      this.lastChainBalance = onChainBalance;
-      saveLastChainBalance(onChainBalance);
-      return;
-    }
-    const delta =
-      Math.round((onChainBalance - this.lastChainBalance) * 1_000_000) /
-      1_000_000;
-    if (delta > 0.000001) {
-      this.inAppBalance = Math.round((this.inAppBalance + delta) * 100) / 100;
-      saveInAppBalance(this.inAppBalance);
-    }
-    this.lastChainBalance = onChainBalance;
-    saveLastChainBalance(onChainBalance);
-  }
 
   private emit(s: WalletState | null) {
     this.state = s;
@@ -158,11 +114,10 @@ class WalletBridgeService implements IWalletService {
       this.emit(null);
     } else {
       const balance = await this.fetchUsdc(accounts[0]);
-      this.reconcileDeposit(balance);
       this.emit({
         address: accounts[0],
         balance,
-        inAppBalance: this.inAppBalance,
+        inAppBalance: balance,
         playerAddress: this.playerAddress || undefined,
         connected: true,
       });
@@ -215,11 +170,10 @@ class WalletBridgeService implements IWalletService {
     if (!accounts.length) throw new Error("No accounts returned from MetaMask");
     const address = accounts[0];
     const balance = await this.fetchUsdc(address);
-    this.reconcileDeposit(balance);
     const ws: WalletState = {
       address,
       balance,
-      inAppBalance: this.inAppBalance,
+      inAppBalance: balance,
       playerAddress: this.playerAddress || undefined,
       connected: true,
     };
@@ -238,52 +192,24 @@ class WalletBridgeService implements IWalletService {
   async getBalance(): Promise<number> {
     if (!this.state) return 0;
     const balance = await this.fetchUsdc(this.state.address);
-    this.reconcileDeposit(balance);
-    this.emit({ ...this.state, balance, inAppBalance: this.inAppBalance });
+    this.emit({ ...this.state, balance, inAppBalance: balance });
     return balance;
   }
 
-  async deductBalance(amount: number): Promise<void> {
-    this.inAppBalance = Math.max(0, this.inAppBalance - amount);
-    saveInAppBalance(this.inAppBalance);
-    if (this.state) {
-      this.emit({ ...this.state, inAppBalance: this.inAppBalance });
-      // Persist to Supabase so balance survives refresh
-      const addr = this.state.address.toLowerCase();
-      void (async () => {
-        try {
-          const { data } = await supabase
-            .from("player_balances")
-            .select("total_withdrawn")
-            .eq("wallet_address", addr)
-            .maybeSingle();
-          const current = Number(data?.total_withdrawn ?? 0);
-          await supabase.from("player_balances").upsert(
-            {
-              wallet_address: addr,
-              total_withdrawn: Math.round((current + amount) * 1e6) / 1e6,
-            },
-            { onConflict: "wallet_address" },
-          );
-        } catch {
-          // non-critical, balance is already updated in localStorage
-        }
-      })();
-    }
+  async deductBalance(_amount: number): Promise<void> {
+    // inAppBalance = real on-chain balance, so just refresh from chain.
+    // The USDC already moved to the contract — fetchUsdc will reflect it.
+    await this.getBalance();
   }
 
-  async addBalance(amount: number): Promise<void> {
-    if (!this.state) throw new Error("Wallet not connected");
-    this.inAppBalance = Math.round((this.inAppBalance + amount) * 100) / 100;
-    saveInAppBalance(this.inAppBalance);
-    this.emit({ ...this.state, inAppBalance: this.inAppBalance });
+  async addBalance(_amount: number): Promise<void> {
+    await this.getBalance();
   }
 
   async topUp(_amount: number): Promise<string> {
     if (!this.state) throw new Error("Wallet not connected");
-    // Polymarket-style: just return the deposit address.
-    // The user sends USDC to this address from their external wallet.
-    // Poll every 5 s for up to 30 attempts to detect the incoming deposit.
+    // Just return the wallet address — user sends USDC to themselves from elsewhere.
+    // Poll for balance change and emit updated state.
     const address = this.state.address;
     const snapshotBalance = this.state.balance;
     let attempts = 0;
@@ -291,32 +217,25 @@ class WalletBridgeService implements IWalletService {
       attempts++;
       const confirmed = await this.fetchUsdc(address);
       if (confirmed !== snapshotBalance) {
-        // Balance changed — credit the difference as in-app funds
-        const delta = Math.max(0, confirmed - snapshotBalance);
-        if (delta > 0) {
-          this.inAppBalance =
-            Math.round((this.inAppBalance + delta) * 100) / 100;
-          saveInAppBalance(this.inAppBalance);
-        }
         this.emit({
           ...this.state!,
           balance: confirmed,
-          inAppBalance: this.inAppBalance,
+          inAppBalance: confirmed,
         });
       } else if (attempts < 30) {
         setTimeout(poll, 5_000);
       }
     };
     setTimeout(poll, 5_000);
-    return address; // deposit address shown in TopUpModal
+    return address;
   }
 
   async withdraw(amount: number): Promise<string> {
     if (!this.state) throw new Error("Wallet not connected");
     if (amount <= 0) throw new Error("Amount must be greater than 0");
-    if (amount > this.inAppBalance)
+    if (amount > this.state.balance)
       throw new Error(
-        `Insufficient in-app balance ($${this.inAppBalance.toFixed(2)})`,
+        `Insufficient balance ($${this.state.balance.toFixed(2)})`,
       );
     if (!this.playerAddress)
       throw new Error(
@@ -325,30 +244,20 @@ class WalletBridgeService implements IWalletService {
 
     await this.ensureSepolia();
 
-    // App is connected as the in-app wallet; sign USDC transfer → player address
     const rawAmount = BigInt(Math.round(amount * 10 ** USDC_DECIMALS));
     const data = transferData(this.playerAddress, rawAmount);
     const txHash = (await ethRequest("eth_sendTransaction", [
       { from: this.state.address, to: USDC_CONTRACT, data },
     ])) as string;
 
-    // Optimistically deduct from in-app balance + on-chain display
-    this.inAppBalance = Math.max(
-      0,
-      Math.round((this.inAppBalance - amount) * 100) / 100,
-    );
-    saveInAppBalance(this.inAppBalance);
-    const optimisticBalance = Math.max(
+    // Optimistic deduction while waiting for chain confirmation
+    const optimistic = Math.max(
       0,
       Math.round((this.state.balance - amount) * 100) / 100,
     );
-    this.emit({
-      ...this.state,
-      balance: optimisticBalance,
-      inAppBalance: this.inAppBalance,
-    });
+    this.emit({ ...this.state, balance: optimistic, inAppBalance: optimistic });
 
-    // Poll for on-chain confirmation (balance should decrease on in-app address)
+    // Poll for on-chain confirmation
     const snapBalance = this.state.balance;
     let attempts = 0;
     const poll = async () => {
@@ -358,7 +267,7 @@ class WalletBridgeService implements IWalletService {
         this.emit({
           ...this.state!,
           balance: confirmed,
-          inAppBalance: this.inAppBalance,
+          inAppBalance: confirmed,
         });
       } else {
         setTimeout(poll, 3_000);
