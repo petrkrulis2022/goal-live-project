@@ -1001,6 +1001,19 @@ export default function EventDetail() {
       });
       const data = await res.json();
       if (!res.ok) {
+        // 409 = already settled (CRE auto-settled before admin clicked) — treat as success
+        if (res.status === 409 && (data.error ?? "").toLowerCase().includes("already settled")) {
+          setMatch((m) => (m ? { ...m, status: "finished" } : m));
+          showToast("✅ Match was already settled by the CRE oracle — refreshing view.", "orange");
+          // Refresh bets so settlement breakdown appears
+          const { data: freshBets } = await supabase
+            .from("bets")
+            .select("*")
+            .eq("match_id", match.id)
+            .order("placed_at", { ascending: true });
+          if (freshBets) setBets(freshBets as DbBet[]);
+          return;
+        }
         throw new Error(data.error ?? `HTTP ${res.status}`);
       }
       // Refresh local match state and bets
