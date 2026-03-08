@@ -82,15 +82,15 @@ export default function LandingPage() {
     >
       <PitchCanvas />
 
-      {/* Logo icon — top right corner */}
+      {/* Logo icon — top left corner */}
       <div
         className="absolute z-20 pointer-events-none"
-        style={{ top: 20, right: 24 }}
+        style={{ top: 20, left: 24 }}
       >
         <img
           src="/logo-icon.png"
           alt=""
-          style={{ height: 56, width: "auto", display: "block" }}
+          style={{ height: 96, width: "auto", display: "block" }}
         />
       </div>
 
