@@ -1,6 +1,10 @@
 import { useEffect, useRef } from "react";
 
-// Animated pitch-line canvas background
+// Logo background color sampled from goal.live.png: #E3E9EC
+const BG = "#E3E9EC";
+const NAVY = "#0C2840";
+const CYAN = "#2EC5E0";
+
 function PitchCanvas() {
   const ref = useRef<HTMLCanvasElement>(null);
 
@@ -23,28 +27,22 @@ function PitchCanvas() {
       const w = canvas!.width;
       const h = canvas!.height;
 
-      // Subtle grid of pitch lines
-      ctx.strokeStyle = "rgba(46,197,224,0.055)";
+      // Subtle grid — dark navy on light bg
+      ctx.strokeStyle = "rgba(12,40,64,0.06)";
       ctx.lineWidth = 1;
       const spacing = 80;
       for (let x = 0; x < w; x += spacing) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
       }
       for (let y = 0; y < h; y += spacing) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
       }
 
-      // Animated diagonal scan line
+      // Animated scan line in cyan
       const scanY = ((t * 0.4) % (h + 200)) - 100;
       const grad = ctx.createLinearGradient(0, scanY - 60, 0, scanY + 60);
       grad.addColorStop(0, "rgba(46,197,224,0)");
-      grad.addColorStop(0.5, "rgba(46,197,224,0.06)");
+      grad.addColorStop(0.5, "rgba(46,197,224,0.07)");
       grad.addColorStop(1, "rgba(46,197,224,0)");
       ctx.fillStyle = grad;
       ctx.fillRect(0, scanY - 60, w, 120);
@@ -60,7 +58,7 @@ function PitchCanvas() {
       ];
       nodes.forEach((n, i) => {
         const pulse = Math.sin(t * 0.02 + i * 1.1) * 0.5 + 0.5;
-        ctx.strokeStyle = `rgba(46,197,224,${0.08 + pulse * 0.12})`;
+        ctx.strokeStyle = `rgba(46,197,224,${0.18 + pulse * 0.22})`;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         for (let s = 0; s < 6; s++) {
@@ -83,34 +81,16 @@ function PitchCanvas() {
     };
   }, []);
 
-  return (
-    <canvas
-      ref={ref}
-      className="absolute inset-0 pointer-events-none"
-      style={{ opacity: 1 }}
-    />
-  );
+  return <canvas ref={ref} className="absolute inset-0 pointer-events-none" />;
 }
 
 export default function LandingPage() {
   return (
-    <div className="relative min-h-screen bg-[#050a06] text-white overflow-hidden flex flex-col items-center justify-center">
-      {/* canvas backdrop */}
+    <div
+      className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center"
+      style={{ background: BG, color: NAVY }}
+    >
       <PitchCanvas />
-
-      {/* radial glow under logo */}
-      <div
-        className="absolute pointer-events-none"
-        style={{
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -60%)",
-          width: 700,
-          height: 700,
-          background:
-            "radial-gradient(ellipse at center, rgba(46,197,224,0.10) 0%, transparent 70%)",
-        }}
-      />
 
       {/* ── Main card ── */}
       <div
@@ -124,13 +104,13 @@ export default function LandingPage() {
             alignItems: "center",
             gap: "0.5rem",
             padding: "0.3rem 1rem",
-            border: "1px solid rgba(46,197,224,0.3)",
+            border: `1px solid rgba(46,197,224,0.55)`,
             borderRadius: 999,
-            background: "rgba(46,197,224,0.07)",
+            background: "rgba(46,197,224,0.12)",
             fontSize: "0.72rem",
             letterSpacing: "0.18em",
             textTransform: "uppercase",
-            color: "#2EC5E0",
+            color: "#0A7B95",
             fontFamily: "'DM Mono', monospace",
           }}
         >
@@ -139,8 +119,8 @@ export default function LandingPage() {
               width: 7,
               height: 7,
               borderRadius: "50%",
-              background: "#2EC5E0",
-              boxShadow: "0 0 6px #2EC5E0",
+              background: CYAN,
+              boxShadow: `0 0 6px ${CYAN}`,
               animation: "pulse-dot 1.4s ease-in-out infinite",
               flexShrink: 0,
             }}
@@ -148,17 +128,12 @@ export default function LandingPage() {
           Chainlink CRE · Sepolia Testnet
         </div>
 
-        {/* Logo image */}
+        {/* Logo — no drop-shadow, bg now matches */}
         <div style={{ lineHeight: 1 }}>
           <img
             src="/logo.png"
             alt="goal.live"
-            style={{
-              maxWidth: 480,
-              width: "80vw",
-              display: "block",
-              filter: "drop-shadow(0 0 40px rgba(46,197,224,0.30))",
-            }}
+            style={{ maxWidth: 520, width: "82vw", display: "block" }}
           />
         </div>
 
@@ -167,7 +142,7 @@ export default function LandingPage() {
           style={{
             fontFamily: "'DM Serif Display', serif",
             fontSize: "clamp(1rem, 2.2vw, 1.35rem)",
-            color: "rgba(255,255,255,0.6)",
+            color: "rgba(12,40,64,0.55)",
             maxWidth: 560,
             lineHeight: 1.55,
             margin: 0,
@@ -175,7 +150,7 @@ export default function LandingPage() {
           }}
         >
           Gamified live sports betting powered by{" "}
-          <span style={{ color: "#2EC5E0", fontStyle: "normal" }}>
+          <span style={{ color: "#0A7B95", fontStyle: "normal" }}>
             real-time on-chain odds oracles
           </span>
         </p>
@@ -185,14 +160,13 @@ export default function LandingPage() {
           style={{
             width: 60,
             height: 1,
-            background:
-              "linear-gradient(90deg, transparent, rgba(46,197,224,0.5), transparent)",
+            background: `linear-gradient(90deg, transparent, rgba(46,197,224,0.7), transparent)`,
           }}
         />
 
         {/* CTA buttons */}
         <div style={{ display: "flex", gap: "1.25rem", flexWrap: "wrap", justifyContent: "center" }}>
-          {/* Admin button */}
+          {/* Admin button — ghost dark */}
           <a
             href="/dashboard"
             style={{
@@ -200,26 +174,25 @@ export default function LandingPage() {
               alignItems: "center",
               gap: "0.6rem",
               padding: "0.85rem 2rem",
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(12,40,64,0.06)",
+              border: "1px solid rgba(12,40,64,0.18)",
               borderRadius: 12,
               fontFamily: "'DM Mono', monospace",
               fontSize: "0.85rem",
               letterSpacing: "0.08em",
-              color: "rgba(255,255,255,0.8)",
+              color: "rgba(12,40,64,0.75)",
               textDecoration: "none",
               transition: "all 0.2s ease",
-              backdropFilter: "blur(8px)",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.3)";
-              (e.currentTarget as HTMLElement).style.color = "#fff";
-              (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)";
+              (e.currentTarget as HTMLElement).style.borderColor = "rgba(12,40,64,0.35)";
+              (e.currentTarget as HTMLElement).style.color = NAVY;
+              (e.currentTarget as HTMLElement).style.background = "rgba(12,40,64,0.11)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.14)";
-              (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.8)";
-              (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
+              (e.currentTarget as HTMLElement).style.borderColor = "rgba(12,40,64,0.18)";
+              (e.currentTarget as HTMLElement).style.color = "rgba(12,40,64,0.75)";
+              (e.currentTarget as HTMLElement).style.background = "rgba(12,40,64,0.06)";
             }}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -231,7 +204,7 @@ export default function LandingPage() {
             Admin Platform
           </a>
 
-          {/* Launch App button */}
+          {/* Launch App — filled navy */}
           <a
             href="https://tvgo.t-mobile.cz/"
             target="_blank"
@@ -241,8 +214,8 @@ export default function LandingPage() {
               alignItems: "center",
               gap: "0.6rem",
               padding: "0.85rem 2.2rem",
-              background: "linear-gradient(135deg, #0e7fa8 0%, #0a6080 100%)",
-              border: "1px solid rgba(46,197,224,0.35)",
+              background: `linear-gradient(135deg, #0C2840 0%, #0a1f33 100%)`,
+              border: `1px solid rgba(46,197,224,0.30)`,
               borderRadius: 12,
               fontFamily: "'DM Mono', monospace",
               fontSize: "0.85rem",
@@ -250,14 +223,14 @@ export default function LandingPage() {
               color: "#fff",
               textDecoration: "none",
               transition: "all 0.2s ease",
-              boxShadow: "0 0 28px rgba(46,197,224,0.20)",
+              boxShadow: "0 4px 24px rgba(12,40,64,0.18)",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.boxShadow = "0 0 42px rgba(46,197,224,0.38)";
+              (e.currentTarget as HTMLElement).style.boxShadow = `0 6px 32px rgba(12,40,64,0.28), 0 0 20px rgba(46,197,224,0.18)`;
               (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.boxShadow = "0 0 28px rgba(46,197,224,0.20)";
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 24px rgba(12,40,64,0.18)";
               (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
             }}
           >
@@ -273,7 +246,7 @@ export default function LandingPage() {
           style={{
             fontFamily: "'DM Mono', monospace",
             fontSize: "0.68rem",
-            color: "rgba(255,255,255,0.2)",
+            color: "rgba(12,40,64,0.28)",
             letterSpacing: "0.12em",
             textTransform: "uppercase",
             marginTop: "0.5rem",
