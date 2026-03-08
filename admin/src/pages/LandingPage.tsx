@@ -24,7 +24,7 @@ function PitchCanvas() {
       const h = canvas!.height;
 
       // Subtle grid of pitch lines
-      ctx.strokeStyle = "rgba(74,222,128,0.055)";
+      ctx.strokeStyle = "rgba(46,197,224,0.055)";
       ctx.lineWidth = 1;
       const spacing = 80;
       for (let x = 0; x < w; x += spacing) {
@@ -43,9 +43,9 @@ function PitchCanvas() {
       // Animated diagonal scan line
       const scanY = ((t * 0.4) % (h + 200)) - 100;
       const grad = ctx.createLinearGradient(0, scanY - 60, 0, scanY + 60);
-      grad.addColorStop(0, "rgba(74,222,128,0)");
-      grad.addColorStop(0.5, "rgba(74,222,128,0.06)");
-      grad.addColorStop(1, "rgba(74,222,128,0)");
+      grad.addColorStop(0, "rgba(46,197,224,0)");
+      grad.addColorStop(0.5, "rgba(46,197,224,0.06)");
+      grad.addColorStop(1, "rgba(46,197,224,0)");
       ctx.fillStyle = grad;
       ctx.fillRect(0, scanY - 60, w, 120);
 
@@ -60,7 +60,7 @@ function PitchCanvas() {
       ];
       nodes.forEach((n, i) => {
         const pulse = Math.sin(t * 0.02 + i * 1.1) * 0.5 + 0.5;
-        ctx.strokeStyle = `rgba(74,222,128,${0.08 + pulse * 0.12})`;
+        ctx.strokeStyle = `rgba(46,197,224,${0.08 + pulse * 0.12})`;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         for (let s = 0; s < 6; s++) {
@@ -108,7 +108,7 @@ export default function LandingPage() {
           width: 700,
           height: 700,
           background:
-            "radial-gradient(ellipse at center, rgba(74,222,128,0.09) 0%, transparent 70%)",
+            "radial-gradient(ellipse at center, rgba(46,197,224,0.10) 0%, transparent 70%)",
         }}
       />
 
@@ -124,13 +124,13 @@ export default function LandingPage() {
             alignItems: "center",
             gap: "0.5rem",
             padding: "0.3rem 1rem",
-            border: "1px solid rgba(74,222,128,0.3)",
+            border: "1px solid rgba(46,197,224,0.3)",
             borderRadius: 999,
-            background: "rgba(74,222,128,0.07)",
+            background: "rgba(46,197,224,0.07)",
             fontSize: "0.72rem",
             letterSpacing: "0.18em",
             textTransform: "uppercase",
-            color: "#4ade80",
+            color: "#2EC5E0",
             fontFamily: "'DM Mono', monospace",
           }}
         >
@@ -139,8 +139,8 @@ export default function LandingPage() {
               width: 7,
               height: 7,
               borderRadius: "50%",
-              background: "#4ade80",
-              boxShadow: "0 0 6px #4ade80",
+              background: "#2EC5E0",
+              boxShadow: "0 0 6px #2EC5E0",
               animation: "pulse-dot 1.4s ease-in-out infinite",
               flexShrink: 0,
             }}
@@ -148,26 +148,18 @@ export default function LandingPage() {
           Chainlink CRE · Sepolia Testnet
         </div>
 
-        {/* Logo */}
+        {/* Logo image */}
         <div style={{ lineHeight: 1 }}>
-          <h1
+          <img
+            src="/logo.png"
+            alt="goal.live"
             style={{
-              fontFamily: "'Bebas Neue', sans-serif",
-              fontSize: "clamp(5rem, 14vw, 10rem)",
-              letterSpacing: "0.04em",
-              background:
-                "linear-gradient(135deg, #ffffff 30%, #4ade80 70%, #22c55e 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-              margin: 0,
-              padding: 0,
-              textShadow: "none",
-              filter: "drop-shadow(0 0 40px rgba(74,222,128,0.25))",
+              maxWidth: 480,
+              width: "80vw",
+              display: "block",
+              filter: "drop-shadow(0 0 40px rgba(46,197,224,0.30))",
             }}
-          >
-            GOAL.LIVE
-          </h1>
+          />
         </div>
 
         {/* Tagline */}
@@ -183,7 +175,7 @@ export default function LandingPage() {
           }}
         >
           Gamified live sports betting powered by{" "}
-          <span style={{ color: "#4ade80", fontStyle: "normal" }}>
+          <span style={{ color: "#2EC5E0", fontStyle: "normal" }}>
             real-time on-chain odds oracles
           </span>
         </p>
@@ -194,7 +186,7 @@ export default function LandingPage() {
             width: 60,
             height: 1,
             background:
-              "linear-gradient(90deg, transparent, rgba(74,222,128,0.5), transparent)",
+              "linear-gradient(90deg, transparent, rgba(46,197,224,0.5), transparent)",
           }}
         />
 
@@ -249,8 +241,8 @@ export default function LandingPage() {
               alignItems: "center",
               gap: "0.6rem",
               padding: "0.85rem 2.2rem",
-              background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
-              border: "1px solid rgba(74,222,128,0.35)",
+              background: "linear-gradient(135deg, #0e7fa8 0%, #0a6080 100%)",
+              border: "1px solid rgba(46,197,224,0.35)",
               borderRadius: 12,
               fontFamily: "'DM Mono', monospace",
               fontSize: "0.85rem",
@@ -258,14 +250,14 @@ export default function LandingPage() {
               color: "#fff",
               textDecoration: "none",
               transition: "all 0.2s ease",
-              boxShadow: "0 0 28px rgba(74,222,128,0.18)",
+              boxShadow: "0 0 28px rgba(46,197,224,0.20)",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.boxShadow = "0 0 42px rgba(74,222,128,0.35)";
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 0 42px rgba(46,197,224,0.38)";
               (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.boxShadow = "0 0 28px rgba(74,222,128,0.18)";
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 0 28px rgba(46,197,224,0.20)";
               (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
             }}
           >
