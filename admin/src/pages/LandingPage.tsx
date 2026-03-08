@@ -1,8 +1,77 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const NAVY = "#0C2840";
 const CYAN = "#2EC5E0";
 const LIGHT_BLUE = "#56C8E8";
+
+const STAT_TEXT = "Live betting now accounts for an average of 54% of total monthly bet amounts, with some mature European markets seeing up to 70% of total bets placed live.";
+
+function TypewriterBanner() {
+  const [displayed, setDisplayed] = useState("");
+  const [done, setDone] = useState(false);
+  const idx = useRef(0);
+
+  useEffect(() => {
+    // Start after a short delay so the page renders first
+    const start = setTimeout(() => {
+      const interval = setInterval(() => {
+        idx.current++;
+        setDisplayed(STAT_TEXT.slice(0, idx.current));
+        if (idx.current >= STAT_TEXT.length) {
+          clearInterval(interval);
+          setDone(true);
+        }
+      }, 28);
+      return () => clearInterval(interval);
+    }, 600);
+    return () => clearTimeout(start);
+  }, []);
+
+  return (
+    <div
+      className="absolute z-20"
+      style={{
+        top: 0,
+        left: 0,
+        right: 0,
+        padding: "0.75rem 2rem 0.75rem calc(96px + 3.5rem)",
+        background: "rgba(12,40,64,0.08)",
+        borderBottom: `1px solid rgba(46,197,224,0.22)`,
+        backdropFilter: "blur(4px)",
+        minHeight: 48,
+        display: "flex",
+        alignItems: "center",
+      }}
+    >
+      <p
+        style={{
+          margin: 0,
+          fontFamily: "'DM Mono', monospace",
+          fontSize: "0.78rem",
+          color: NAVY,
+          letterSpacing: "0.03em",
+          lineHeight: 1.55,
+          fontWeight: 500,
+        }}
+      >
+        {displayed}
+        {!done && (
+          <span
+            style={{
+              display: "inline-block",
+              width: 2,
+              height: "1em",
+              background: CYAN,
+              marginLeft: 2,
+              verticalAlign: "text-bottom",
+              animation: "blink-cursor 0.7s step-end infinite",
+            }}
+          />
+        )}
+      </p>
+    </div>
+  );
+}
 
 function PitchCanvas() {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -81,6 +150,8 @@ export default function LandingPage() {
       }}
     >
       <PitchCanvas />
+
+      <TypewriterBanner />
 
       {/* Logo icon — top left corner */}
       <div
@@ -252,60 +323,23 @@ export default function LandingPage() {
         <p
           style={{
             fontFamily: "'DM Mono', monospace",
-            fontSize: "0.68rem",
-            color: "rgba(12,40,64,0.32)",
+            fontSize: "0.75rem",
+            color: "rgba(12,40,64,0.70)",
             letterSpacing: "0.12em",
             textTransform: "uppercase",
             marginTop: "0.5rem",
+            fontWeight: 600,
           }}
         >
           Built for Chainlink Hackathon · 2026
         </p>
       </div>
 
-      {/* Bottom stat strip */}
-      <div
-        className="absolute bottom-0 left-0 right-0 z-10"
-        style={{
-          padding: "0.85rem 2rem",
-          background: "rgba(12,40,64,0.07)",
-          borderTop: `1px solid rgba(46,197,224,0.18)`,
-          backdropFilter: "blur(4px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "0.75rem",
-        }}
-      >
-        <span
-          style={{
-            width: 7,
-            height: 7,
-            borderRadius: "50%",
-            background: CYAN,
-            flexShrink: 0,
-            boxShadow: `0 0 8px ${CYAN}`,
-          }}
-        />
-        <p
-          style={{
-            margin: 0,
-            fontFamily: "'DM Mono', monospace",
-            fontSize: "0.72rem",
-            color: "rgba(12,40,64,0.62)",
-            letterSpacing: "0.04em",
-            textAlign: "center",
-            lineHeight: 1.6,
-          }}
-        >
-          Live betting now accounts for an average of{" "}
-          <strong style={{ color: NAVY, fontWeight: 600 }}>54%</strong> of total monthly bet amounts,
-          with some mature European markets seeing up to{" "}
-          <strong style={{ color: NAVY, fontWeight: 600 }}>70%</strong> of total bets placed live.
-        </p>
-      </div>
-
       <style>{`
+        @keyframes blink-cursor {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
         @keyframes pulse-dot {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.4; transform: scale(0.7); }
