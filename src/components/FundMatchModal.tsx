@@ -1,10 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { matchContractService } from "../services/matchContract";
+import { WorldIDGate } from "./WorldIDGate";
 
 interface FundMatchModalProps {
   contractAddress: string;
   matchId: string;
   matchLabel: string;
+  /** Player's in-app wallet address — used as World ID signal */
+  walletAddress: string;
   onClose: () => void;
   onSuccess: () => void;
   onFunded: (amount: number) => void;
@@ -14,6 +17,7 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
   contractAddress,
   matchId,
   matchLabel,
+  walletAddress,
   onClose,
   onSuccess,
   onFunded,
@@ -24,6 +28,11 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
   >("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [txHash, setTxHash] = useState("");
+  const [worldIdVerified, setWorldIdVerified] = useState(false);
+
+  const handleWorldIdVerified = useCallback(() => {
+    setWorldIdVerified(true);
+  }, []);
 
   const parsed = parseFloat(amount);
   const valid = !isNaN(parsed) && parsed > 0;
@@ -169,29 +178,43 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
               </p>
             )}
 
-            {/* CTA — MetaMask prompt */}
-            <button
-              onClick={handleFund}
-              disabled={!valid || busy}
-              className="w-full py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{
-                background:
-                  valid && !busy
-                    ? "linear-gradient(135deg, #10b981, #059669)"
-                    : "rgba(16,185,129,0.3)",
-                color: "#000",
-              }}
-            >
-              {busy
-                ? step === "approving"
-                  ? "⏳ Confirm in MetaMask…"
-                  : "⏳ Sending transaction…"
-                : `⚡ Fund $${parsed > 0 ? parsed.toFixed(2) : "0.00"} via MetaMask`}
-            </button>
+            {/* World ID gate — must verify before funding */}
+            {!worldIdVerified ? (
+              <WorldIDGate
+                action="goal-live-fund-match"
+                walletAddress={walletAddress}
+                onVerified={handleWorldIdVerified}
+              >
+                {/* children never render here because verified=false renders the gate UI */}
+                <></>
+              </WorldIDGate>
+            ) : (
+              <>
+                {/* CTA — MetaMask prompt (shown after World ID verified) */}
+                <button
+                  onClick={handleFund}
+                  disabled={!valid || busy}
+                  className="w-full py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{
+                    background:
+                      valid && !busy
+                        ? "linear-gradient(135deg, #10b981, #059669)"
+                        : "rgba(16,185,129,0.3)",
+                    color: "#000",
+                  }}
+                >
+                  {busy
+                    ? step === "approving"
+                      ? "⏳ Confirm in MetaMask…"
+                      : "⏳ Sending transaction…"
+                    : `⚡ Fund $${parsed > 0 ? parsed.toFixed(2) : "0.00"} via MetaMask`}
+                </button>
 
-            <p className="text-gray-600 text-[10px] text-center mt-2">
-              2 MetaMask prompts: USDC approve + fundMatch
-            </p>
+                <p className="text-gray-600 text-[10px] text-center mt-2">
+                  2 MetaMask prompts: USDC approve + fundMatch
+                </p>
+              </>
+            )}
           </>
         )}
       </div>

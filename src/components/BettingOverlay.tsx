@@ -1075,6 +1075,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           contractAddress={match.contractAddress}
           matchId={matchKey ?? match.id ?? match.dbId}
           matchLabel={`${match.homeTeam} vs ${match.awayTeam}`}
+          walletAddress={wallet.address}
           onClose={() => setModal(null)}
           onFunded={(amt) => deductBalance(amt)}
           onSuccess={() => window.dispatchEvent(new Event("gl:balanceRefresh"))}

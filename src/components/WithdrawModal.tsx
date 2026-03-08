@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
+import { WorldIDGate } from "./WorldIDGate";
 
 interface WithdrawModalProps {
   /** Free in-app balance (already excludes funds locked in active bets) */
@@ -31,6 +32,11 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [addrInput, setAddrInput] = useState(playerAddress ?? "");
   const [editingAddr, setEditingAddr] = useState(!playerAddress);
+  const [worldIdVerified, setWorldIdVerified] = useState(false);
+
+  const handleWorldIdVerified = useCallback(() => {
+    setWorldIdVerified(true);
+  }, []);
 
   const effectivePlayerAddr = editingAddr
     ? addrInput
@@ -253,27 +259,38 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
               </p>
             )}
 
-            <button
-              onClick={handleConfirm}
-              disabled={!isValid || pending || available === 0}
-              className={`
-                w-full py-3 rounded-xl font-bold text-sm transition-all
-                ${
-                  isValid && !pending && available > 0
-                    ? "bg-blue-500 hover:bg-blue-400 text-black cursor-pointer"
-                    : "bg-gray-700 text-gray-500 cursor-not-allowed"
-                }
-              `}
-            >
-              {pending ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="inline-block w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                  Waiting for MetaMask…
-                </span>
-              ) : (
-                `Withdraw $${isNaN(parsed) ? "0" : parsed.toFixed(2)} USDC`
-              )}
-            </button>
+            {/* World ID gate — must verify before withdrawing */}
+            {!worldIdVerified ? (
+              <WorldIDGate
+                action="goal-live-withdraw"
+                walletAddress={walletAddress}
+                onVerified={handleWorldIdVerified}
+              >
+                <></>
+              </WorldIDGate>
+            ) : (
+              <button
+                onClick={handleConfirm}
+                disabled={!isValid || pending || available === 0}
+                className={`
+                  w-full py-3 rounded-xl font-bold text-sm transition-all
+                  ${
+                    isValid && !pending && available > 0
+                      ? "bg-blue-500 hover:bg-blue-400 text-black cursor-pointer"
+                      : "bg-gray-700 text-gray-500 cursor-not-allowed"
+                  }
+                `}
+              >
+                {pending ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="inline-block w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                    Waiting for MetaMask…
+                  </span>
+                ) : (
+                  `Withdraw $${isNaN(parsed) ? "0" : parsed.toFixed(2)} USDC`
+                )}
+              </button>
+            )}
           </>
         ) : (
           /* Success state */
