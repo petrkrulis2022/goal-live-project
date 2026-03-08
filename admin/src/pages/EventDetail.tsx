@@ -290,7 +290,16 @@ export default function EventDetail() {
   });
   const [oracleBusy, setOracleBusy] = useState(false);
   const [oracleTx, setOracleTx] = useState<string | null>(null);
+  const [oracleBalancesTx, setOracleBalancesTx] = useState<string | null>(null);
   const [oracleError, setOracleError] = useState<string | null>(null);
+  const [withdrawFeesBusy, setWithdrawFeesBusy] = useState(false);
+  const [withdrawFeesTx, setWithdrawFeesTx] = useState<string | null>(null);
+  const [withdrawFeesError, setWithdrawFeesError] = useState<string | null>(null);
+  const [settleData, setSettleData] = useState<{
+    settled?: Array<{ bettor: string; bet_type: string; status: string; payout: number }>;
+    total_payout?: number;
+    match?: { score: string; winner: string; home: string; away: string };
+  } | null>(null);
   const [contractUsdcBalance, setContractUsdcBalance] = useState<number | null>(
     null,
   );
@@ -972,73 +981,83 @@ export default function EventDetail() {
     }
   }
 
-  async function handleSettleMatch() {
+  async function handleSettleMatch(force = false) {
     if (!match) return;
-    // Only pass numeric IDs on-chain (BigInt-safe); pass all confirmed non-UUID IDs to edge function
-    const activeScorers = goals
-      .filter(
-        (g) =>
-          g.event_type !== "VAR_OVERTURNED" &&
-          g.confirmed &&
-          g.player_id !== "unknown" &&
-          !g.player_id.includes("-"), // exclude UUIDs
-      )
-      .map((g) => g.player_id);
-    const homeGoals = match.score_home ?? 0;
-    const awayGoals = match.score_away ?? 0;
     setOracleBusy(true);
     setOracleError(null);
     setOracleTx(null);
+    setOracleBalancesTx(null);
     try {
-      // 1. Call GoalLiveBetting.settleMatch on-chain
-      const winner = homeGoals > awayGoals ? 0 : homeGoals < awayGoals ? 2 : 1;
-      const txHash = await contractService.settleMatchOnChain(
-        match.contract_address ?? "",
-        match.external_match_id,
-        activeScorers,
-        winner as 0 | 1 | 2,
-        homeGoals,
-        awayGoals,
-      );
-      // 2. Trigger settle-match Edge Function to settle bets in Supabase
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
       const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-      try {
-        const res = await fetch(`${supabaseUrl}/functions/v1/settle-match`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${anonKey}`,
-          },
-          body: JSON.stringify({
-            match_id: match.id,
-            goal_scorer_player_ids: activeScorers,
-            winner:
-              homeGoals > awayGoals
-                ? "home"
-                : homeGoals < awayGoals
-                  ? "away"
-                  : "draw",
-            home_goals: homeGoals,
-            away_goals: awayGoals,
-          }),
-        });
-        if (!res.ok) console.warn("settle-match edge fn:", await res.text());
-      } catch (edgeErr) {
-        console.warn("settle-match edge fn unreachable:", edgeErr);
+      // POST only match_id — edge fn auto-fetches result from Goalserve
+      const res = await fetch(`${supabaseUrl}/functions/v1/settle-match`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${anonKey}`,
+        },
+        body: JSON.stringify({ match_id: match.id, force }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? `HTTP ${res.status}`);
       }
-      // 3. Update local match status
-      await supabase
-        .from("matches")
-        .update({ status: "finished" })
-        .eq("id", match.id);
+      // Refresh local match state and bets
       setMatch((m) => (m ? { ...m, status: "finished" } : m));
-      setOracleTx(txHash);
-      showToast("🏁 Match settled on-chain", "orange");
+      if (data.blockchain_settle_tx) setOracleTx(data.blockchain_settle_tx);
+      if (data.blockchain_balances_tx) setOracleBalancesTx(data.blockchain_balances_tx);
+      setSettleData({
+        settled: data.settled,
+        total_payout: data.total_payout,
+        match: data.match,
+      });
+      // Refresh bets from DB so breakdown is accurate
+      const { data: freshBets } = await supabase
+        .from("bets")
+        .select("*")
+        .eq("match_id", match.id)
+        .order("placed_at", { ascending: true });
+      if (freshBets) setBets(freshBets as DbBet[]);
+      showToast(
+        `🏁 Settled: ${data.winners} won · ${data.bets_settled} bets · ${data.match?.score ?? ""}`,
+        "orange",
+      );
     } catch (e) {
       setOracleError(String(e));
     } finally {
       setOracleBusy(false);
+    }
+  }
+
+  async function handleWithdrawFees() {
+    if (!match?.contract_address) return;
+    if (!window.ethereum) {
+      setWithdrawFeesError("MetaMask not detected. Install the MetaMask browser extension.");
+      return;
+    }
+    setWithdrawFeesBusy(true);
+    setWithdrawFeesError(null);
+    setWithdrawFeesTx(null);
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_accounts" }) as string[];
+      const to = accounts[0];
+      if (!to) throw new Error("No MetaMask account connected — click Connect in the header first.");
+      // ABI encode: withdrawFees(address to)
+      // selector: 0x164e68de, address padded to 32 bytes
+      const data = "0x164e68de" + to.slice(2).toLowerCase().padStart(64, "0");
+      const txHash = await window.ethereum.request({
+        method: "eth_sendTransaction",
+        params: [{ from: to, to: match.contract_address, data }],
+      }) as string;
+      setWithdrawFeesTx(txHash);
+      showToast("💰 withdrawFees tx sent!", "green");
+    } catch (e) {
+      setWithdrawFeesError(
+        e instanceof Error ? e.message : String(e),
+      );
+    } finally {
+      setWithdrawFeesBusy(false);
     }
   }
 
@@ -1546,56 +1565,438 @@ export default function EventDetail() {
             </div>
           )}
 
+          {/* Settlement Breakdown (shown when bets are settled) */}
+          {bets.some(
+            (b) =>
+              b.status === "settled_won" || b.status === "settled_lost",
+          ) && (() => {
+            // Helper: human-readable bet selection label
+            const betLabel = (b: (typeof bets)[0]): string => {
+              if (b.bet_type === "MATCH_WINNER") {
+                const o = b.outcome ?? b.current_player_id;
+                if (o === "home") return `Home Win — ${match.home_team}`;
+                if (o === "away") return `Away Win — ${match.away_team}`;
+                return "Draw";
+              }
+              if (b.bet_type === "EXACT_GOALS") {
+                return `Exactly ${b.current_player_id} Goals`;
+              }
+              if (b.bet_type === "NEXT_GOAL_SCORER") {
+                // "gs_alexander_s_rloth" → "Alexander S Rloth"
+                const raw = b.current_player_id.replace(/^gs_/, "");
+                const readable = raw
+                  .split("_")
+                  .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+                  .join(" ");
+                return `NGS — ${readable}`;
+              }
+              return b.current_player_id;
+            };
+
+            // Why a bet might have lost
+            const lostReason = (b: (typeof bets)[0]): string | null => {
+              if (b.status !== "settled_lost") return null;
+              if (b.bet_type === "NEXT_GOAL_SCORER")
+                return "No scorer data from Goalserve after match day";
+              if (b.bet_type === "EXACT_GOALS") {
+                const actual =
+                  match.score_home !== null && match.score_away !== null
+                    ? match.score_home + match.score_away
+                    : null;
+                const predicted = parseInt(b.current_player_id, 10);
+                if (actual !== null && !isNaN(predicted))
+                  return `Predicted ${predicted} goals, actual total was ${actual}`;
+              }
+              return null;
+            };
+
+            const settledBets = bets.filter(
+              (b) =>
+                b.status === "settled_won" || b.status === "settled_lost",
+            );
+
+            // Group by wallet for summary
+            const byWallet: Record<
+              string,
+              { won: number; lost: number; staked: number; payout: number }
+            > = {};
+            for (const b of settledBets) {
+              if (!byWallet[b.bettor_wallet])
+                byWallet[b.bettor_wallet] = {
+                  won: 0,
+                  lost: 0,
+                  staked: 0,
+                  payout: 0,
+                };
+              byWallet[b.bettor_wallet].staked += b.current_amount;
+              if (b.status === "settled_won") {
+                byWallet[b.bettor_wallet].won++;
+                byWallet[b.bettor_wallet].payout +=
+                  b.current_amount * b.odds;
+              } else {
+                byWallet[b.bettor_wallet].lost++;
+              }
+            }
+            const totalPlayerPayout = Object.values(byWallet).reduce(
+              (s, v) => s + v.payout,
+              0,
+            );
+            const totalUserStaked = Object.values(byWallet).reduce(
+              (s, v) => s + v.staked,
+              0,
+            );
+            const platformRevenue = Math.max(
+              0,
+              totalUserStaked - totalPlayerPayout,
+            );
+            const settleScore =
+              settleData?.match?.score ??
+              (match.score_home !== null && match.score_away !== null
+                ? `${match.score_home}-${match.score_away}`
+                : null);
+            return (
+              <div className="bg-gray-900/70 border border-white/5 rounded-xl p-5 space-y-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-white">
+                    📊 Settlement Results
+                  </h3>
+                  {settleScore && (
+                    <span className="text-xs font-mono text-gray-400 bg-gray-800 px-2 py-0.5 rounded">
+                      FT {settleScore}
+                    </span>
+                  )}
+                </div>
+
+                {/* ── Per-bet breakdown ── */}
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-gray-600 mb-2 font-medium">
+                    Individual Bets
+                  </p>
+                  <div className="space-y-2">
+                    {settledBets.map((b, i) => {
+                      const won = b.status === "settled_won";
+                      const payout = won ? b.current_amount * b.odds : 0;
+                      const reason = lostReason(b);
+                      return (
+                        <div
+                          key={b.id}
+                          className={`rounded-lg border px-3 py-2.5 text-xs ${
+                            won
+                              ? "bg-green-500/5 border-green-500/20"
+                              : "bg-red-500/5 border-red-500/15"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <span
+                                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                    won
+                                      ? "bg-green-500/20 text-green-400"
+                                      : "bg-red-500/15 text-red-400"
+                                  }`}
+                                >
+                                  {won ? "✓ WON" : "✗ LOST"}
+                                </span>
+                                <span className="text-[10px] text-gray-500 uppercase tracking-wide">
+                                  {b.bet_type.replace(/_/g, " ")}
+                                </span>
+                              </div>
+                              <p className="text-white font-medium truncate">
+                                {betLabel(b)}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1 text-gray-500">
+                                <span className="font-mono">
+                                  <a
+                                    href={`https://sepolia.etherscan.io/address/${b.bettor_wallet}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="hover:text-gray-300 transition-colors"
+                                  >
+                                    {b.bettor_wallet.slice(0, 6)}…{b.bettor_wallet.slice(-4)}
+                                  </a>
+                                </span>
+                                {b.blockchain_settle_tx && (
+                                  <a
+                                    href={`https://sepolia.etherscan.io/tx/${b.blockchain_settle_tx}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[10px] text-blue-500 hover:text-blue-300 transition-colors"
+                                  >
+                                    tx ↗
+                                  </a>
+                                )}
+                              </div>
+                              {reason && (
+                                <p className="text-[10px] text-amber-600/80 mt-1 italic">
+                                  ⚠ {reason}
+                                </p>
+                              )}
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="text-gray-400 text-[11px]">
+                                ${b.current_amount.toFixed(2)}{" "}
+                                <span className="text-gray-600">@ {b.odds}x</span>
+                              </div>
+                              <div
+                                className={`font-bold mt-0.5 ${
+                                  won ? "text-green-400" : "text-gray-600"
+                                }`}
+                              >
+                                {won
+                                  ? `$${payout.toFixed(2)}`
+                                  : "—"}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* ── Per-wallet summary ── */}
+                {Object.keys(byWallet).length > 0 && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-gray-600 mb-2 font-medium">
+                      By Wallet
+                    </p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="text-[10px] uppercase tracking-widest text-gray-600 border-b border-white/5">
+                            <th className="text-left pb-2 font-medium">Wallet</th>
+                            <th className="text-center pb-2 font-medium">Won</th>
+                            <th className="text-center pb-2 font-medium">Lost</th>
+                            <th className="text-right pb-2 font-medium">Staked</th>
+                            <th className="text-right pb-2 font-medium">Payout</th>
+                            <th className="text-right pb-2 font-medium">P&amp;L</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {Object.entries(byWallet).map(([wallet, v]) => {
+                            const pnl = v.payout - v.staked;
+                            return (
+                              <tr key={wallet} className="group">
+                                <td className="py-2 font-mono text-gray-400 group-hover:text-gray-200 transition-colors">
+                                  <a
+                                    href={`https://sepolia.etherscan.io/address/${wallet}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="hover:underline"
+                                  >
+                                    {wallet.slice(0, 6)}…{wallet.slice(-4)}
+                                  </a>
+                                </td>
+                                <td className="py-2 text-center">
+                                  {v.won > 0 ? (
+                                    <span className="text-green-400 font-semibold">
+                                      {v.won}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-600">—</span>
+                                  )}
+                                </td>
+                                <td className="py-2 text-center">
+                                  {v.lost > 0 ? (
+                                    <span className="text-red-400">{v.lost}</span>
+                                  ) : (
+                                    <span className="text-gray-600">—</span>
+                                  )}
+                                </td>
+                                <td className="py-2 text-right text-gray-300">
+                                  ${v.staked.toFixed(2)}
+                                </td>
+                                <td className="py-2 text-right">
+                                  {v.payout > 0 ? (
+                                    <span className="text-green-400 font-semibold">
+                                      ${v.payout.toFixed(2)}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-600">$0.00</span>
+                                  )}
+                                </td>
+                                <td
+                                  className={`py-2 text-right font-semibold ${
+                                    pnl >= 0
+                                      ? "text-green-400"
+                                      : "text-red-400"
+                                  }`}
+                                >
+                                  {pnl >= 0 ? "+" : ""}
+                                  {pnl.toFixed(2)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Summary grid ── */}
+                <div className="grid grid-cols-3 gap-2 pt-1 border-t border-white/5">
+                  <div className="bg-gray-800/60 rounded-lg px-3 py-2 text-center">
+                    <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5">
+                      User Staked
+                    </div>
+                    <div className="text-sm font-bold text-white">
+                      ${totalUserStaked.toFixed(2)}
+                    </div>
+                    <div className="text-[9px] text-gray-600 mt-0.5">off-chain bets</div>
+                  </div>
+                  <div className="bg-green-500/6 border border-green-500/15 rounded-lg px-3 py-2 text-center">
+                    <div className="text-[10px] text-green-600 uppercase tracking-wide mb-0.5">
+                      To Players
+                    </div>
+                    <div className="text-sm font-bold text-green-400">
+                      ${totalPlayerPayout.toFixed(2)}
+                    </div>
+                    <div className="text-[9px] text-green-800 mt-0.5">via withdraw()</div>
+                  </div>
+                  <div className="bg-orange-500/6 border border-orange-500/15 rounded-lg px-3 py-2 text-center">
+                    <div className="text-[10px] text-orange-600 uppercase tracking-wide mb-0.5">
+                      Platform
+                    </div>
+                    <div className="text-sm font-bold text-orange-400">
+                      ${platformRevenue.toFixed(2)}
+                    </div>
+                    <div className="text-[9px] text-orange-800 mt-0.5">via withdrawFees()</div>
+                  </div>
+                </div>
+
+                <div className="text-[10px] text-gray-600 space-y-1 border-t border-white/5 pt-2">
+                  <p>
+                    Winners call{" "}
+                    <code className="text-gray-500">withdraw(matchId)</code> on the contract to claim their payout.
+                    Platform claims <code className="text-gray-500">withdrawFees()</code> once per contract.
+                  </p>
+                  <p className="text-amber-700/70">
+                    ⓘ The total USDC balance shown on the contract covers <strong>all matches</strong> using this singleton — not just this match.
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Settle Match */}
           <div className="bg-gray-900/70 border border-white/5 rounded-xl p-5 space-y-3">
             <h3 className="text-sm font-semibold text-white">
-              🏁 Settle Match On-Chain
+              🏁 Settle Match
             </h3>
             <p className="text-xs text-gray-500">
-              Calls{" "}
-              <span className="font-mono text-gray-400">
-                GoalLiveBetting.settleMatch()
-              </span>{" "}
-              with all <strong className="text-white">confirmed</strong> goal
-              scorers, then triggers the{" "}
-              <span className="font-mono text-gray-400">settle-match</span> Edge
-              Function to close out bets in Supabase.
+              Calls the{" "}
+              <span className="font-mono text-gray-400">settle-match</span>{" "}
+              edge function which automatically fetches the official result from
+              Goalserve, settles all bets in Supabase, then calls{" "}
+              <span className="font-mono text-gray-400">settleMatch()</span>{" "}and{" "}
+              <span className="font-mono text-gray-400">settleUserBalances()</span>{" "}
+              on-chain via the oracle key. No MetaMask needed.
             </p>
-            {goals.filter(
-              (g) => g.confirmed && g.event_type !== "VAR_OVERTURNED",
-            ).length > 0 ? (
-              <div className="flex flex-wrap gap-2 mb-1">
-                {goals
-                  .filter(
-                    (g) => g.confirmed && g.event_type !== "VAR_OVERTURNED",
-                  )
-                  .map((g) => (
-                    <span
-                      key={g.id}
-                      className="text-[11px] px-2 py-0.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded-full font-medium"
-                    >
-                      {g.player_name} {g.minute}'
-                    </span>
-                  ))}
+            {oracleError && (
+              <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 font-mono break-all">
+                {oracleError}
+              </div>
+            )}
+            {oracleTx && oracleTx !== "done" && (
+              <div className="text-[11px] text-emerald-400 bg-emerald-500/8 border border-emerald-500/15 rounded-lg px-3 py-2 font-mono break-all">
+                ✅ settle tx:{" "}
+                <a
+                  href={`https://sepolia.etherscan.io/tx/${oracleTx}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline hover:text-emerald-200 transition-colors"
+                >
+                  {oracleTx}
+                </a>
+              </div>
+            )}
+            {oracleBalancesTx && (
+              <div className="text-[11px] text-blue-400 bg-blue-500/8 border border-blue-500/15 rounded-lg px-3 py-2 font-mono break-all">
+                ✅ balances tx:{" "}
+                <a
+                  href={`https://sepolia.etherscan.io/tx/${oracleBalancesTx}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline hover:text-blue-200 transition-colors"
+                >
+                  {oracleBalancesTx}
+                </a>
+              </div>
+            )}
+            {match.status === "finished" ? (
+              <div className="space-y-2">
+                <div className="text-[11px] text-gray-500 bg-gray-800/60 border border-white/5 rounded-lg px-3 py-2">
+                  ✅ Match already settled in Supabase
+                </div>
+                <button
+                  onClick={() => handleSettleMatch(true)}
+                  disabled={oracleBusy}
+                  className="w-full py-2.5 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 border border-yellow-500/20"
+                >
+                  {oracleBusy ? "Re-settling…" : "↺ Force Re-settle (fetch from Goalserve)"}
+                </button>
               </div>
             ) : (
-              <p className="text-[11px] text-yellow-500">
-                ⚠ No confirmed goals. Go to the <strong>Goals</strong> tab and
-                confirm scorers first.
-              </p>
+              <button
+                onClick={() => handleSettleMatch(false)}
+                disabled={oracleBusy}
+                className="w-full py-2.5 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed bg-orange-500/12 text-orange-400 hover:bg-orange-500/22 border border-orange-500/25"
+              >
+                {oracleBusy ? "Settling…" : "🏁 Settle Match"}
+              </button>
             )}
-            <button
-              onClick={handleSettleMatch}
-              disabled={oracleBusy || match.status === "finished"}
-              className="w-full py-2.5 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed bg-orange-500/12 text-orange-400 hover:bg-orange-500/22 border border-orange-500/25"
-            >
-              {match.status === "finished"
-                ? "✅ Match already settled"
-                : oracleBusy
-                  ? "Settling…"
-                  : "🏁 Settle Match"}
-            </button>
           </div>
+
+          {/* ── Withdraw Platform Fees ── */}
+          {bets.some(
+            (b) => b.status === "settled_won" || b.status === "settled_lost",
+          ) && (
+            <div className="bg-gray-900/70 border border-orange-500/15 rounded-xl p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-white">
+                  💰 Withdraw Platform Fees
+                </h3>
+                <span className="text-[10px] bg-orange-500/15 text-orange-400 px-2 py-0.5 rounded font-mono">
+                  onlyOwner
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">
+                Calls{" "}
+                <code className="text-gray-400">withdrawFees(address)</code> on
+                the contract to claim the platform's collected fees to your
+                connected MetaMask wallet. Must be called by the contract owner.
+              </p>
+              {withdrawFeesError && (
+                <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 font-mono break-all">
+                  {withdrawFeesError}
+                </div>
+              )}
+              {withdrawFeesTx && (
+                <div className="text-[11px] text-green-400 bg-green-500/8 border border-green-500/15 rounded-lg px-3 py-2 font-mono break-all">
+                  ✅ tx:{" "}
+                  <a
+                    href={`https://sepolia.etherscan.io/tx/${withdrawFeesTx}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline hover:text-green-200 transition-colors"
+                  >
+                    {withdrawFeesTx}
+                  </a>
+                </div>
+              )}
+              <button
+                onClick={handleWithdrawFees}
+                disabled={withdrawFeesBusy}
+                className="w-full py-2.5 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed bg-orange-500/10 text-orange-300 hover:bg-orange-500/20 border border-orange-500/20"
+              >
+                {withdrawFeesBusy
+                  ? "Sending tx…"
+                  : "💰 withdrawFees() — claim platform revenue (MetaMask)"}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

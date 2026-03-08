@@ -428,16 +428,95 @@ export function CREWorkflowPanel({ match, bets, goals }: Props) {
         ))}
       </div>
 
-      {/* Completion banner */}
-      {onChain?.balancesSettled && (
-        <div className="mt-5 flex items-center gap-2 bg-green-500/8 border border-green-500/20 rounded-lg px-4 py-2.5 text-xs text-green-400 font-medium">
-          <span>✅</span>
-          <span>
-            Full CRE settlement complete — users can now call{" "}
-            <code className="text-green-300">withdraw()</code>
-          </span>
-        </div>
-      )}
+      {/* Completion banner + on-chain breakdown */}
+      {onChain?.balancesSettled && (() => {
+        const settledBetsAll = bets.filter(
+          (b) => b.status === "settled_won" || b.status === "settled_lost",
+        );
+        const totalPool = Number(onChain.poolSize) / 1_000_000;
+        const totalPayout = settledBetsAll
+          .filter((b) => b.status === "settled_won")
+          .reduce((s, b) => s + b.current_amount * b.odds, 0);
+        const platformRev = Math.max(0, totalPool - totalPayout);
+
+        return (
+          <div className="mt-5 space-y-3">
+            <div className="flex items-center gap-2 bg-green-500/8 border border-green-500/20 rounded-lg px-4 py-2.5 text-xs text-green-400 font-medium">
+              <span>✅</span>
+              <span>
+                CRE settlement complete — users can call{" "}
+                <code className="text-green-300">withdraw()</code>
+              </span>
+            </div>
+
+            {settledBetsAll.length > 0 && (
+              <div className="bg-gray-950/60 border border-white/6 rounded-lg p-3 space-y-2.5">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">
+                  On-Chain Balances
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="text-center">
+                    <div className="text-[10px] text-gray-600 uppercase tracking-wide">Pool</div>
+                    <div className="text-sm font-bold text-white">${totalPool.toFixed(2)}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[10px] text-green-700 uppercase tracking-wide">Players</div>
+                    <div className="text-sm font-bold text-green-400">${totalPayout.toFixed(2)}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[10px] text-orange-700 uppercase tracking-wide">Platform</div>
+                    <div className="text-sm font-bold text-orange-400">${platformRev.toFixed(2)}</div>
+                  </div>
+                </div>
+
+                {/* Per-wallet withdrawable */}
+                <div className="space-y-1 pt-1 border-t border-white/5">
+                  {(() => {
+                    const byWallet: Record<string, number> = {};
+                    for (const b of settledBetsAll) {
+                      if (!byWallet[b.bettor_wallet]) byWallet[b.bettor_wallet] = 0;
+                      if (b.status === "settled_won")
+                        byWallet[b.bettor_wallet] += b.current_amount * b.odds;
+                    }
+                    return Object.entries(byWallet).map(([wallet, payout]) => (
+                      <div key={wallet} className="flex items-center justify-between text-[11px]">
+                        <a
+                          href={`https://sepolia.etherscan.io/address/${wallet}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-mono text-gray-500 hover:text-gray-300 transition-colors"
+                        >
+                          {wallet.slice(0, 8)}…{wallet.slice(-4)}
+                        </a>
+                        {payout > 0 ? (
+                          <span className="text-green-400 font-semibold">
+                            ↑ ${payout.toFixed(2)} withdrawable
+                          </span>
+                        ) : (
+                          <span className="text-gray-600">lost · $0</span>
+                        )}
+                      </div>
+                    ));
+                  })()}
+                </div>
+
+                {settleTx && (
+                  <div className="text-[10px] pt-1 border-t border-white/5">
+                    <a
+                      href={`https://sepolia.etherscan.io/tx/${settleTx}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-mono text-indigo-400/70 hover:text-indigo-300 transition-colors underline"
+                    >
+                      settle tx: {settleTx.slice(0, 14)}…
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -2,30 +2,36 @@
  * settle-match — Finalise all bets for a completed match and settle on-chain.
  *
  * Called by:
- *  - Chainlink CRE HTTP job (automated, Phase 4)
- *  - Admin panel (manual fallback, Phase 3)
+ *  - Admin panel "Settle Match" button  (auto-fetch mode — no body params needed)
+ *  - Chainlink CRE HTTP job             (explicit mode — passes winner + goals)
  *
  * POST body:
  * {
- *   match_id:              string,   // Supabase UUID of the match row
- *   goal_scorer_player_ids: string[], // Goalserve external_player_id integers
- *   winner:               "home" | "draw" | "away",
- *   home_goals:           number,
- *   away_goals:           number
+ *   match_id:               string,     // Supabase UUID — REQUIRED
+ *
+ *   // --- AUTO-FETCH MODE (omit all four below) ----------------------------
+ *   // Edge fn fetches final score + scorers from Goalserve using
+ *   // the match's goalserve_static_id. Returns 422 if not FT yet.
+ *
+ *   // --- EXPLICIT MODE (CRE / manual override) ----------------------------
+ *   winner:                "home" | "draw" | "away",  // optional
+ *   home_goals:            number,                     // optional
+ *   away_goals:            number,                     // optional
+ *   goal_scorer_player_ids: string[],                  // optional
+ *
+ *   force?:                boolean  // re-settle already-finished match
  * }
  *
  * Logic:
- *  1. Validates match exists and is not already finished.
- *  2. Settles all bet types correctly:
- *     NGS         → player ID in goal_scorer_player_ids
- *     MATCH_WINNER → predicted outcome matches winner
- *     EXACT_GOALS  → goalsTarget === home_goals + away_goals
- *  3. Calls settleMatch() on the singleton GoalLiveBetting contract.
- *  4. Calls settleUserBalances() so users can withdraw() their USDC.
- *  5. Upserts provisional_credits for winners.
- *  6. Marks match status = 'finished', writes blockchain_settle_tx.
+ *  1. Validates match exists; 409 if finished + !force.
+ *  2. Auto-fetch or explicit winner/goals/scorers resolution.
+ *  3. Settles all bet types (NGS, MATCH_WINNER, EXACT_GOALS).
+ *  4. Calls settleMatch() on-chain via ORACLE_PRIVATE_KEY.
+ *  5. Calls settleUserBalances() so users can withdraw() USDC.
+ *  6. Upserts provisional_credits, marks match finished.
  *
- * Returns: { success, match_id, scorers[], bets_settled, winners, total_payout, blockchain_settle_tx, blockchain_balances_tx, settled[] }
+ * Returns: { success, match_id, match, scorers[], bets_settled, winners,
+ *            total_payout, blockchain_settle_tx, blockchain_balances_tx, settled[] }
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -102,27 +108,227 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    const body = await req.json();
     const {
       match_id,
-      goal_scorer_player_ids,
-      winner,
-      home_goals,
-      away_goals,
       force,
-    } = await req.json();
+    } = body;
+    // winner / home_goals / away_goals / goal_scorer_player_ids are optional
+    // — omit all three to trigger Goalserve auto-fetch mode.
+    let winner: string | undefined = body.winner;
+    let home_goals: number | undefined = body.home_goals;
+    let away_goals: number | undefined = body.away_goals;
+    let goal_scorer_player_ids: string[] | undefined = body.goal_scorer_player_ids;
 
-    // ── Validate input ────────────────────────────────────────────────────
+    // ── Validate required fields ──────────────────────────────────────────
     if (!match_id) return json({ error: "match_id is required" }, 400);
+
+    // ── Verify match exists ───────────────────────────────────────────────
+    const { data: match, error: matchErr } = await supabase
+      .from("matches")
+      .select(
+        "id, status, home_team, away_team, contract_address, external_match_id, goalserve_static_id, odds_api_config",
+      )
+      .eq("id", match_id)
+      .single();
+
+    if (matchErr || !match) return json({ error: "Match not found" }, 404);
+    if (match.status === "finished" && !force)
+      return json({ error: "Match already settled" }, 409);
+
+    // ── AUTO-FETCH MODE: pull final result from Goalserve ─────────────────
+    // Triggered when winner / home_goals / away_goals are not supplied.
+    const autoFetch = winner === undefined || home_goals === undefined || away_goals === undefined;
+    if (autoFetch) {
+      const staticId: string | null = match.goalserve_static_id ?? null;
+      if (!staticId) {
+        return json(
+          { error: "Cannot auto-fetch: match has no goalserve_static_id. Pass winner + home_goals + away_goals explicitly." },
+          422,
+        );
+      }
+
+      const gsKey = Deno.env.get("GOALSERVE_API_KEY") ?? "5dc9cf20aca34682682708de71344f52";
+      const gsBase = `https://www.goalserve.com/getfeed/${gsKey}`;
+
+      // Fetch livescores/results feed
+      const liveRes = await fetch(`${gsBase}/soccernew/home?json=1`);
+      if (!liveRes.ok) {
+        return json({ error: `Goalserve livescores fetch failed: ${liveRes.status}` }, 502);
+      }
+      // deno-lint-ignore no-explicit-any
+      const liveData: any = await liveRes.json();
+      // deno-lint-ignore no-explicit-any
+      const categories: any[] = Array.isArray(liveData?.scores?.category)
+        ? liveData.scores.category
+        : liveData?.scores?.category
+          ? [liveData.scores.category]
+          : [];
+
+      // deno-lint-ignore no-explicit-any
+      let foundMatch: any = null;
+      let foundLeagueId = "";
+      outer: for (const cat of categories) {
+        // deno-lint-ignore no-explicit-any
+        const catMatches: any[] = Array.isArray(cat?.matches?.match)
+          ? cat.matches.match
+          : cat?.matches?.match
+            ? [cat.matches.match]
+            : [];
+        for (const m of catMatches) {
+          if (String(m["@static_id"]) === String(staticId)) {
+            foundMatch = m;
+            foundLeagueId = cat["@id"] ?? "";
+            break outer;
+          }
+        }
+      }
+
+      // ── Fallback: if match not in livescores, try commentary feed directly ──
+      // The /home livescores feed only covers today. For yesterday's or older
+      // finished matches, the commentary feed is the source of truth.
+      if (!foundMatch) {
+        // deno-lint-ignore no-explicit-any
+        const cfg = (match.odds_api_config ?? {}) as Record<string, any>;
+        const leagueFromConfig: string = cfg?.goalserve_league ?? "";
+        if (!leagueFromConfig) {
+          return json(
+            { error: `Match ${staticId} not found in today's Goalserve feed and no goalserve_league in odds_api_config to fall back to commentary. Pass winner + home_goals + away_goals explicitly.` },
+            422,
+          );
+        }
+        foundLeagueId = leagueFromConfig;
+        try {
+          const commRes = await fetch(
+            `${gsBase}/commentaries/match?id=${staticId}&league=${foundLeagueId}&json=1`,
+          );
+          if (!commRes.ok) {
+            return json({ error: `Match ${staticId} not found in Goalserve feed and commentary fetch failed (${commRes.status}).` }, 422);
+          }
+          // deno-lint-ignore no-explicit-any
+          const commData: any = await commRes.json();
+          const rawMatch =
+            commData?.commentaries?.tournament?.match ??
+            commData?.commentaries?.match ??
+            null;
+          // deno-lint-ignore no-explicit-any
+          const matchNode: any = Array.isArray(rawMatch) ? rawMatch[0] : rawMatch;
+          if (!matchNode) {
+            return json({ error: `Match ${staticId} not found in Goalserve livescores or commentary feed.` }, 422);
+          }
+          const commStatus: string = matchNode["@status"] ?? "";
+          const FT_STATUSES = ["FT", "AET", "After ET", "Full-time", "full-time"];
+          if (!FT_STATUSES.includes(commStatus)) {
+            return json(
+              { error: `Match is not finished on Goalserve yet. Commentary status: "${commStatus}". Settle only at FT.` },
+              422,
+            );
+          }
+          home_goals = parseInt(matchNode?.localteam?.["@goals"] ?? "0", 10) || 0;
+          away_goals = parseInt(matchNode?.visitorteam?.["@goals"] ?? "0", 10) || 0;
+          winner = home_goals > away_goals ? "home" : away_goals > home_goals ? "away" : "draw";
+          // Extract scorers from this same commentary node
+          const gs = matchNode?.goalscorer ?? {};
+          // deno-lint-ignore no-explicit-any
+          const extractIdsComm = (node: any): string[] => {
+            const players = Array.isArray(node?.player)
+              ? node.player
+              : node?.player ? [node.player] : [];
+            return players
+              // deno-lint-ignore no-explicit-any
+              .filter((p: any) => (p["@type"] ?? "").toLowerCase() !== "own")
+              // deno-lint-ignore no-explicit-any
+              .map((p: any) => p["@id"] ?? p["@player_id"] ?? "")
+              .filter(Boolean);
+          };
+          goal_scorer_player_ids = [
+            ...extractIdsComm(gs?.localteam),
+            ...extractIdsComm(gs?.visitorteam),
+          ];
+          console.log(
+            `[settle-match] commentary fallback: ${match.home_team} ${home_goals}-${away_goals} ${match.away_team}, ` +
+            `winner=${winner}, scorers=[${goal_scorer_player_ids.join(",")}]`,
+          );
+          // Skip the second commentary fetch below since we already have scorers
+          foundLeagueId = ""; // sentinel: already fetched
+        } catch (commErr) {
+          return json({ error: `Match ${staticId} not in today's feed and commentary fetch threw: ${commErr}` }, 422);
+        }
+      }
+
+      // ── If found in livescores, validate status and get score ─────────────
+      if (foundMatch) {
+        const gsStatus: string = foundMatch["@status"] ?? "";
+        const FT_STATUSES = ["FT", "AET", "After ET", "Full-time", "full-time"];
+        if (!FT_STATUSES.includes(gsStatus)) {
+          return json(
+            { error: `Match is not finished on Goalserve yet. Current status: "${gsStatus}". Settle only at FT.` },
+            422,
+          );
+        }
+        home_goals = parseInt(foundMatch?.localteam?.["@goals"] ?? "0", 10) || 0;
+        away_goals = parseInt(foundMatch?.visitorteam?.["@goals"] ?? "0", 10) || 0;
+        winner = home_goals > away_goals ? "home" : away_goals > home_goals ? "away" : "draw";
+      }
+
+      // Fetch goal scorers from commentary feed (only if not already done in fallback path)
+      goal_scorer_player_ids = goal_scorer_player_ids ?? [];
+      if (foundLeagueId) {
+        try {
+          const commRes = await fetch(
+            `${gsBase}/commentaries/match?id=${staticId}&league=${foundLeagueId}&json=1`,
+          );
+          if (commRes.ok) {
+            // deno-lint-ignore no-explicit-any
+            const commData: any = await commRes.json();
+            const rawMatch =
+              commData?.commentaries?.tournament?.match ??
+              commData?.commentaries?.match ??
+              null;
+            // deno-lint-ignore no-explicit-any
+            const matchNode: any = Array.isArray(rawMatch) ? rawMatch[0] : rawMatch;
+            if (matchNode) {
+              const gs = matchNode?.goalscorer ?? {};
+              // deno-lint-ignore no-explicit-any
+              const extractIds = (node: any): string[] => {
+                const players = Array.isArray(node?.player)
+                  ? node.player
+                  : node?.player ? [node.player] : [];
+                return players
+                  // deno-lint-ignore no-explicit-any
+                  .filter((p: any) => (p["@type"] ?? "").toLowerCase() !== "own")
+                  // deno-lint-ignore no-explicit-any
+                  .map((p: any) => p["@id"] ?? p["@player_id"] ?? "")
+                  .filter(Boolean);
+              };
+              goal_scorer_player_ids = [
+                ...extractIds(gs?.localteam),
+                ...extractIds(gs?.visitorteam),
+              ];
+            }
+          }
+        } catch (commErr) {
+          console.warn("[settle-match] commentary fetch failed (non-fatal):", commErr);
+        }
+      }
+
+      if (foundLeagueId !== "") {
+        // Only log here if livescores path was used (commentary path logs its own line)
+        console.log(
+          `[settle-match] auto-fetch (livescores): ${match.home_team} ${home_goals}-${away_goals} ${match.away_team}, ` +
+          `winner=${winner}, scorers=[${(goal_scorer_player_ids ?? []).join(",")}]`,
+        );
+      }
+    }
+
+    // ── At this point winner / home_goals / away_goals are always set ─────
     if (!winner || !(winner in WINNER_TO_UINT))
       return json({ error: "winner must be 'home', 'draw', or 'away'" }, 400);
     if (typeof home_goals !== "number" || typeof away_goals !== "number")
-      return json(
-        { error: "home_goals and away_goals (numbers) are required" },
-        400,
-      );
+      return json({ error: "home_goals and away_goals (numbers) are required" }, 400);
 
     const scorerIds: string[] = Array.isArray(goal_scorer_player_ids)
-      ? goal_scorer_player_ids.map(String)
+      ? (goal_scorer_player_ids as string[]).map(String)
       : [];
 
     // Reject UUID-like IDs (those cause on-chain BigInt issues) but allow:
@@ -131,9 +337,7 @@ Deno.serve(async (req: Request) => {
     for (const id of scorerIds) {
       if (id.includes("-")) {
         return json(
-          {
-            error: `goal_scorer_player_ids must not be UUIDs; got "${id}"`,
-          },
+          { error: `goal_scorer_player_ids must not be UUIDs; got "${id}"` },
           400,
         );
       }
@@ -144,19 +348,6 @@ Deno.serve(async (req: Request) => {
     // Supabase matching: use all IDs (numeric + gs_xxx synthetic IDs)
     const scorerSet = new Set<string>(scorerIds);
     const totalGoals = home_goals + away_goals;
-
-    // ── Verify match exists ───────────────────────────────────────────────
-    const { data: match, error: matchErr } = await supabase
-      .from("matches")
-      .select(
-        "id, status, home_team, away_team, contract_address, external_match_id",
-      )
-      .eq("id", match_id)
-      .single();
-
-    if (matchErr || !match) return json({ error: "Match not found" }, 404);
-    if (match.status === "finished" && !force)
-      return json({ error: "Match already settled" }, 409);
 
     // ── Get all unsettled bets for this match ─────────────────────────────
     const { data: bets, error: betsErr } = await supabase
