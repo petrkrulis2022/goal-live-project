@@ -89,13 +89,14 @@ export function useBetting(wallet: string | null, matchUuid?: string) {
       matchId: string;
     }) => {
       if (!wallet) throw new Error("Wallet not connected");
-      // Validate against in-app balance (funded by top-ups)
+      // Validate against *available* balance (deposited minus already-locked bets)
       const realBalance = services.wallet.getState()?.inAppBalance ?? 0;
-      if (params.amount > realBalance) {
+      const available = Math.max(0, realBalance - balance.locked);
+      if (params.amount > available) {
         return {
           success: false,
           bet: null as never,
-          error: "Insufficient balance",
+          error: `Insufficient balance. Available: $${available.toFixed(2)}`,
         };
       }
       setLoading(true);

@@ -73,7 +73,8 @@ export const BetModal: React.FC<BetModalProps> = ({
       ? `Exact Goals: ${egGoals === 6 ? "6+" : egGoals}`
       : outcomeLabel(mwOutcome!);
   const payout = amount * odds;
-  const maxBet = balance.wallet;
+  // available = deposited - already locked in active bets
+  const maxBet = balance.available;
 
   // Is this a CHANGE operation (user already has an active bet on a different player)?
   const canChange = activeBet && activeBet.status === "active";
