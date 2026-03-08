@@ -1,9 +1,8 @@
 import { useEffect, useRef } from "react";
 
-// Logo background color sampled from goal.live.png: #E3E9EC
-const BG = "#E3E9EC";
 const NAVY = "#0C2840";
 const CYAN = "#2EC5E0";
+const LIGHT_BLUE = "#56C8E8";
 
 function PitchCanvas() {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -27,38 +26,27 @@ function PitchCanvas() {
       const w = canvas!.width;
       const h = canvas!.height;
 
-      // Subtle grid — dark navy on light bg
-      ctx.strokeStyle = "rgba(12,40,64,0.06)";
-      ctx.lineWidth = 1;
-      const spacing = 80;
-      for (let x = 0; x < w; x += spacing) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
-      }
-      for (let y = 0; y < h; y += spacing) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
-      }
-
-      // Animated scan line in cyan
-      const scanY = ((t * 0.4) % (h + 200)) - 100;
-      const grad = ctx.createLinearGradient(0, scanY - 60, 0, scanY + 60);
+      // Animated scan line
+      const scanY = ((t * 0.35) % (h + 200)) - 100;
+      const grad = ctx.createLinearGradient(0, scanY - 80, 0, scanY + 80);
       grad.addColorStop(0, "rgba(46,197,224,0)");
-      grad.addColorStop(0.5, "rgba(46,197,224,0.07)");
+      grad.addColorStop(0.5, "rgba(46,197,224,0.06)");
       grad.addColorStop(1, "rgba(46,197,224,0)");
       ctx.fillStyle = grad;
-      ctx.fillRect(0, scanY - 60, w, 120);
+      ctx.fillRect(0, scanY - 80, w, 160);
 
       // Floating hexagon nodes
       const nodes = [
-        { x: w * 0.12, y: h * 0.2, r: 28 },
-        { x: w * 0.88, y: h * 0.15, r: 18 },
-        { x: w * 0.06, y: h * 0.72, r: 22 },
-        { x: w * 0.93, y: h * 0.65, r: 16 },
-        { x: w * 0.5,  y: h * 0.08, r: 12 },
-        { x: w * 0.5,  y: h * 0.95, r: 10 },
+        { x: w * 0.08, y: h * 0.18, r: 30 },
+        { x: w * 0.92, y: h * 0.22, r: 20 },
+        { x: w * 0.04, y: h * 0.75, r: 24 },
+        { x: w * 0.96, y: h * 0.68, r: 18 },
+        { x: w * 0.5,  y: h * 0.06, r: 14 },
+        { x: w * 0.5,  y: h * 0.96, r: 11 },
       ];
       nodes.forEach((n, i) => {
         const pulse = Math.sin(t * 0.02 + i * 1.1) * 0.5 + 0.5;
-        ctx.strokeStyle = `rgba(46,197,224,${0.18 + pulse * 0.22})`;
+        ctx.strokeStyle = `rgba(46,197,224,${0.22 + pulse * 0.28})`;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         for (let s = 0; s < 6; s++) {
@@ -75,10 +63,7 @@ function PitchCanvas() {
       raf = requestAnimationFrame(draw);
     }
     draw();
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
-    };
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", resize); };
   }, []);
 
   return <canvas ref={ref} className="absolute inset-0 pointer-events-none" />;
@@ -88,39 +73,58 @@ export default function LandingPage() {
   return (
     <div
       className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center"
-      style={{ background: BG, color: NAVY }}
+      style={{
+        backgroundImage: "url('/page-bg.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        color: NAVY,
+      }}
     >
       <PitchCanvas />
+
+      {/* Logo icon — top right corner */}
+      <div
+        className="absolute z-20 pointer-events-none"
+        style={{ top: 20, right: 24 }}
+      >
+        <img
+          src="/logo-icon.png"
+          alt=""
+          style={{ height: 56, width: "auto", display: "block" }}
+        />
+      </div>
 
       {/* ── Main card ── */}
       <div
         className="relative z-10 flex flex-col items-center text-center"
-        style={{ gap: "2.5rem" }}
+        style={{ gap: "2.5rem", padding: "2rem 1rem" }}
       >
-        {/* Live badge */}
+        {/* Live badge — more distinctive */}
         <div
           style={{
             display: "inline-flex",
             alignItems: "center",
-            gap: "0.5rem",
-            padding: "0.3rem 1rem",
-            border: `1px solid rgba(46,197,224,0.55)`,
+            gap: "0.6rem",
+            padding: "0.45rem 1.3rem",
+            border: `2px solid ${CYAN}`,
             borderRadius: 999,
-            background: "rgba(46,197,224,0.12)",
-            fontSize: "0.72rem",
-            letterSpacing: "0.18em",
+            background: CYAN,
+            fontSize: "0.76rem",
+            letterSpacing: "0.20em",
             textTransform: "uppercase",
-            color: "#0A7B95",
+            color: "#fff",
             fontFamily: "'DM Mono', monospace",
+            fontWeight: 500,
+            boxShadow: `0 2px 18px rgba(46,197,224,0.35)`,
           }}
         >
           <span
             style={{
-              width: 7,
-              height: 7,
+              width: 8,
+              height: 8,
               borderRadius: "50%",
-              background: CYAN,
-              boxShadow: `0 0 6px ${CYAN}`,
+              background: "#fff",
+              boxShadow: "0 0 6px rgba(255,255,255,0.8)",
               animation: "pulse-dot 1.4s ease-in-out infinite",
               flexShrink: 0,
             }}
@@ -128,7 +132,7 @@ export default function LandingPage() {
           Chainlink CRE · Sepolia Testnet
         </div>
 
-        {/* Logo — no drop-shadow, bg now matches */}
+        {/* Logo */}
         <div style={{ lineHeight: 1 }}>
           <img
             src="/logo.png"
@@ -142,7 +146,7 @@ export default function LandingPage() {
           style={{
             fontFamily: "'DM Serif Display', serif",
             fontSize: "clamp(1rem, 2.2vw, 1.35rem)",
-            color: "rgba(12,40,64,0.55)",
+            color: "rgba(12,40,64,0.60)",
             maxWidth: 560,
             lineHeight: 1.55,
             margin: 0,
@@ -150,7 +154,7 @@ export default function LandingPage() {
           }}
         >
           Gamified live sports betting powered by{" "}
-          <span style={{ color: "#0A7B95", fontStyle: "normal" }}>
+          <span style={{ color: "#0A7B95", fontStyle: "normal", fontWeight: 600 }}>
             real-time on-chain odds oracles
           </span>
         </p>
@@ -159,43 +163,44 @@ export default function LandingPage() {
         <div
           style={{
             width: 60,
-            height: 1,
-            background: `linear-gradient(90deg, transparent, rgba(46,197,224,0.7), transparent)`,
+            height: 2,
+            borderRadius: 2,
+            background: `linear-gradient(90deg, transparent, ${CYAN}, transparent)`,
           }}
         />
 
         {/* CTA buttons */}
         <div style={{ display: "flex", gap: "1.25rem", flexWrap: "wrap", justifyContent: "center" }}>
-          {/* Admin button — ghost dark */}
+          {/* Admin Platform — solid navy, very distinct */}
           <a
             href="/dashboard"
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: "0.6rem",
-              padding: "0.85rem 2rem",
-              background: "rgba(12,40,64,0.06)",
-              border: "1px solid rgba(12,40,64,0.18)",
-              borderRadius: 12,
+              gap: "0.65rem",
+              padding: "0.95rem 2.2rem",
+              background: `linear-gradient(135deg, ${NAVY} 0%, #0a1f33 100%)`,
+              border: `1.5px solid rgba(46,197,224,0.40)`,
+              borderRadius: 14,
               fontFamily: "'DM Mono', monospace",
-              fontSize: "0.85rem",
-              letterSpacing: "0.08em",
-              color: "rgba(12,40,64,0.75)",
+              fontSize: "0.9rem",
+              letterSpacing: "0.07em",
+              fontWeight: 500,
+              color: "#fff",
               textDecoration: "none",
               transition: "all 0.2s ease",
+              boxShadow: `0 4px 20px rgba(12,40,64,0.22), inset 0 1px 0 rgba(255,255,255,0.06)`,
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.borderColor = "rgba(12,40,64,0.35)";
-              (e.currentTarget as HTMLElement).style.color = NAVY;
-              (e.currentTarget as HTMLElement).style.background = "rgba(12,40,64,0.11)";
+              (e.currentTarget as HTMLElement).style.boxShadow = `0 6px 30px rgba(12,40,64,0.35), 0 0 18px rgba(46,197,224,0.20)`;
+              (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.borderColor = "rgba(12,40,64,0.18)";
-              (e.currentTarget as HTMLElement).style.color = "rgba(12,40,64,0.75)";
-              (e.currentTarget as HTMLElement).style.background = "rgba(12,40,64,0.06)";
+              (e.currentTarget as HTMLElement).style.boxShadow = `0 4px 20px rgba(12,40,64,0.22), inset 0 1px 0 rgba(255,255,255,0.06)`;
+              (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
             }}
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="7" height="7" rx="1"/>
               <rect x="14" y="3" width="7" height="7" rx="1"/>
               <rect x="3" y="14" width="7" height="7" rx="1"/>
@@ -204,7 +209,7 @@ export default function LandingPage() {
             Admin Platform
           </a>
 
-          {/* Launch App — filled navy */}
+          {/* Launch App — light blue */}
           <a
             href="https://tvgo.t-mobile.cz/"
             target="_blank"
@@ -212,29 +217,31 @@ export default function LandingPage() {
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: "0.6rem",
-              padding: "0.85rem 2.2rem",
-              background: `linear-gradient(135deg, #0C2840 0%, #0a1f33 100%)`,
-              border: `1px solid rgba(46,197,224,0.30)`,
-              borderRadius: 12,
+              gap: "0.65rem",
+              padding: "0.95rem 2.4rem",
+              background: `linear-gradient(135deg, ${LIGHT_BLUE} 0%, ${CYAN} 100%)`,
+              border: `1.5px solid rgba(255,255,255,0.35)`,
+              borderRadius: 14,
               fontFamily: "'DM Mono', monospace",
-              fontSize: "0.85rem",
-              letterSpacing: "0.08em",
+              fontSize: "0.9rem",
+              letterSpacing: "0.07em",
+              fontWeight: 500,
               color: "#fff",
               textDecoration: "none",
               transition: "all 0.2s ease",
-              boxShadow: "0 4px 24px rgba(12,40,64,0.18)",
+              boxShadow: `0 4px 22px rgba(46,197,224,0.35)`,
+              textShadow: "0 1px 2px rgba(0,0,0,0.15)",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.boxShadow = `0 6px 32px rgba(12,40,64,0.28), 0 0 20px rgba(46,197,224,0.18)`;
+              (e.currentTarget as HTMLElement).style.boxShadow = `0 6px 32px rgba(46,197,224,0.55)`;
               (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 24px rgba(12,40,64,0.18)";
+              (e.currentTarget as HTMLElement).style.boxShadow = `0 4px 22px rgba(46,197,224,0.35)`;
               (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
             }}
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="5 3 19 12 5 21 5 3"/>
             </svg>
             Launch App
@@ -246,7 +253,7 @@ export default function LandingPage() {
           style={{
             fontFamily: "'DM Mono', monospace",
             fontSize: "0.68rem",
-            color: "rgba(12,40,64,0.28)",
+            color: "rgba(12,40,64,0.32)",
             letterSpacing: "0.12em",
             textTransform: "uppercase",
             marginTop: "0.5rem",
