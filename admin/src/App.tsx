@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
@@ -6,6 +6,7 @@ import CreateEvent from "./pages/CreateEvent";
 import EventDetail from "./pages/EventDetail";
 import FundPool from "./pages/FundPool";
 import DrainOldContracts from "./pages/DrainOldContracts";
+import LandingPage from "./pages/LandingPage";
 import { useAdminWallet } from "./hooks/useAdminWallet";
 
 /** Shared full-screen wrapper for auth screens */
@@ -22,6 +23,12 @@ function AuthScreen({ children }: { children: ReactNode }) {
 
 export default function App() {
   const wallet = useAdminWallet();
+  const location = useLocation();
+
+  // Always render the landing page at / without requiring auth
+  if (location.pathname === "/") {
+    return <LandingPage />;
+  }
 
   // ── Not connected ────────────────────────────────────────────────────────────
   if (wallet.status === "disconnected" || wallet.status === "connecting") {
@@ -123,7 +130,7 @@ export default function App() {
   return (
     <Layout address={wallet.address!} onDisconnect={wallet.disconnect}>
       <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/events/new" element={<CreateEvent />} />
         <Route path="/events/:matchId" element={<EventDetail />} />
