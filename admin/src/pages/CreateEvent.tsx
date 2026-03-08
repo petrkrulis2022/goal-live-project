@@ -173,21 +173,24 @@ export default function CreateEvent() {
         // show games starting from now up to 7 days ahead
         const windowEnd = now + 7 * 24 * 60 * 60 * 1000;
 
-        const settled = await Promise.allSettled(
-          sports.map((sport) =>
-            fetch(
+        // Fetch sequentially to avoid hitting The Odds API rate limit
+        // (parallel requests cause most to be throttled, returning only 1 league)
+        const results: OddsEvent[][] = [];
+        for (const sport of sports) {
+          try {
+            const r = await fetch(
               `/api/odds/sports/${sport}/events?apiKey=${ODDS_API_KEY}&dateFormat=iso`,
-            ).then((r) => r.json()),
-          ),
-        );
-
-        // Collect only successful responses that are arrays
-        const results = settled
-          .filter(
-            (r): r is PromiseFulfilledResult<OddsEvent[]> =>
-              r.status === "fulfilled" && Array.isArray(r.value),
-          )
-          .map((r) => r.value);
+            );
+            const data = await r.json();
+            if (Array.isArray(data)) {
+              results.push(data);
+            } else {
+              console.warn(`[CreateEvent] ${sport} returned non-array:`, data);
+            }
+          } catch (e) {
+            console.warn(`[CreateEvent] ${sport} fetch failed:`, e);
+          }
+        }
 
         const all: OddsEvent[] = results
           .flat()
