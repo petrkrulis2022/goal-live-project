@@ -34,7 +34,7 @@ function TypewriterBanner() {
         top: 0,
         left: 0,
         right: 0,
-        padding: "0.75rem 2rem 0.75rem calc(96px + 3.5rem)",
+        padding: "0.9rem 2rem 0.9rem 220px",
         background: "rgba(12,40,64,0.08)",
         borderBottom: `1px solid rgba(46,197,224,0.22)`,
         backdropFilter: "blur(4px)",
@@ -47,11 +47,11 @@ function TypewriterBanner() {
         style={{
           margin: 0,
           fontFamily: "'DM Mono', monospace",
-          fontSize: "0.78rem",
+          fontSize: "0.92rem",
           color: NAVY,
-          letterSpacing: "0.03em",
+          letterSpacing: "0.02em",
           lineHeight: 1.55,
-          fontWeight: 500,
+          fontWeight: 600,
         }}
       >
         {displayed}
