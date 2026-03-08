@@ -7,6 +7,7 @@ import EventDetail from "./pages/EventDetail";
 import FundPool from "./pages/FundPool";
 import DrainOldContracts from "./pages/DrainOldContracts";
 import LandingPage from "./pages/LandingPage";
+import ArchitecturePage from "./pages/ArchitecturePage";
 import { useAdminWallet } from "./hooks/useAdminWallet";
 
 /** Shared full-screen wrapper for auth screens */
@@ -28,6 +29,9 @@ export default function App() {
   // Always render the landing page at / without requiring auth
   if (location.pathname === "/") {
     return <LandingPage />;
+  }
+  if (location.pathname === "/architecture") {
+    return <ArchitecturePage />;
   }
 
   // ── Not connected ────────────────────────────────────────────────────────────
@@ -131,6 +135,7 @@ export default function App() {
     <Layout address={wallet.address!} onDisconnect={wallet.disconnect}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/architecture" element={<ArchitecturePage />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/events/new" element={<CreateEvent />} />
         <Route path="/events/:matchId" element={<EventDetail />} />

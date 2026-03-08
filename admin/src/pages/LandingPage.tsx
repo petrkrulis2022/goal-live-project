@@ -240,6 +240,41 @@ export default function LandingPage() {
           }}
         />
 
+        {/* How it works link */}
+        <a
+          href="/architecture"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            padding: "0.4rem 1.1rem",
+            background: "rgba(46,197,224,0.12)",
+            border: `1px solid rgba(46,197,224,0.35)`,
+            borderRadius: 999,
+            fontFamily: "'DM Mono', monospace",
+            fontSize: "0.76rem",
+            letterSpacing: "0.08em",
+            color: NAVY,
+            textDecoration: "none",
+            fontWeight: 500,
+            marginTop: "-0.5rem",
+            transition: "all 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.background = `rgba(46,197,224,0.22)`;
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.background = `rgba(46,197,224,0.12)`;
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          How it works · CRE Architecture
+        </a>
+
         {/* CTA buttons */}
         <div style={{ display: "flex", gap: "1.25rem", flexWrap: "wrap", justifyContent: "center" }}>
           {/* Admin Platform — solid navy, very distinct */}
