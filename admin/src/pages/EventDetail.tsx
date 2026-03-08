@@ -19,6 +19,7 @@ const GS_LEAGUE_TO_SPORT: Record<string, string> = {
   "1204": "soccer_epl",
   "1399": "soccer_spain_la_liga",
   "1269": "soccer_italy_serie_a",
+  "1221": "soccer_france_ligue_1",
   "1007": "soccer_uefa_europa_league",
   "1009": "soccer_uefa_europa_conference_league",
 };
@@ -379,6 +380,7 @@ export default function EventDetail() {
         soccer_epl: "1204",
         soccer_spain_la_liga: "1399",
         soccer_italy_serie_a: "1269",
+        soccer_france_ligue_1: "1221",
         soccer_uefa_europa_league: "1007",
         soccer_uefa_europa_conference_league: "1009",
       };

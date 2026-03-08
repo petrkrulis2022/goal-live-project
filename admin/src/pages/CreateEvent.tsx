@@ -11,6 +11,7 @@ const SPORT_TO_GS_LEAGUE: Record<string, string> = {
   soccer_epl: "1204",
   soccer_spain_la_liga: "1399",
   soccer_italy_serie_a: "1269",
+  soccer_france_ligue_1: "1221",
   soccer_uefa_europa_league: "1007",
   soccer_uefa_europa_conference_league: "1009",
 };
@@ -19,6 +20,7 @@ const SPORT_LABELS: Record<string, string> = {
   soccer_epl: "Premier League",
   soccer_spain_la_liga: "La Liga",
   soccer_italy_serie_a: "Serie A",
+  soccer_france_ligue_1: "Ligue 1",
   soccer_uefa_europa_league: "UEFA Europa League",
   soccer_uefa_europa_conference_league: "UEFA Europa Conference League",
 };
@@ -32,6 +34,9 @@ const SPORT_COLOR: Record<string, { badge: string }> = {
   },
   soccer_italy_serie_a: {
     badge: "bg-blue-400/15 text-blue-400 border-blue-400/25",
+  },
+  soccer_france_ligue_1: {
+    badge: "bg-sky-400/15 text-sky-400 border-sky-400/25",
   },
   soccer_uefa_europa_league: {
     badge: "bg-orange-400/15 text-orange-400 border-orange-400/25",
@@ -160,6 +165,7 @@ export default function CreateEvent() {
           "soccer_epl",
           "soccer_spain_la_liga",
           "soccer_italy_serie_a",
+          "soccer_france_ligue_1",
           "soccer_uefa_europa_league",
           "soccer_uefa_europa_conference_league",
         ];
