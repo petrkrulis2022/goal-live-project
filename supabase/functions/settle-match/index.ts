@@ -414,7 +414,7 @@ Deno.serve(async (req: Request) => {
     const contractAddress =
       match.contract_address ?? Deno.env.get("CONTRACT_ADDRESS") ?? null;
     const rpcUrl =
-      Deno.env.get("SEPOLIA_RPC_URL") ?? "https://sepolia.drpc.org";
+      Deno.env.get("SEPOLIA_RPC_URL") ?? "https://ethereum-sepolia-rpc.publicnode.com";
     const oraclePrivateKey = Deno.env.get("ORACLE_PRIVATE_KEY") ?? null;
 
     if (contractAddress && oraclePrivateKey) {
@@ -435,8 +435,21 @@ Deno.serve(async (req: Request) => {
           home_goals,
           away_goals,
         );
-        await tx.wait();
         settleTxHash = tx.hash;
+        // Wait up to 60s for receipt; if it times out, we still have the hash
+        // and the tx was submitted — proceed to settleUserBalances after a delay.
+        const receiptTimeout = new Promise<null>((resolve) =>
+          setTimeout(() => resolve(null), 60_000),
+        );
+        const receipt = await Promise.race([tx.wait(), receiptTimeout]);
+        if (!receipt) {
+          console.warn(
+            "[settle-match] settleMatch receipt timed out — tx submitted, waiting 15s before balances step",
+            settleTxHash,
+          );
+          // Give the chain time to mine it before settleUserBalances
+          await new Promise((r) => setTimeout(r, 15_000));
+        }
         console.log("[settle-match] settleMatch on-chain:", settleTxHash);
 
         // Write settle tx hash to all settled bets
@@ -462,6 +475,14 @@ Deno.serve(async (req: Request) => {
       // oracle wallet = relayer wallet (same key), so this works with ORACLE_PRIVATE_KEY.
       // Required so users can call withdraw(). Losers get 0, winners get payout.
       // Must be called after settleMatch(). Safe to retry (reverts if already done).
+      // Skip if settleMatch itself failed (no point — contract will revert "not settled by CRE")
+      if (settleTxHash?.startsWith("ERROR:")) {
+        console.warn(
+          "[settle-match] skipping settleUserBalances — settleMatch had an error:",
+          settleTxHash,
+        );
+        balanceTxHash = "SKIPPED: settleMatch failed";
+      } else
       try {
         // Build user → total payout map (in USDC micro-units, 6 decimals)
         const userPayoutMap = new Map<string, bigint>();
