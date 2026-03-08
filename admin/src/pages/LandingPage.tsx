@@ -263,6 +263,48 @@ export default function LandingPage() {
         </p>
       </div>
 
+      {/* Bottom stat strip */}
+      <div
+        className="absolute bottom-0 left-0 right-0 z-10"
+        style={{
+          padding: "0.85rem 2rem",
+          background: "rgba(12,40,64,0.07)",
+          borderTop: `1px solid rgba(46,197,224,0.18)`,
+          backdropFilter: "blur(4px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "0.75rem",
+        }}
+      >
+        <span
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: "50%",
+            background: CYAN,
+            flexShrink: 0,
+            boxShadow: `0 0 8px ${CYAN}`,
+          }}
+        />
+        <p
+          style={{
+            margin: 0,
+            fontFamily: "'DM Mono', monospace",
+            fontSize: "0.72rem",
+            color: "rgba(12,40,64,0.62)",
+            letterSpacing: "0.04em",
+            textAlign: "center",
+            lineHeight: 1.6,
+          }}
+        >
+          Live betting now accounts for an average of{" "}
+          <strong style={{ color: NAVY, fontWeight: 600 }}>54%</strong> of total monthly bet amounts,
+          with some mature European markets seeing up to{" "}
+          <strong style={{ color: NAVY, fontWeight: 600 }}>70%</strong> of total bets placed live.
+        </p>
+      </div>
+
       <style>{`
         @keyframes pulse-dot {
           0%, 100% { opacity: 1; transform: scale(1); }
