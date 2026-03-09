@@ -1,14 +1,16 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import Layout from "./components/Layout";
-import Dashboard from "./pages/Dashboard";
-import CreateEvent from "./pages/CreateEvent";
-import EventDetail from "./pages/EventDetail";
-import FundPool from "./pages/FundPool";
-import DrainOldContracts from "./pages/DrainOldContracts";
 import LandingPage from "./pages/LandingPage";
 import ArchitecturePage from "./pages/ArchitecturePage";
 import { useAdminWallet } from "./hooks/useAdminWallet";
+
+// Lazy-load admin pages so public landing routes do not require Supabase env vars.
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const CreateEvent = lazy(() => import("./pages/CreateEvent"));
+const EventDetail = lazy(() => import("./pages/EventDetail"));
+const FundPool = lazy(() => import("./pages/FundPool"));
+const DrainOldContracts = lazy(() => import("./pages/DrainOldContracts"));
 
 /** Shared full-screen wrapper for auth screens */
 function AuthScreen({ children }: { children: ReactNode }) {
@@ -133,16 +135,24 @@ export default function App() {
   // ── Authorized ───────────────────────────────────────────────────────────────
   return (
     <Layout address={wallet.address!} onDisconnect={wallet.disconnect}>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/architecture" element={<ArchitecturePage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/events/new" element={<CreateEvent />} />
-        <Route path="/events/:matchId" element={<EventDetail />} />
-        <Route path="/events/:matchId/fund" element={<FundPool />} />
-        <Route path="/drain" element={<DrainOldContracts />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
+      <Suspense
+        fallback={
+          <div className="min-h-[40vh] flex items-center justify-center text-gray-400 text-sm">
+            Loading admin...
+          </div>
+        }
+      >
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/architecture" element={<ArchitecturePage />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/events/new" element={<CreateEvent />} />
+          <Route path="/events/:matchId" element={<EventDetail />} />
+          <Route path="/events/:matchId/fund" element={<FundPool />} />
+          <Route path="/drain" element={<DrainOldContracts />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </Suspense>
     </Layout>
   );
 }
