@@ -4,7 +4,31 @@ const NAVY = "#0C2840";
 const CYAN = "#2EC5E0";
 const LIGHT_BLUE = "#56C8E8";
 
-const STAT_TEXT = "Live betting now accounts for an average of 54% of total monthly bet amounts, with some mature European markets seeing up to 70% of total bets placed live.";
+const DEMO_VIDEO_URL = "";
+const EXTENSION_BETA_URL =
+  "https://github.com/petrkrulis2022/goal-live-project";
+const CONTACT_URL = "mailto:hello@goal.live";
+
+const DEPLOYMENTS = [
+  {
+    name: "GoalLiveBetting V1 (Sepolia)",
+    address: "0x0ac469B0DE6C5d67fb904C54A1f7cA8c8bf347Bc",
+    url: "https://sepolia.etherscan.io/address/0x0ac469B0DE6C5d67fb904C54A1f7cA8c8bf347Bc",
+  },
+  {
+    name: "Chainlink KeystoneForwarder",
+    address: "0x15fc6ae953e024d975e77382eeec56a9101f9f88",
+    url: "https://sepolia.etherscan.io/address/0x15fc6ae953e024d975e77382eeec56a9101f9f88",
+  },
+  {
+    name: "USDC (Circle Sepolia)",
+    address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+    url: "https://sepolia.etherscan.io/address/0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+  },
+];
+
+const STAT_TEXT =
+  "Live in-game betting is already larger than pre-match betting in many markets. We are bringing that real-time behavior onchain with a mainstream-first UX.";
 
 function TypewriterBanner() {
   const [displayed, setDisplayed] = useState("");
@@ -110,8 +134,8 @@ function PitchCanvas() {
         { x: w * 0.92, y: h * 0.22, r: 20 },
         { x: w * 0.04, y: h * 0.75, r: 24 },
         { x: w * 0.96, y: h * 0.68, r: 18 },
-        { x: w * 0.5,  y: h * 0.06, r: 14 },
-        { x: w * 0.5,  y: h * 0.96, r: 11 },
+        { x: w * 0.5, y: h * 0.06, r: 14 },
+        { x: w * 0.5, y: h * 0.96, r: 11 },
       ];
       nodes.forEach((n, i) => {
         const pulse = Math.sin(t * 0.02 + i * 1.1) * 0.5 + 0.5;
@@ -132,7 +156,10 @@ function PitchCanvas() {
       raf = requestAnimationFrame(draw);
     }
     draw();
-    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", resize); };
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+    };
   }, []);
 
   return <canvas ref={ref} className="absolute inset-0 pointer-events-none" />;
@@ -165,12 +192,12 @@ export default function LandingPage() {
         />
       </div>
 
-      {/* ── Main card ── */}
+      {/* Reviewer-first landing content */}
       <div
         className="relative z-10 flex flex-col items-center text-center"
-        style={{ gap: "2.5rem", padding: "2rem 1rem" }}
+        style={{ gap: "2.2rem", padding: "4.5rem 1rem 3rem" }}
       >
-        {/* Live badge — more distinctive */}
+        {/* Live badge */}
         <div
           style={{
             display: "inline-flex",
@@ -208,26 +235,43 @@ export default function LandingPage() {
           <img
             src="/logo.png"
             alt="goal.live"
-            style={{ maxWidth: 520, width: "82vw", display: "block" }}
+            style={{ maxWidth: 500, width: "80vw", display: "block" }}
           />
         </div>
 
-        {/* Tagline */}
+        {/* Hero copy */}
         <p
           style={{
             fontFamily: "'DM Serif Display', serif",
-            fontSize: "clamp(1rem, 2.2vw, 1.35rem)",
-            color: "rgba(12,40,64,0.60)",
-            maxWidth: 560,
-            lineHeight: 1.55,
+            fontSize: "clamp(1.05rem, 2.3vw, 1.45rem)",
+            color: "rgba(12,40,64,0.72)",
+            maxWidth: 760,
+            lineHeight: 1.5,
             margin: 0,
             fontStyle: "italic",
           }}
         >
-          Gamified live sports betting powered by{" "}
-          <span style={{ color: "#0A7B95", fontStyle: "normal", fontWeight: 600 }}>
+          Gamified live event prediction markets powered by{" "}
+          <span
+            style={{ color: "#0A7B95", fontStyle: "normal", fontWeight: 600 }}
+          >
             real-time on-chain odds oracles
           </span>
+        </p>
+
+        <p
+          style={{
+            margin: 0,
+            maxWidth: 820,
+            color: "rgba(12,40,64,0.78)",
+            fontFamily: "'Inter', sans-serif",
+            fontSize: "clamp(0.95rem, 1.5vw, 1.05rem)",
+            lineHeight: 1.65,
+          }}
+        >
+          We built the MVP on Sepolia for fastest Chainlink CRE development and
+          iteration. The same trust model is being prepared for Base Sepolia and
+          Base mainnet rollout.
         </p>
 
         {/* Divider */}
@@ -239,6 +283,304 @@ export default function LandingPage() {
             background: `linear-gradient(90deg, transparent, ${CYAN}, transparent)`,
           }}
         />
+
+        {/* Core sections */}
+        <div
+          style={{
+            width: "min(980px, 92vw)",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            gap: "0.9rem",
+            textAlign: "left",
+          }}
+        >
+          {[
+            {
+              title: "What Makes It Different",
+              text: "Users can place and change positions during the live match, not just before kickoff. It feels like a multiplayer game, while final settlement remains transparent and onchain.",
+            },
+            {
+              title: "Why Base Is A Fit",
+              text: "Base combines mainstream distribution through Coinbase with a fast app ecosystem. We bring a category expansion: live sports and event prediction, not only static markets.",
+            },
+            {
+              title: "Who It Is For",
+              text: "Mainstream live-event fans and communities on any device. Wallet complexity is increasingly abstracted away so non-crypto users can participate.",
+            },
+          ].map((item) => (
+            <div
+              key={item.title}
+              style={{
+                background: "rgba(255,255,255,0.72)",
+                border: "1px solid rgba(46,197,224,0.28)",
+                borderRadius: 16,
+                padding: "1rem 1rem 1.05rem",
+                boxShadow: "0 8px 24px rgba(12,40,64,0.06)",
+              }}
+            >
+              <h3
+                style={{
+                  margin: "0 0 0.45rem",
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: "0.8rem",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  color: "#0A7B95",
+                }}
+              >
+                {item.title}
+              </h3>
+              <p
+                style={{
+                  margin: 0,
+                  color: "rgba(12,40,64,0.8)",
+                  fontSize: "0.93rem",
+                  lineHeight: 1.55,
+                  fontFamily: "'Inter', sans-serif",
+                }}
+              >
+                {item.text}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* How it works */}
+        <section
+          style={{
+            width: "min(980px, 92vw)",
+            background: "rgba(255,255,255,0.76)",
+            border: "1px solid rgba(46,197,224,0.24)",
+            borderRadius: 18,
+            padding: "1rem",
+          }}
+        >
+          <h3
+            style={{
+              margin: "0 0 0.9rem",
+              fontFamily: "'DM Mono', monospace",
+              fontSize: "0.82rem",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              color: "#0A7B95",
+            }}
+          >
+            How It Works
+          </h3>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: "0.8rem",
+              textAlign: "left",
+            }}
+          >
+            {[
+              "1. Users place and adjust live bets instantly during match events.",
+              "2. Offchain services provide fast UX while preserving a verifiable audit trail.",
+              "3. Chainlink CRE triggers decentralized result settlement and onchain payouts.",
+            ].map((step) => (
+              <div
+                key={step}
+                style={{
+                  border: "1px solid rgba(12,40,64,0.1)",
+                  borderRadius: 12,
+                  padding: "0.8rem",
+                  background: "rgba(255,255,255,0.7)",
+                  fontFamily: "'Inter', sans-serif",
+                  fontSize: "0.92rem",
+                  lineHeight: 1.5,
+                  color: "rgba(12,40,64,0.84)",
+                }}
+              >
+                {step}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Media section */}
+        <section
+          id="demo"
+          style={{
+            width: "min(980px, 92vw)",
+            background: "rgba(255,255,255,0.76)",
+            border: "1px solid rgba(46,197,224,0.24)",
+            borderRadius: 18,
+            padding: "1rem",
+            textAlign: "left",
+          }}
+        >
+          <h3
+            style={{
+              margin: "0 0 0.85rem",
+              fontFamily: "'DM Mono', monospace",
+              fontSize: "0.82rem",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              color: "#0A7B95",
+            }}
+          >
+            Product Demo And Screenshots
+          </h3>
+
+          {DEMO_VIDEO_URL ? (
+            <div style={{ marginBottom: "0.9rem" }}>
+              <iframe
+                title="goal.live demo"
+                src={DEMO_VIDEO_URL}
+                style={{
+                  width: "100%",
+                  height: "min(56vw, 460px)",
+                  border: "1px solid rgba(12,40,64,0.15)",
+                  borderRadius: 12,
+                  background: "#0b1f31",
+                }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          ) : (
+            <div
+              style={{
+                border: "1px dashed rgba(12,40,64,0.3)",
+                borderRadius: 12,
+                padding: "0.9rem",
+                marginBottom: "0.9rem",
+                color: "rgba(12,40,64,0.75)",
+                background: "rgba(255,255,255,0.75)",
+                fontFamily: "'Inter', sans-serif",
+                fontSize: "0.9rem",
+              }}
+            >
+              Demo video slot is ready. Add your recording URL here after
+              upload. Champions League highlight cut can be dropped in without
+              changing layout.
+            </div>
+          )}
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: "0.8rem",
+            }}
+          >
+            {[
+              "Extension overlay view",
+              "Admin event workflow",
+              "Settlement proof view",
+            ].map((label) => (
+              <div
+                key={label}
+                style={{
+                  border: "1px dashed rgba(46,197,224,0.5)",
+                  borderRadius: 12,
+                  minHeight: 148,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textAlign: "center",
+                  padding: "0.8rem",
+                  color: "rgba(12,40,64,0.72)",
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: "0.78rem",
+                  letterSpacing: "0.03em",
+                  background:
+                    "linear-gradient(135deg, rgba(255,255,255,0.85), rgba(46,197,224,0.06))",
+                }}
+              >
+                {label}
+                <br />
+                screenshot slot
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Credibility */}
+        <section
+          style={{
+            width: "min(980px, 92vw)",
+            background: "rgba(255,255,255,0.76)",
+            border: "1px solid rgba(46,197,224,0.24)",
+            borderRadius: 18,
+            padding: "1rem",
+            textAlign: "left",
+          }}
+        >
+          <h3
+            style={{
+              margin: "0 0 0.85rem",
+              fontFamily: "'DM Mono', monospace",
+              fontSize: "0.82rem",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              color: "#0A7B95",
+            }}
+          >
+            Public Contracts And Trust Layer
+          </h3>
+          <p
+            style={{
+              margin: "0 0 0.85rem",
+              color: "rgba(12,40,64,0.78)",
+              fontFamily: "'Inter', sans-serif",
+              fontSize: "0.93rem",
+              lineHeight: 1.55,
+            }}
+          >
+            Core settlement logic is onchain. CRE orchestrates decentralized
+            reporting while users get instant product interactions in the app
+            layer.
+          </p>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+              gap: "0.6rem",
+            }}
+          >
+            {DEPLOYMENTS.map((d) => (
+              <a
+                key={d.address}
+                href={d.url}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  textDecoration: "none",
+                  border: "1px solid rgba(12,40,64,0.12)",
+                  borderRadius: 12,
+                  background: "rgba(255,255,255,0.82)",
+                  padding: "0.7rem 0.75rem",
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: "0.72rem",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "#0A7B95",
+                    marginBottom: "0.34rem",
+                  }}
+                >
+                  {d.name}
+                </div>
+                <div
+                  style={{
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: "0.78rem",
+                    color: NAVY,
+                    wordBreak: "break-all",
+                  }}
+                >
+                  {d.address}
+                </div>
+              </a>
+            ))}
+          </div>
+        </section>
 
         {/* How it works link */}
         <a
@@ -261,25 +603,42 @@ export default function LandingPage() {
             transition: "all 0.2s",
           }}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.background = `rgba(46,197,224,0.22)`;
+            (e.currentTarget as HTMLElement).style.background =
+              `rgba(46,197,224,0.22)`;
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.background = `rgba(46,197,224,0.12)`;
+            (e.currentTarget as HTMLElement).style.background =
+              `rgba(46,197,224,0.12)`;
           }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
           How it works · CRE Architecture
         </a>
 
         {/* CTA buttons */}
-        <div style={{ display: "flex", gap: "1.25rem", flexWrap: "wrap", justifyContent: "center" }}>
-          {/* Admin Platform — solid navy, very distinct */}
+        <div
+          style={{
+            display: "flex",
+            gap: "1.25rem",
+            flexWrap: "wrap",
+            justifyContent: "center",
+          }}
+        >
           <a
-            href="/dashboard"
+            href="#demo"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -297,34 +656,19 @@ export default function LandingPage() {
               transition: "all 0.2s ease",
               boxShadow: `0 4px 20px rgba(12,40,64,0.22), inset 0 1px 0 rgba(255,255,255,0.06)`,
             }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.boxShadow = `0 6px 30px rgba(12,40,64,0.35), 0 0 18px rgba(46,197,224,0.20)`;
-              (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.boxShadow = `0 4px 20px rgba(12,40,64,0.22), inset 0 1px 0 rgba(255,255,255,0.06)`;
-              (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
-            }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="7" height="7" rx="1"/>
-              <rect x="14" y="3" width="7" height="7" rx="1"/>
-              <rect x="3" y="14" width="7" height="7" rx="1"/>
-              <rect x="14" y="14" width="7" height="7" rx="1"/>
-            </svg>
-            Admin Platform
+            Watch 60s Demo
           </a>
 
-          {/* Launch App — light blue */}
           <a
-            href="https://tvgo.t-mobile.cz/"
+            href={EXTENSION_BETA_URL}
             target="_blank"
             rel="noreferrer"
             style={{
               display: "inline-flex",
               alignItems: "center",
               gap: "0.65rem",
-              padding: "0.95rem 2.4rem",
+              padding: "0.95rem 2.1rem",
               background: `linear-gradient(135deg, ${LIGHT_BLUE} 0%, ${CYAN} 100%)`,
               border: `1.5px solid rgba(255,255,255,0.35)`,
               borderRadius: 14,
@@ -338,19 +682,52 @@ export default function LandingPage() {
               boxShadow: `0 4px 22px rgba(46,197,224,0.35)`,
               textShadow: "0 1px 2px rgba(0,0,0,0.15)",
             }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.boxShadow = `0 6px 32px rgba(46,197,224,0.55)`;
-              (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.boxShadow = `0 4px 22px rgba(46,197,224,0.35)`;
-              (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+          >
+            Try Extension Beta
+          </a>
+
+          <a
+            href={CONTACT_URL}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.65rem",
+              padding: "0.95rem 2.2rem",
+              background: "rgba(255,255,255,0.7)",
+              border: `1.5px solid rgba(12,40,64,0.18)`,
+              borderRadius: 14,
+              fontFamily: "'DM Mono', monospace",
+              fontSize: "0.9rem",
+              letterSpacing: "0.07em",
+              fontWeight: 500,
+              color: NAVY,
+              textDecoration: "none",
+              transition: "all 0.2s ease",
             }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="5 3 19 12 5 21 5 3"/>
-            </svg>
-            Launch App
+            Contact Team
+          </a>
+
+          <a
+            href="/dashboard"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.65rem",
+              padding: "0.95rem 2.2rem",
+              background: "rgba(255,255,255,0.7)",
+              border: `1.5px solid rgba(46,197,224,0.38)`,
+              borderRadius: 14,
+              fontFamily: "'DM Mono', monospace",
+              fontSize: "0.9rem",
+              letterSpacing: "0.07em",
+              fontWeight: 500,
+              color: NAVY,
+              textDecoration: "none",
+              transition: "all 0.2s ease",
+            }}
+          >
+            Admin Platform
           </a>
         </div>
 
@@ -366,7 +743,8 @@ export default function LandingPage() {
             fontWeight: 600,
           }}
         >
-          Built for Chainlink Hackathon · 2026
+          Built for Chainlink Hackathon · 2026 · Availability depends on
+          jurisdiction
         </p>
       </div>
 
