@@ -4,10 +4,85 @@ const NAVY = "#0C2840";
 const CYAN = "#2EC5E0";
 const LIGHT_BLUE = "#56C8E8";
 
-const DEMO_VIDEO_URL = "";
+const DEMO_VIDEO_URL =
+  "/media/videos/AI_Betting_Experience_In_Football_Broadcast.mp4";
+const SECONDARY_DEMO_VIDEO_URL = "/media/videos/Arsenal_Goal_From_Live_Bet.mp4";
 const EXTENSION_BETA_URL =
   "https://github.com/petrkrulis2022/goal-live-project";
 const CONTACT_URL = "mailto:hello@goal.live";
+
+const SCREENSHOTS = [
+  {
+    title: "Live product screenshot",
+    description:
+      "Current overlay experience shown directly from the working MVP.",
+    src: "/media/images/goal.live%20screenshot.jpg",
+  },
+  {
+    title: "Broadcast integration concept",
+    description:
+      "AI-generated visual showing how betting can sit naturally inside a live stream.",
+    src: "/media/images/Gemini_Generated_Image_1z82a81z82a81z82.png",
+  },
+  {
+    title: "Match drama and instant reaction",
+    description:
+      "Concept frame for the emotional speed of live in-game prediction shifts.",
+    src: "/media/images/Gemini_Generated_Image_a9tevaa9tevaa9te.png",
+  },
+  {
+    title: "Instant win celebration concept",
+    description:
+      "Visual direction for the emotional payoff when a live pick lands at the perfect moment.",
+    src: "/media/images/Gemini_Generated_Image_myjrimyjrimyjrim.png",
+  },
+  {
+    title: "Broadcast overlay interaction concept",
+    description:
+      "A sharper product vision for overlay controls inside the live viewing experience.",
+    src: "/media/images/Gemini_Generated_Image_y1ko97y1ko97y1ko.png",
+  },
+  {
+    title: "Multi-event market expansion",
+    description:
+      "Creative direction for taking the same mechanic beyond a single sporting format.",
+    src: "/media/images/Gemini_Generated_Image_ydrk36ydrk36ydrk.png",
+  },
+  {
+    title: "High-stakes live momentum concept",
+    description:
+      "Creative image capturing the speed, tension, and clarity of the live prediction interface.",
+    src: "/media/images/Gemini_Generated_Image_zhk7wvzhk7wvzhk7.png",
+  },
+];
+
+const PROMO_VIDEOS = [
+  {
+    title: "Chelsea win live betting summary",
+    src: "/media/videos/Chelsea_Wins_Big_Live_Betting_Summary.mp4",
+  },
+  {
+    title: "Real-time multiplayer betting",
+    src: "/media/videos/Real_Time_Multiplayer_Betting_Video.mp4",
+  },
+  {
+    title: "Bet switching video generation",
+    src: "/media/videos/Bet_Switching_Video_Generation.mp4",
+  },
+  {
+    title: "User win notification moment",
+    src: "/media/videos/User_Wins_Game_Receives_Notification.mp4",
+  },
+];
+
+const REAL_RECORDINGS = [
+  {
+    title: "Current live product recording",
+    description:
+      "Raw recorded session from the working experience. Useful for reviewer proof while polished edits are still coming.",
+    src: "/media/recordings/2026-03-08%2019-42-23.mkv",
+  },
+];
 
 const DEPLOYMENTS = [
   {
@@ -424,75 +499,284 @@ export default function LandingPage() {
             Product Demo And Screenshots
           </h3>
 
-          {DEMO_VIDEO_URL ? (
-            <div style={{ marginBottom: "0.9rem" }}>
-              <iframe
-                title="goal.live demo"
-                src={DEMO_VIDEO_URL}
-                style={{
-                  width: "100%",
-                  height: "min(56vw, 460px)",
-                  border: "1px solid rgba(12,40,64,0.15)",
-                  borderRadius: 12,
-                  background: "#0b1f31",
-                }}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(0, 1.6fr) minmax(260px, 0.9fr)",
+              gap: "0.9rem",
+              marginBottom: "0.9rem",
+            }}
+          >
             <div
               style={{
-                border: "1px dashed rgba(12,40,64,0.3)",
-                borderRadius: 12,
-                padding: "0.9rem",
-                marginBottom: "0.9rem",
-                color: "rgba(12,40,64,0.75)",
-                background: "rgba(255,255,255,0.75)",
-                fontFamily: "'Inter', sans-serif",
-                fontSize: "0.9rem",
+                display: "grid",
+                gap: "0.75rem",
               }}
             >
-              Demo video slot is ready. Add your recording URL here after
-              upload. Champions League highlight cut can be dropped in without
-              changing layout.
+              <div
+                style={{
+                  border: "1px solid rgba(12,40,64,0.12)",
+                  borderRadius: 14,
+                  background: "rgba(255,255,255,0.84)",
+                  overflow: "hidden",
+                }}
+              >
+                <video
+                  controls
+                  preload="metadata"
+                  poster={SCREENSHOTS[0].src}
+                  style={{
+                    width: "100%",
+                    display: "block",
+                    background: "#071727",
+                    aspectRatio: "16 / 9",
+                  }}
+                >
+                  <source src={DEMO_VIDEO_URL} type="video/mp4" />
+                </video>
+                <div style={{ padding: "0.85rem 0.95rem" }}>
+                  <div
+                    style={{
+                      fontFamily: "'DM Mono', monospace",
+                      fontSize: "0.75rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      color: "#0A7B95",
+                      marginBottom: "0.35rem",
+                    }}
+                  >
+                    Main Product Demo
+                  </div>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontFamily: "'Inter', sans-serif",
+                      fontSize: "0.92rem",
+                      lineHeight: 1.55,
+                      color: "rgba(12,40,64,0.8)",
+                    }}
+                  >
+                    Fast walkthrough of the live betting experience inside the
+                    broadcast flow. This is the primary reviewer video and will
+                    later be replaced or complemented by tomorrow's edited
+                    Champions League cut.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  border: "1px solid rgba(12,40,64,0.1)",
+                  borderRadius: 12,
+                  background: "rgba(255,255,255,0.82)",
+                  overflow: "hidden",
+                }}
+              >
+                <video
+                  controls
+                  preload="metadata"
+                  style={{
+                    width: "100%",
+                    display: "block",
+                    background: "#0b1f31",
+                    aspectRatio: "16 / 9",
+                  }}
+                >
+                  <source src={SECONDARY_DEMO_VIDEO_URL} type="video/mp4" />
+                </video>
+                <div
+                  style={{
+                    padding: "0.75rem 0.85rem",
+                    fontFamily: "'Inter', sans-serif",
+                    fontSize: "0.86rem",
+                    lineHeight: 1.5,
+                    color: "rgba(12,40,64,0.8)",
+                  }}
+                >
+                  Arsenal goal clip showing the emotional payoff of shifting a
+                  live position at exactly the right moment.
+                </div>
+              </div>
             </div>
-          )}
+
+            <div
+              style={{
+                display: "grid",
+                gap: "0.75rem",
+              }}
+            >
+              {PROMO_VIDEOS.map((video) => (
+                <div
+                  key={video.src}
+                  style={{
+                    border: "1px solid rgba(12,40,64,0.1)",
+                    borderRadius: 12,
+                    background: "rgba(255,255,255,0.82)",
+                    overflow: "hidden",
+                  }}
+                >
+                  <video
+                    controls
+                    preload="metadata"
+                    style={{
+                      width: "100%",
+                      display: "block",
+                      background: "#0b1f31",
+                      aspectRatio: "16 / 9",
+                    }}
+                  >
+                    <source src={video.src} type="video/mp4" />
+                  </video>
+                  <div
+                    style={{
+                      padding: "0.65rem 0.75rem",
+                      fontFamily: "'Inter', sans-serif",
+                      fontSize: "0.85rem",
+                      color: "rgba(12,40,64,0.8)",
+                    }}
+                  >
+                    {video.title}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
               gap: "0.8rem",
+              marginBottom: "0.9rem",
             }}
           >
-            {[
-              "Extension overlay view",
-              "Admin event workflow",
-              "Settlement proof view",
-            ].map((label) => (
-              <div
-                key={label}
+            {SCREENSHOTS.map((shot) => (
+              <figure
+                key={shot.src}
                 style={{
-                  border: "1px dashed rgba(46,197,224,0.5)",
+                  border: "1px solid rgba(46,197,224,0.24)",
                   borderRadius: 12,
-                  minHeight: 148,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  textAlign: "center",
-                  padding: "0.8rem",
-                  color: "rgba(12,40,64,0.72)",
-                  fontFamily: "'DM Mono', monospace",
-                  fontSize: "0.78rem",
-                  letterSpacing: "0.03em",
-                  background:
-                    "linear-gradient(135deg, rgba(255,255,255,0.85), rgba(46,197,224,0.06))",
+                  overflow: "hidden",
+                  background: "rgba(255,255,255,0.84)",
+                  margin: 0,
                 }}
               >
-                {label}
-                <br />
-                screenshot slot
+                <img
+                  src={shot.src}
+                  alt={shot.title}
+                  style={{
+                    width: "100%",
+                    display: "block",
+                    aspectRatio: "16 / 10",
+                    objectFit: "cover",
+                    background: "#e8eef5",
+                  }}
+                />
+                <figcaption style={{ padding: "0.75rem 0.8rem 0.85rem" }}>
+                  <div
+                    style={{
+                      fontFamily: "'DM Mono', monospace",
+                      fontSize: "0.72rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      color: "#0A7B95",
+                      marginBottom: "0.3rem",
+                    }}
+                  >
+                    {shot.title}
+                  </div>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontFamily: "'Inter', sans-serif",
+                      fontSize: "0.84rem",
+                      lineHeight: 1.5,
+                      color: "rgba(12,40,64,0.78)",
+                    }}
+                  >
+                    {shot.description}
+                  </p>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+
+          <div
+            style={{
+              border: "1px solid rgba(12,40,64,0.1)",
+              borderRadius: 12,
+              background: "rgba(255,255,255,0.82)",
+              padding: "0.85rem 0.95rem",
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "'DM Mono', monospace",
+                fontSize: "0.75rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                color: "#0A7B95",
+                marginBottom: "0.45rem",
+              }}
+            >
+              Real Product Recording
+            </div>
+            {REAL_RECORDINGS.map((recording) => (
+              <div
+                key={recording.src}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "0.8rem",
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ flex: "1 1 360px" }}>
+                  <div
+                    style={{
+                      fontFamily: "'Inter', sans-serif",
+                      fontSize: "0.92rem",
+                      fontWeight: 600,
+                      color: NAVY,
+                      marginBottom: "0.25rem",
+                    }}
+                  >
+                    {recording.title}
+                  </div>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontFamily: "'Inter', sans-serif",
+                      fontSize: "0.86rem",
+                      lineHeight: 1.5,
+                      color: "rgba(12,40,64,0.76)",
+                    }}
+                  >
+                    {recording.description}
+                  </p>
+                </div>
+                <a
+                  href={recording.src}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "0.8rem 1.1rem",
+                    borderRadius: 10,
+                    textDecoration: "none",
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: "0.78rem",
+                    letterSpacing: "0.06em",
+                    background: "rgba(46,197,224,0.12)",
+                    border: "1px solid rgba(46,197,224,0.3)",
+                    color: NAVY,
+                  }}
+                >
+                  Open Recording
+                </a>
               </div>
             ))}
           </div>

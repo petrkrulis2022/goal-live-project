@@ -39,3 +39,6 @@ deployments/
 
 # Supabase local temp
 supabase/.temp/
+
+# Keep large local recordings out of git
+admin/public/media/recordings/*.mkv
