@@ -108,6 +108,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
   const [autoOpenedClaimForMatch, setAutoOpenedClaimForMatch] = useState<
     string | null
   >(null);
+  const [fundingConfirmed, setFundingConfirmed] = useState(false);
 
   // Compute estimated payout from settled-won bets
   const settledWonBets = bets.filter((b) => b.status === "settled_won");
@@ -316,10 +317,23 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     [bets],
   );
 
+  const isFinished = match?.status === "finished";
+  const isPreMatch = match?.status === "pre-match";
+  const isMatchFunded =
+    fundingConfirmed || (matchBalanceInfo?.deposit ?? 0) > 0;
+
+  useEffect(() => {
+    setFundingConfirmed(false);
+  }, [matchKey, match?.id, match?.dbId]);
+
   const handlePlayerClick = useCallback(
     (player: Player) => {
       if (!wallet) {
         connect();
+        return;
+      }
+      if (!isMatchFunded) {
+        if (match?.contractAddress) setModal({ type: "fundmatch" });
         return;
       }
       if (!activeNgsBet) {
@@ -330,7 +344,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
         setModal({ type: "change", bet: activeNgsBet, toPlayer: player });
       }
     },
-    [wallet, connect, activeNgsBet],
+    [wallet, connect, activeNgsBet, isMatchFunded, match?.contractAddress],
   );
 
   const handleConfirmChange = useCallback(
@@ -378,8 +392,29 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     ? (players.find((p) => p.id === activeNgsBet.current_player_id) ?? null)
     : null;
 
-  const isFinished = match?.status === "finished";
-  const isPreMatch = match?.status === "pre-match";
+  const handlePlaceBet = useCallback(
+    async (params: {
+      betType: "NEXT_GOAL_SCORER" | "MATCH_WINNER" | "EXACT_GOALS";
+      playerId?: string;
+      outcome?: MatchWinnerOutcome;
+      goalsTarget?: number;
+      amount: number;
+      odds: number;
+      currentMinute: number;
+      goalWindow: number;
+      matchId: string;
+    }) => {
+      if (!isMatchFunded) {
+        if (wallet && match?.contractAddress) setModal({ type: "fundmatch" });
+        return {
+          success: false,
+          error: "Fund this match first before placing bets.",
+        };
+      }
+      return placeBet(params);
+    },
+    [isMatchFunded, wallet, match?.contractAddress, placeBet],
+  );
 
   if (loading) return null;
 
@@ -556,7 +591,11 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
                       <button
                         key={goals}
                         onClick={() =>
-                          wallet ? setModal({ type: "eg", goals }) : connect()
+                          wallet
+                            ? isMatchFunded
+                              ? setModal({ type: "eg", goals })
+                              : setModal({ type: "fundmatch" })
+                            : connect()
                         }
                         className="gl-interactive"
                         style={{
@@ -752,7 +791,11 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             mwOdds={mwOdds}
             getMwBet={(o) => !!getMwBet(o)}
             onMwBet={(o) =>
-              wallet ? setModal({ type: "mw", outcome: o }) : connect()
+              wallet
+                ? isMatchFunded
+                  ? setModal({ type: "mw", outcome: o })
+                  : setModal({ type: "fundmatch" })
+                : connect()
             }
             isFinished={isFinished}
           />
@@ -863,7 +906,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
                 isSettled={!!settled}
                 settledWon={settled?.status === "settled_won"}
                 onClick={handlePlayerClick}
-                disabled={isFinished}
+                disabled={isFinished || !isMatchFunded}
                 alignRight={false}
               />
             );
@@ -934,7 +977,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
                 isSettled={!!settled}
                 settledWon={settled?.status === "settled_won"}
                 onClick={handlePlayerClick}
-                disabled={isFinished}
+                disabled={isFinished || !isMatchFunded}
                 alignRight={true}
               />
             );
@@ -1104,7 +1147,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           matchId={match?.id ?? ""}
           balance={balance}
           activeBet={activeNgsBet}
-          onPlaceBet={placeBet}
+          onPlaceBet={handlePlaceBet}
           onChangeBet={changeBet}
           onClose={() => setModal(null)}
         />
@@ -1118,7 +1161,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           matchId={match?.id ?? ""}
           balance={balance}
           activeBet={activeMwBet}
-          onPlaceBet={placeBet}
+          onPlaceBet={handlePlaceBet}
           onChangeBet={changeBet}
           onClose={() => setModal(null)}
         />
@@ -1135,7 +1178,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           matchId={match?.id ?? ""}
           balance={balance}
           activeBet={getEgBet(modal.goals)}
-          onPlaceBet={placeBet}
+          onPlaceBet={handlePlaceBet}
           onChangeBet={changeBet}
           onClose={() => setModal(null)}
         />
@@ -1158,7 +1201,10 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           matchLabel={`${match.homeTeam} vs ${match.awayTeam}`}
           onClose={() => setModal(null)}
           onFunded={(amt) => deductBalance(amt)}
-          onSuccess={() => window.dispatchEvent(new Event("gl:balanceRefresh"))}
+          onSuccess={() => {
+            setFundingConfirmed(true);
+            window.dispatchEvent(new Event("gl:balanceRefresh"));
+          }}
         />
       )}
       {modal?.type === "topup" && wallet && (
