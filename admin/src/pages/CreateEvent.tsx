@@ -12,6 +12,7 @@ const SPORT_TO_GS_LEAGUE: Record<string, string> = {
   soccer_spain_la_liga: "1399",
   soccer_italy_serie_a: "1269",
   soccer_france_ligue_1: "1221",
+  soccer_uefa_champs_league: "1005",
   soccer_uefa_europa_league: "1007",
   soccer_uefa_europa_conference_league: "1009",
 };
@@ -21,6 +22,7 @@ const SPORT_LABELS: Record<string, string> = {
   soccer_spain_la_liga: "La Liga",
   soccer_italy_serie_a: "Serie A",
   soccer_france_ligue_1: "Ligue 1",
+  soccer_uefa_champs_league: "UEFA Champions League",
   soccer_uefa_europa_league: "UEFA Europa League",
   soccer_uefa_europa_conference_league: "UEFA Europa Conference League",
 };
@@ -37,6 +39,9 @@ const SPORT_COLOR: Record<string, { badge: string }> = {
   },
   soccer_france_ligue_1: {
     badge: "bg-sky-400/15 text-sky-400 border-sky-400/25",
+  },
+  soccer_uefa_champs_league: {
+    badge: "bg-indigo-400/15 text-indigo-400 border-indigo-400/25",
   },
   soccer_uefa_europa_league: {
     badge: "bg-orange-400/15 text-orange-400 border-orange-400/25",
@@ -166,6 +171,7 @@ export default function CreateEvent() {
           "soccer_spain_la_liga",
           "soccer_italy_serie_a",
           "soccer_france_ligue_1",
+          "soccer_uefa_champs_league",
           "soccer_uefa_europa_league",
           "soccer_uefa_europa_conference_league",
         ];
@@ -577,7 +583,7 @@ export default function CreateEvent() {
           <span className="text-base">🏆</span>
           <h2 className="text-sm font-bold text-white">Upcoming Fixtures</h2>
           <span className="ml-auto text-[10px] text-gray-500 uppercase tracking-wider font-medium">
-            EPL · UEL · UECL · next 7 days
+            EPL · UCL · UEL · UECL · next 7 days
           </span>
         </div>
 
