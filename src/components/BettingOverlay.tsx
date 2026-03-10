@@ -41,6 +41,7 @@ import { SettlementDisplay } from "./SettlementDisplay";
 import { TopUpModal } from "./TopUpModal";
 import { WithdrawModal } from "./WithdrawModal";
 import { FundMatchModal } from "./FundMatchModal";
+import { PostMatchClaimModal } from "./PostMatchClaimModal";
 import type { Player, Bet } from "../types";
 import type { MatchWinnerOutcome } from "../types";
 import { tryUnmuteVideo } from "../utils/videoUtils";
@@ -53,6 +54,7 @@ type ModalState =
   | { type: "topup" }
   | { type: "fundmatch" }
   | { type: "withdraw" }
+  | { type: "claim" }
   | null;
 
 const MW_OUTCOMES: Array<{ outcome: MatchWinnerOutcome; label: string }> = [
@@ -101,6 +103,20 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMatches, setPickerMatches] = useState<MatchRow[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
+  const [autoOpenedClaimForMatch, setAutoOpenedClaimForMatch] = useState<string | null>(null);
+
+  // Compute estimated payout from settled-won bets
+  const settledWonBets = bets.filter((b) => b.status === "settled_won");
+  const estimatedClaimAmount = settledWonBets.reduce(
+    (sum, b) => sum + b.current_amount * b.odds,
+    0,
+  );
+
+  // Current claimable amount (only if balancesSettled and not withdrawn)
+  const claimableAmount =
+    matchBalanceInfo?.balancesSettled && !matchBalanceInfo.withdrawn
+      ? matchBalanceInfo.balance
+      : 0;
 
   useEffect(() => {
     if (!showPicker) return;
@@ -292,6 +308,29 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     },
     [modal, changeBet, match],
   );
+
+  const handleClaimMatchPayout = useCallback(async (): Promise<string> => {
+    if (!match?.contractAddress || !matchKey) {
+      throw new Error("Match payout is not available yet.");
+    }
+    const txHash = await matchContractService.withdraw(
+      match.contractAddress,
+      matchKey,
+    );
+    window.dispatchEvent(new Event("gl:balanceRefresh"));
+    return txHash;
+  }, [match?.contractAddress, matchKey]);
+
+  // Auto-open claim modal once per finished match
+  useEffect(() => {
+    if (!isFinished || !match) return;
+    const finishedKey =
+      matchKey ?? match.dbId ?? match.id ?? `${match.homeTeam}-${match.awayTeam}`;
+    if (!finishedKey) return;
+    if (autoOpenedClaimForMatch === finishedKey) return;
+    setAutoOpenedClaimForMatch(finishedKey);
+    setModal((prev) => prev ?? { type: "claim" });
+  }, [autoOpenedClaimForMatch, isFinished, match, matchKey]);
 
   const currentBetPlayer = activeNgsBet
     ? (players.find((p) => p.id === activeNgsBet.current_player_id) ?? null)
@@ -710,15 +749,9 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
               !matchBalanceInfo.withdrawn &&
               matchBalanceInfo.balance > 0
                 ? () => {
-                    if (!match?.contractAddress || !matchKey) return;
-                    matchContractService
-                      .withdraw(match.contractAddress, matchKey)
-                      .then(() =>
-                        window.dispatchEvent(new Event("gl:balanceRefresh")),
-                      )
-                      .catch((e: unknown) =>
-                        console.error("[withdraw match] failed", e),
-                      );
+                    void handleClaimMatchPayout().catch((e: unknown) =>
+                      console.error("[withdraw match] failed", e),
+                    );
                   }
                 : undefined
             }
@@ -1010,6 +1043,12 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             balance={balance}
             players={players}
             onSwitchEvent={() => setShowPicker(true)}
+            onOpenClaim={() => setModal({ type: "claim" })}
+            walletConnected={!!wallet?.connected}
+            estimatedClaimAmount={estimatedClaimAmount}
+            claimableAmount={claimableAmount}
+            balancesSettled={!!matchBalanceInfo?.balancesSettled}
+            withdrawn={!!matchBalanceInfo?.withdrawn}
           />
         </div>
       )}
@@ -1100,6 +1139,21 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           playerAddress={wallet.playerAddress}
           onWithdraw={withdraw}
           onSavePlayerAddress={setPlayerAddress}
+          onClose={() => setModal(null)}
+        />
+      )}
+
+      {modal?.type === "claim" && match && (
+        <PostMatchClaimModal
+          matchLabel={`${match.homeTeam} vs ${match.awayTeam}`}
+          walletConnected={!!wallet?.connected}
+          walletAddress={wallet?.address ?? null}
+          estimatedPayout={estimatedClaimAmount}
+          claimableAmount={claimableAmount}
+          balancesSettled={!!matchBalanceInfo?.balancesSettled}
+          withdrawn={!!matchBalanceInfo?.withdrawn}
+          onConnect={connect}
+          onClaim={handleClaimMatchPayout}
           onClose={() => setModal(null)}
         />
       )}

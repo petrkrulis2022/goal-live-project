@@ -7,6 +7,12 @@ interface SettlementDisplayProps {
   balance: BalanceState;
   players: Player[];
   onSwitchEvent: () => void;
+  onOpenClaim: () => void;
+  walletConnected: boolean;
+  estimatedClaimAmount: number;
+  claimableAmount: number;
+  balancesSettled: boolean;
+  withdrawn: boolean;
 }
 
 function playerName(bet: Bet, players: Player[]): string {
@@ -26,6 +32,12 @@ export const SettlementDisplay: React.FC<SettlementDisplayProps> = ({
   balance,
   players,
   onSwitchEvent,
+  onOpenClaim,
+  walletConnected,
+  estimatedClaimAmount,
+  claimableAmount,
+  balancesSettled,
+  withdrawn,
 }) => {
   const won = bets.filter((b) => b.status === "settled_won");
   const lost = bets.filter((b) => b.status === "settled_lost");
@@ -103,6 +115,61 @@ export const SettlementDisplay: React.FC<SettlementDisplayProps> = ({
           ))}
         </div>
       )}
+
+      {/* Post-match claim summary */}
+      <div className="mb-4 rounded-xl border border-white/10 bg-white/5 px-3 py-3">
+        <p className="text-[11px] uppercase tracking-wide text-gray-400">
+          Post-match claim
+        </p>
+
+        {!walletConnected ? (
+          <p className="mt-1 text-sm font-semibold text-white">
+            Connect wallet to view your possible payout
+          </p>
+        ) : withdrawn ? (
+          <p className="mt-1 text-sm font-semibold text-gray-300">
+            Already claimed
+          </p>
+        ) : balancesSettled ? (
+          claimableAmount > 0 ? (
+            <>
+              <p className="mt-1 text-sm font-semibold text-emerald-300">
+                Ready to claim
+              </p>
+              <p className="text-2xl font-black text-white">
+                ${claimableAmount.toFixed(2)}
+              </p>
+            </>
+          ) : (
+            <p className="mt-1 text-sm font-semibold text-gray-300">
+              No funds left to claim
+            </p>
+          )
+        ) : (
+          <>
+            <p className="mt-1 text-sm font-semibold text-sky-300">
+              Possible winnings
+            </p>
+            <p className="text-2xl font-black text-white">
+              ${estimatedClaimAmount.toFixed(2)}
+            </p>
+            <p className="mt-1 text-[11px] text-gray-400">
+              Claim becomes available after official goal.live settlement.
+            </p>
+          </>
+        )}
+
+        <button
+          onClick={onOpenClaim}
+          className="mt-3 w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-bold text-white hover:bg-white/15 transition-colors"
+        >
+          {!walletConnected
+            ? "Connect Wallet"
+            : balancesSettled && !withdrawn && claimableAmount > 0
+              ? "Claim Winnings"
+              : "View Claim Status"}
+        </button>
+      </div>
 
       {/* Buttons */}
       <div>
