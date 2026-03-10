@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useWallet } from "../hooks/useWallet";
 
 const SB_URL = "https://weryswulejhjkrmervnf.supabase.co";
@@ -42,6 +42,7 @@ import { TopUpModal } from "./TopUpModal";
 import { WithdrawModal } from "./WithdrawModal";
 import { FundMatchModal } from "./FundMatchModal";
 import { PostMatchClaimModal } from "./PostMatchClaimModal";
+import { GoalWinCelebration } from "./GoalWinCelebration";
 import type { Player, Bet } from "../types";
 import type { MatchWinnerOutcome } from "../types";
 import { tryUnmuteVideo } from "../utils/videoUtils";
@@ -55,6 +56,7 @@ type ModalState =
   | { type: "fundmatch" }
   | { type: "withdraw" }
   | { type: "claim" }
+  | { type: "goalWin"; playerName: string }
   | null;
 
 const MW_OUTCOMES: Array<{ outcome: MatchWinnerOutcome; label: string }> = [
@@ -103,7 +105,9 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMatches, setPickerMatches] = useState<MatchRow[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
-  const [autoOpenedClaimForMatch, setAutoOpenedClaimForMatch] = useState<string | null>(null);
+  const [autoOpenedClaimForMatch, setAutoOpenedClaimForMatch] = useState<
+    string | null
+  >(null);
 
   // Compute estimated payout from settled-won bets
   const settledWonBets = bets.filter((b) => b.status === "settled_won");
@@ -235,6 +239,41 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     null | "A" | "B" | "C" | "D"
   >(null);
 
+  // Goal celebration
+  const [celebrationPlayer, setCelebrationPlayer] = useState<string | null>(
+    null,
+  );
+  const prevScoreRef = useRef<{
+    home: number;
+    away: number;
+  }>({ home: 0, away: 0 });
+
+  // Detect goal scoring and trigger celebration
+  useEffect(() => {
+    if (!match) return;
+    const home = match.scoreHome ?? 0;
+    const away = match.scoreAway ?? 0;
+    const prevScore = prevScoreRef.current;
+
+    let goalScorer: string | null = null;
+
+    if (home > prevScore.home) {
+      goalScorer =
+        homePlayers.length > 0 ? (homePlayers[0].name ?? "Home Team") : "Goal!";
+    } else if (away > prevScore.away) {
+      goalScorer =
+        awayPlayers.length > 0 ? (awayPlayers[0].name ?? "Away Team") : "Goal!";
+    }
+
+    if (goalScorer) {
+      setCelebrationPlayer(goalScorer);
+      setModal({ type: "goalWin", playerName: goalScorer });
+      setTimeout(() => setCelebrationPlayer(null), 5000);
+    }
+
+    prevScoreRef.current = { home, away };
+  }, [match?.scoreHome, match?.scoreAway, homePlayers, awayPlayers, match]);
+
   const leftLineup = panelFlipped ? awayLineup : homeLineup;
   const rightLineup = panelFlipped ? homeLineup : awayLineup;
   const leftTeamName = panelFlipped ? match?.awayTeam : match?.homeTeam;
@@ -325,7 +364,10 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
   useEffect(() => {
     if (!isFinished || !match) return;
     const finishedKey =
-      matchKey ?? match.dbId ?? match.id ?? `${match.homeTeam}-${match.awayTeam}`;
+      matchKey ??
+      match.dbId ??
+      match.id ??
+      `${match.homeTeam}-${match.awayTeam}`;
     if (!finishedKey) return;
     if (autoOpenedClaimForMatch === finishedKey) return;
     setAutoOpenedClaimForMatch(finishedKey);
@@ -1154,6 +1196,13 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           withdrawn={!!matchBalanceInfo?.withdrawn}
           onConnect={connect}
           onClaim={handleClaimMatchPayout}
+          onClose={() => setModal(null)}
+        />
+      )}
+
+      {modal?.type === "goalWin" && (
+        <GoalWinCelebration
+          playerName={modal.playerName}
           onClose={() => setModal(null)}
         />
       )}

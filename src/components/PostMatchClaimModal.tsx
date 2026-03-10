@@ -32,7 +32,7 @@ export const PostMatchClaimModal: React.FC<PostMatchClaimModalProps> = ({
   const shortWallet =
     walletAddress && walletAddress.length > 10
       ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
-      : walletAddress ?? null;
+      : (walletAddress ?? null);
 
   const showEstimated = walletConnected && !balancesSettled;
   const showClaimable =
@@ -83,12 +83,14 @@ export const PostMatchClaimModal: React.FC<PostMatchClaimModalProps> = ({
           <>
             <div className="mb-4 rounded-xl border border-amber-500/20 bg-amber-950/20 px-4 py-3">
               <p className="text-sm font-semibold text-amber-200">
-                Connect your wallet to see your possible winnings or remaining amount to claim.
+                Connect your wallet to see your possible winnings or remaining
+                amount to claim.
               </p>
             </div>
 
             <p className="mb-4 text-xs leading-relaxed text-gray-400">
-              Note: the claim is possible only after goal.live officially settles the game.
+              Note: the claim is possible only after goal.live officially
+              settles the game.
             </p>
 
             <button
@@ -116,9 +118,9 @@ export const PostMatchClaimModal: React.FC<PostMatchClaimModalProps> = ({
                 Official settlement still pending
               </p>
               <p className="mt-1 text-xs leading-relaxed text-gray-400">
-                Note: the claim is possible only after goal.live officially settles the game.
-                Once settlement is complete, any winnings or remaining funds for this match
-                will become claimable here.
+                Note: the claim is possible only after goal.live officially
+                settles the game. Once settlement is complete, any winnings or
+                remaining funds for this match will become claimable here.
               </p>
             </div>
 
@@ -152,7 +154,8 @@ export const PostMatchClaimModal: React.FC<PostMatchClaimModalProps> = ({
             )}
 
             <p className="mb-4 text-xs leading-relaxed text-gray-400">
-              This claims your settled match balance from the match contract to your connected wallet.
+              This claims your settled match balance from the match contract to
+              your connected wallet.
             </p>
 
             <button
@@ -172,9 +175,12 @@ export const PostMatchClaimModal: React.FC<PostMatchClaimModalProps> = ({
         {!txHash && withdrawn && (
           <>
             <div className="mb-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-              <p className="text-sm font-semibold text-white">Already claimed</p>
+              <p className="text-sm font-semibold text-white">
+                Already claimed
+              </p>
               <p className="mt-1 text-xs text-gray-400">
-                Your post-match payout for this event has already been withdrawn.
+                Your post-match payout for this event has already been
+                withdrawn.
               </p>
             </div>
 
@@ -190,9 +196,12 @@ export const PostMatchClaimModal: React.FC<PostMatchClaimModalProps> = ({
         {!txHash && showNothingLeft && (
           <>
             <div className="mb-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-              <p className="text-sm font-semibold text-white">No funds left to claim</p>
+              <p className="text-sm font-semibold text-white">
+                No funds left to claim
+              </p>
               <p className="mt-1 text-xs text-gray-400">
-                This match is settled and there is no remaining payout for this wallet.
+                This match is settled and there is no remaining payout for this
+                wallet.
               </p>
             </div>
 
