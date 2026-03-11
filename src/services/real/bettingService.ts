@@ -261,6 +261,7 @@ class SupabaseBettingService implements IBettingService {
     const locked = active.reduce((s, b) => s + b.current_amount, 0);
     // bets are already filtered per-match, so lockedThisGame === locked
     const lockedThisGame = locked;
+    const slashedThisGame = bets.reduce((s, b) => s + b.total_penalties, 0);
     const potentialPayout = active.reduce(
       (s, b) => s + b.current_amount * b.odds,
       0,
@@ -269,6 +270,7 @@ class SupabaseBettingService implements IBettingService {
       wallet: 0,
       locked,
       lockedThisGame,
+      slashedThisGame,
       available: 0,
       provisional,
       potentialPayout,

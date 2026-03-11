@@ -196,6 +196,25 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
               >
                 game
               </span>
+              {balance.slashedThisGame > 0 && (
+                <>
+                  {sep}
+                  <span
+                    style={{
+                      color: "#f87171",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    ✂ ${balance.slashedThisGame.toFixed(2)}
+                  </span>
+                  <span
+                    style={{ color: "rgba(255,255,255,0.35)", fontSize: "9px" }}
+                  >
+                    slashed
+                  </span>
+                </>
+              )}
               {sep}
               <span
                 style={{ color: "#a78bfa", fontSize: "10px", fontWeight: 600 }}

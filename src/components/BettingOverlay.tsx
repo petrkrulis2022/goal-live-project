@@ -36,7 +36,6 @@ import { MatchInfo } from "./MatchInfo";
 import { BalanceDisplay } from "./BalanceDisplay";
 import { PlayerButton } from "./PlayerButton";
 import { BetModal } from "./BetModal";
-import { BetChangeModal } from "./BetChangeModal";
 import { SettlementDisplay } from "./SettlementDisplay";
 import { TopUpModal } from "./TopUpModal";
 import { WithdrawModal } from "./WithdrawModal";
@@ -46,12 +45,12 @@ import { GoalWinCelebration } from "./GoalWinCelebration";
 import type { Player, Bet } from "../types";
 import type { MatchWinnerOutcome } from "../types";
 import { tryUnmuteVideo } from "../utils/videoUtils";
+import { calcPenalty } from "../utils/penaltyCalculator";
 
 type ModalState =
   | { type: "player"; player: Player }
   | { type: "mw"; outcome: MatchWinnerOutcome }
   | { type: "eg"; goals: number }
-  | { type: "change"; bet: Bet; toPlayer?: Player }
   | { type: "topup" }
   | { type: "fundmatch" }
   | { type: "withdraw" }
@@ -109,6 +108,14 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     string | null
   >(null);
   const [fundingConfirmed, setFundingConfirmed] = useState(false);
+  const [quickChanging, setQuickChanging] = useState(false);
+  const [slashingFlash, setSlashingFlash] = useState<{
+    label: string;
+    amount: number;
+  } | null>(null);
+  const slashingFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // Compute estimated payout from settled-won bets
   const settledWonBets = bets.filter((b) => b.status === "settled_won");
@@ -306,6 +313,10 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     bets.find((b) => b.betType === "MATCH_WINNER" && b.status === "active") ??
     null;
 
+  const activeEgBet =
+    bets.find((b) => b.betType === "EXACT_GOALS" && b.status === "active") ??
+    null;
+
   const getEgBet = useCallback(
     (goals: number) =>
       bets.find(
@@ -326,8 +337,66 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     setFundingConfirmed(false);
   }, [matchKey, match?.id, match?.dbId]);
 
+  useEffect(
+    () => () => {
+      if (slashingFlashTimerRef.current) {
+        clearTimeout(slashingFlashTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  const showSlashingFlash = useCallback((label: string, amount: number) => {
+    setSlashingFlash({ label, amount });
+    if (slashingFlashTimerRef.current)
+      clearTimeout(slashingFlashTimerRef.current);
+    slashingFlashTimerRef.current = setTimeout(() => {
+      setSlashingFlash(null);
+    }, 2000);
+  }, []);
+
+  const quickSwitchBet = useCallback(
+    async (
+      bet: Bet,
+      next: {
+        label: string;
+        newPlayerId?: string;
+        newOutcome?: MatchWinnerOutcome;
+        newOdds: number;
+      },
+    ) => {
+      if (quickChanging) return;
+      setQuickChanging(true);
+      const preview = calcPenalty(
+        bet.current_amount,
+        bet.change_count + 1,
+        match?.currentMinute ?? 0,
+      );
+
+      try {
+        const result = await changeBet(
+          bet.id,
+          next.newPlayerId,
+          next.newOutcome,
+          next.newOdds,
+          match?.currentMinute ?? 0,
+        );
+        if (!result?.success) {
+          throw new Error(result?.error ?? "Failed to switch bet");
+        }
+        showSlashingFlash(next.label, preview.penaltyAmount);
+      } catch (e) {
+        console.error("[quick switch] failed", e);
+      } finally {
+        setQuickChanging(false);
+      }
+    },
+    [quickChanging, match?.currentMinute, changeBet, showSlashingFlash],
+  );
+
   const handlePlayerClick = useCallback(
     (player: Player) => {
+      if (quickChanging) return;
       if (!wallet) {
         connect();
         return;
@@ -341,25 +410,90 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
       } else if (activeNgsBet.current_player_id === player.id) {
         setModal({ type: "player", player });
       } else {
-        setModal({ type: "change", bet: activeNgsBet, toPlayer: player });
+        void quickSwitchBet(activeNgsBet, {
+          label: player.name,
+          newPlayerId: player.id,
+          newOdds: player.odds,
+        });
       }
     },
-    [wallet, connect, activeNgsBet, isMatchFunded, match?.contractAddress],
+    [
+      quickChanging,
+      wallet,
+      connect,
+      activeNgsBet,
+      isMatchFunded,
+      match?.contractAddress,
+      quickSwitchBet,
+    ],
   );
 
-  const handleConfirmChange = useCallback(
-    async (newPlayerId: string, newOdds: number, newAmount: number) => {
-      if (modal?.type !== "change") return;
-      await changeBet(
-        modal.bet.id,
-        newPlayerId,
-        undefined,
-        newOdds,
-        match?.currentMinute ?? 0,
-        newAmount,
-      );
+  const handleMwBet = useCallback(
+    (outcome: MatchWinnerOutcome) => {
+      if (quickChanging) return;
+      if (!wallet) {
+        connect();
+        return;
+      }
+      if (!isMatchFunded) {
+        setModal({ type: "fundmatch" });
+        return;
+      }
+
+      if (activeMwBet && activeMwBet.outcome !== outcome) {
+        const newOdds = mwOdds?.[outcome] ?? activeMwBet.odds;
+        void quickSwitchBet(activeMwBet, {
+          label: `MW ${outcome.toUpperCase()}`,
+          newOutcome: outcome,
+          newOdds,
+        });
+        return;
+      }
+
+      setModal({ type: "mw", outcome });
     },
-    [modal, changeBet, match],
+    [
+      quickChanging,
+      wallet,
+      connect,
+      isMatchFunded,
+      activeMwBet,
+      mwOdds,
+      quickSwitchBet,
+    ],
+  );
+
+  const handleEgBet = useCallback(
+    (goals: number, odds: number, label: string) => {
+      if (quickChanging) return;
+      if (!wallet) {
+        connect();
+        return;
+      }
+      if (!isMatchFunded) {
+        setModal({ type: "fundmatch" });
+        return;
+      }
+
+      if (activeEgBet && activeEgBet.goalsTarget !== goals) {
+        void quickSwitchBet(activeEgBet, {
+          label: `EG ${label}`,
+          newPlayerId: String(goals),
+          newOdds: odds,
+        });
+        return;
+      }
+
+      setModal({ type: "eg", goals });
+    },
+    [
+      quickChanging,
+      wallet,
+      connect,
+      isMatchFunded,
+      activeEgBet,
+      quickSwitchBet,
+    ],
   );
 
   const handleClaimMatchPayout = useCallback(async (): Promise<string> => {
@@ -590,13 +724,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
                     return (
                       <button
                         key={goals}
-                        onClick={() =>
-                          wallet
-                            ? isMatchFunded
-                              ? setModal({ type: "eg", goals })
-                              : setModal({ type: "fundmatch" })
-                            : connect()
-                        }
+                        onClick={() => handleEgBet(goals, odds, label)}
                         className="gl-interactive"
                         style={{
                           pointerEvents: "auto",
@@ -790,13 +918,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             match={match}
             mwOdds={mwOdds}
             getMwBet={(o) => !!getMwBet(o)}
-            onMwBet={(o) =>
-              wallet
-                ? isMatchFunded
-                  ? setModal({ type: "mw", outcome: o })
-                  : setModal({ type: "fundmatch" })
-                : connect()
-            }
+            onMwBet={handleMwBet}
             isFinished={isFinished}
           />
         </div>
@@ -1015,8 +1137,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           }}
         >
           {activeNgsBet && currentBetPlayer ? (
-            <button
-              onClick={() => setModal({ type: "change", bet: activeNgsBet })}
+            <div
               className="gl-interactive"
               style={{
                 pointerEvents: "auto",
@@ -1025,7 +1146,6 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
                 border: "1px solid rgba(52,211,153,0.70)",
                 borderBottom: "3px solid #011a14",
                 borderRadius: "8px",
-                cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 gap: "10px",
@@ -1089,7 +1209,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
               >
                 tap to change
               </span>
-            </button>
+            </div>
           ) : (
             <span
               style={{
@@ -1139,6 +1259,48 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
       )}
 
       {/* ── MODALS ──────────────────────────────────────────────────────── */}
+      {slashingFlash && (
+        <div
+          className="gl-interactive"
+          style={{
+            position: "fixed",
+            right: "12px",
+            bottom: "74px",
+            zIndex: 2147483646,
+            pointerEvents: "none",
+            background: "rgba(20,6,6,0.92)",
+            border: "1px solid rgba(248,113,113,0.55)",
+            borderRadius: "8px",
+            padding: "6px 10px",
+            boxShadow: "0 0 16px rgba(248,113,113,0.35)",
+            minWidth: "130px",
+          }}
+        >
+          <div
+            style={{
+              color: "#fca5a5",
+              fontSize: "10px",
+              fontWeight: 700,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              lineHeight: 1.1,
+            }}
+          >
+            Switched: {slashingFlash.label}
+          </div>
+          <div
+            style={{
+              color: "#f87171",
+              fontSize: "13px",
+              fontWeight: 800,
+              lineHeight: 1.2,
+            }}
+          >
+            -${slashingFlash.amount.toFixed(2)} penalty
+          </div>
+        </div>
+      )}
+
       {modal?.type === "player" && (
         <BetModal
           player={modal.player}
@@ -1180,17 +1342,6 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           activeBet={getEgBet(modal.goals)}
           onPlaceBet={handlePlaceBet}
           onChangeBet={changeBet}
-          onClose={() => setModal(null)}
-        />
-      )}
-      {modal?.type === "change" && (
-        <BetChangeModal
-          bet={modal.bet}
-          players={players}
-          currentMinute={match?.currentMinute ?? 0}
-          initialSelectedId={modal.toPlayer?.id}
-          availableBalance={balance.wallet}
-          onConfirm={handleConfirmChange}
           onClose={() => setModal(null)}
         />
       )}

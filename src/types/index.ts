@@ -115,6 +115,8 @@ export interface BalanceState {
   locked: number;
   /** USDC locked in active bets — current match only */
   lockedThisGame: number;
+  /** Total slashing penalties paid from bet changes — current match only */
+  slashedThisGame: number;
   /** wallet - locked: how much the user can still bet with */
   available: number;
   /** Provisional winnings (not withdrawable until settlement) */
