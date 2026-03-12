@@ -259,8 +259,8 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
   // Detect goal scoring and trigger celebration
   useEffect(() => {
     if (!match) return;
-    const home = match.scoreHome ?? 0;
-    const away = match.scoreAway ?? 0;
+    const home = match.score?.home ?? 0;
+    const away = match.score?.away ?? 0;
     const prevScore = prevScoreRef.current;
 
     let goalScorer: string | null = null;
@@ -280,7 +280,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     }
 
     prevScoreRef.current = { home, away };
-  }, [match?.scoreHome, match?.scoreAway, homePlayers, awayPlayers, match]);
+  }, [match?.score?.home, match?.score?.away, homePlayers, awayPlayers, match]);
 
   const leftLineup = panelFlipped ? awayLineup : homeLineup;
   const rightLineup = panelFlipped ? homeLineup : awayLineup;
@@ -1264,22 +1264,24 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           className="gl-interactive"
           style={{
             position: "fixed",
-            right: "12px",
-            bottom: "74px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            bottom: "112px",
             zIndex: 2147483646,
             pointerEvents: "none",
             background: "rgba(20,6,6,0.92)",
             border: "1px solid rgba(248,113,113,0.55)",
-            borderRadius: "8px",
-            padding: "6px 10px",
+            borderRadius: "12px",
+            padding: "12px 18px",
             boxShadow: "0 0 16px rgba(248,113,113,0.35)",
-            minWidth: "130px",
+            minWidth: "260px",
+            textAlign: "center",
           }}
         >
           <div
             style={{
               color: "#fca5a5",
-              fontSize: "10px",
+              fontSize: "13px",
               fontWeight: 700,
               letterSpacing: "0.04em",
               textTransform: "uppercase",
@@ -1291,9 +1293,10 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           <div
             style={{
               color: "#f87171",
-              fontSize: "13px",
+              fontSize: "20px",
               fontWeight: 800,
               lineHeight: 1.2,
+              marginTop: "4px",
             }}
           >
             -${slashingFlash.amount.toFixed(2)} penalty

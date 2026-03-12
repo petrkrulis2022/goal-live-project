@@ -34,6 +34,7 @@ export interface DbMatch {
   exact_goals_odds: Record<string, number> | null;
   contract_address: string | null;
   goalserve_static_id: string | null;
+  goalserve_finished: boolean;
   created_at: string;
   updated_at: string;
 }

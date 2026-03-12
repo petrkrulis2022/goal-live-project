@@ -109,16 +109,14 @@ Deno.serve(async (req: Request) => {
     );
 
     const body = await req.json();
-    const {
-      match_id,
-      force,
-    } = body;
+    const { match_id, force } = body;
     // winner / home_goals / away_goals / goal_scorer_player_ids are optional
     // — omit all three to trigger Goalserve auto-fetch mode.
     let winner: string | undefined = body.winner;
     let home_goals: number | undefined = body.home_goals;
     let away_goals: number | undefined = body.away_goals;
-    let goal_scorer_player_ids: string[] | undefined = body.goal_scorer_player_ids;
+    let goal_scorer_player_ids: string[] | undefined =
+      body.goal_scorer_player_ids;
 
     // ── Validate required fields ──────────────────────────────────────────
     if (!match_id) return json({ error: "match_id is required" }, 400);
@@ -138,23 +136,33 @@ Deno.serve(async (req: Request) => {
 
     // ── AUTO-FETCH MODE: pull final result from Goalserve ─────────────────
     // Triggered when winner / home_goals / away_goals are not supplied.
-    const autoFetch = winner === undefined || home_goals === undefined || away_goals === undefined;
+    const autoFetch =
+      winner === undefined ||
+      home_goals === undefined ||
+      away_goals === undefined;
     if (autoFetch) {
       const staticId: string | null = match.goalserve_static_id ?? null;
       if (!staticId) {
         return json(
-          { error: "Cannot auto-fetch: match has no goalserve_static_id. Pass winner + home_goals + away_goals explicitly." },
+          {
+            error:
+              "Cannot auto-fetch: match has no goalserve_static_id. Pass winner + home_goals + away_goals explicitly.",
+          },
           422,
         );
       }
 
-      const gsKey = Deno.env.get("GOALSERVE_API_KEY") ?? "5dc9cf20aca34682682708de71344f52";
+      const gsKey =
+        Deno.env.get("GOALSERVE_API_KEY") ?? "5dc9cf20aca34682682708de71344f52";
       const gsBase = `https://www.goalserve.com/getfeed/${gsKey}`;
 
       // Fetch livescores/results feed
       const liveRes = await fetch(`${gsBase}/soccernew/home?json=1`);
       if (!liveRes.ok) {
-        return json({ error: `Goalserve livescores fetch failed: ${liveRes.status}` }, 502);
+        return json(
+          { error: `Goalserve livescores fetch failed: ${liveRes.status}` },
+          502,
+        );
       }
       // deno-lint-ignore no-explicit-any
       const liveData: any = await liveRes.json();
@@ -193,7 +201,9 @@ Deno.serve(async (req: Request) => {
         const leagueFromConfig: string = cfg?.goalserve_league ?? "";
         if (!leagueFromConfig) {
           return json(
-            { error: `Match ${staticId} not found in today's Goalserve feed and no goalserve_league in odds_api_config to fall back to commentary. Pass winner + home_goals + away_goals explicitly.` },
+            {
+              error: `Match ${staticId} not found in today's Goalserve feed and no goalserve_league in odds_api_config to fall back to commentary. Pass winner + home_goals + away_goals explicitly.`,
+            },
             422,
           );
         }
@@ -203,7 +213,12 @@ Deno.serve(async (req: Request) => {
             `${gsBase}/commentaries/match?id=${staticId}&league=${foundLeagueId}&json=1`,
           );
           if (!commRes.ok) {
-            return json({ error: `Match ${staticId} not found in Goalserve feed and commentary fetch failed (${commRes.status}).` }, 422);
+            return json(
+              {
+                error: `Match ${staticId} not found in Goalserve feed and commentary fetch failed (${commRes.status}).`,
+              },
+              422,
+            );
           }
           // deno-lint-ignore no-explicit-any
           const commData: any = await commRes.json();
@@ -212,34 +227,60 @@ Deno.serve(async (req: Request) => {
             commData?.commentaries?.match ??
             null;
           // deno-lint-ignore no-explicit-any
-          const matchNode: any = Array.isArray(rawMatch) ? rawMatch[0] : rawMatch;
+          const matchNode: any = Array.isArray(rawMatch)
+            ? rawMatch[0]
+            : rawMatch;
           if (!matchNode) {
-            return json({ error: `Match ${staticId} not found in Goalserve livescores or commentary feed.` }, 422);
-          }
-          const commStatus: string = matchNode["@status"] ?? "";
-          const FT_STATUSES = ["FT", "AET", "After ET", "Full-time", "full-time"];
-          if (!FT_STATUSES.includes(commStatus)) {
             return json(
-              { error: `Match is not finished on Goalserve yet. Commentary status: "${commStatus}". Settle only at FT.` },
+              {
+                error: `Match ${staticId} not found in Goalserve livescores or commentary feed.`,
+              },
               422,
             );
           }
-          home_goals = parseInt(matchNode?.localteam?.["@goals"] ?? "0", 10) || 0;
-          away_goals = parseInt(matchNode?.visitorteam?.["@goals"] ?? "0", 10) || 0;
-          winner = home_goals > away_goals ? "home" : away_goals > home_goals ? "away" : "draw";
+          const commStatus: string = matchNode["@status"] ?? "";
+          const FT_STATUSES = [
+            "FT",
+            "AET",
+            "After ET",
+            "Full-time",
+            "full-time",
+          ];
+          if (!FT_STATUSES.includes(commStatus)) {
+            return json(
+              {
+                error: `Match is not finished on Goalserve yet. Commentary status: "${commStatus}". Settle only at FT.`,
+              },
+              422,
+            );
+          }
+          home_goals =
+            parseInt(matchNode?.localteam?.["@goals"] ?? "0", 10) || 0;
+          away_goals =
+            parseInt(matchNode?.visitorteam?.["@goals"] ?? "0", 10) || 0;
+          winner =
+            home_goals > away_goals
+              ? "home"
+              : away_goals > home_goals
+                ? "away"
+                : "draw";
           // Extract scorers from this same commentary node
           const gs = matchNode?.goalscorer ?? {};
           // deno-lint-ignore no-explicit-any
           const extractIdsComm = (node: any): string[] => {
             const players = Array.isArray(node?.player)
               ? node.player
-              : node?.player ? [node.player] : [];
-            return players
-              // deno-lint-ignore no-explicit-any
-              .filter((p: any) => (p["@type"] ?? "").toLowerCase() !== "own")
-              // deno-lint-ignore no-explicit-any
-              .map((p: any) => p["@id"] ?? p["@player_id"] ?? "")
-              .filter(Boolean);
+              : node?.player
+                ? [node.player]
+                : [];
+            return (
+              players
+                // deno-lint-ignore no-explicit-any
+                .filter((p: any) => (p["@type"] ?? "").toLowerCase() !== "own")
+                // deno-lint-ignore no-explicit-any
+                .map((p: any) => p["@id"] ?? p["@player_id"] ?? "")
+                .filter(Boolean)
+            );
           };
           goal_scorer_player_ids = [
             ...extractIdsComm(gs?.localteam),
@@ -247,12 +288,17 @@ Deno.serve(async (req: Request) => {
           ];
           console.log(
             `[settle-match] commentary fallback: ${match.home_team} ${home_goals}-${away_goals} ${match.away_team}, ` +
-            `winner=${winner}, scorers=[${goal_scorer_player_ids.join(",")}]`,
+              `winner=${winner}, scorers=[${goal_scorer_player_ids.join(",")}]`,
           );
           // Skip the second commentary fetch below since we already have scorers
           foundLeagueId = ""; // sentinel: already fetched
         } catch (commErr) {
-          return json({ error: `Match ${staticId} not in today's feed and commentary fetch threw: ${commErr}` }, 422);
+          return json(
+            {
+              error: `Match ${staticId} not in today's feed and commentary fetch threw: ${commErr}`,
+            },
+            422,
+          );
         }
       }
 
@@ -262,13 +308,22 @@ Deno.serve(async (req: Request) => {
         const FT_STATUSES = ["FT", "AET", "After ET", "Full-time", "full-time"];
         if (!FT_STATUSES.includes(gsStatus)) {
           return json(
-            { error: `Match is not finished on Goalserve yet. Current status: "${gsStatus}". Settle only at FT.` },
+            {
+              error: `Match is not finished on Goalserve yet. Current status: "${gsStatus}". Settle only at FT.`,
+            },
             422,
           );
         }
-        home_goals = parseInt(foundMatch?.localteam?.["@goals"] ?? "0", 10) || 0;
-        away_goals = parseInt(foundMatch?.visitorteam?.["@goals"] ?? "0", 10) || 0;
-        winner = home_goals > away_goals ? "home" : away_goals > home_goals ? "away" : "draw";
+        home_goals =
+          parseInt(foundMatch?.localteam?.["@goals"] ?? "0", 10) || 0;
+        away_goals =
+          parseInt(foundMatch?.visitorteam?.["@goals"] ?? "0", 10) || 0;
+        winner =
+          home_goals > away_goals
+            ? "home"
+            : away_goals > home_goals
+              ? "away"
+              : "draw";
       }
 
       // Fetch goal scorers from commentary feed (only if not already done in fallback path)
@@ -286,20 +341,28 @@ Deno.serve(async (req: Request) => {
               commData?.commentaries?.match ??
               null;
             // deno-lint-ignore no-explicit-any
-            const matchNode: any = Array.isArray(rawMatch) ? rawMatch[0] : rawMatch;
+            const matchNode: any = Array.isArray(rawMatch)
+              ? rawMatch[0]
+              : rawMatch;
             if (matchNode) {
               const gs = matchNode?.goalscorer ?? {};
               // deno-lint-ignore no-explicit-any
               const extractIds = (node: any): string[] => {
                 const players = Array.isArray(node?.player)
                   ? node.player
-                  : node?.player ? [node.player] : [];
-                return players
-                  // deno-lint-ignore no-explicit-any
-                  .filter((p: any) => (p["@type"] ?? "").toLowerCase() !== "own")
-                  // deno-lint-ignore no-explicit-any
-                  .map((p: any) => p["@id"] ?? p["@player_id"] ?? "")
-                  .filter(Boolean);
+                  : node?.player
+                    ? [node.player]
+                    : [];
+                return (
+                  players
+                    // deno-lint-ignore no-explicit-any
+                    .filter(
+                      (p: any) => (p["@type"] ?? "").toLowerCase() !== "own",
+                    )
+                    // deno-lint-ignore no-explicit-any
+                    .map((p: any) => p["@id"] ?? p["@player_id"] ?? "")
+                    .filter(Boolean)
+                );
               };
               goal_scorer_player_ids = [
                 ...extractIds(gs?.localteam),
@@ -308,7 +371,10 @@ Deno.serve(async (req: Request) => {
             }
           }
         } catch (commErr) {
-          console.warn("[settle-match] commentary fetch failed (non-fatal):", commErr);
+          console.warn(
+            "[settle-match] commentary fetch failed (non-fatal):",
+            commErr,
+          );
         }
       }
 
@@ -316,7 +382,7 @@ Deno.serve(async (req: Request) => {
         // Only log here if livescores path was used (commentary path logs its own line)
         console.log(
           `[settle-match] auto-fetch (livescores): ${match.home_team} ${home_goals}-${away_goals} ${match.away_team}, ` +
-          `winner=${winner}, scorers=[${(goal_scorer_player_ids ?? []).join(",")}]`,
+            `winner=${winner}, scorers=[${(goal_scorer_player_ids ?? []).join(",")}]`,
         );
       }
     }
@@ -325,7 +391,10 @@ Deno.serve(async (req: Request) => {
     if (!winner || !(winner in WINNER_TO_UINT))
       return json({ error: "winner must be 'home', 'draw', or 'away'" }, 400);
     if (typeof home_goals !== "number" || typeof away_goals !== "number")
-      return json({ error: "home_goals and away_goals (numbers) are required" }, 400);
+      return json(
+        { error: "home_goals and away_goals (numbers) are required" },
+        400,
+      );
 
     const scorerIds: string[] = Array.isArray(goal_scorer_player_ids)
       ? (goal_scorer_player_ids as string[]).map(String)
@@ -414,7 +483,8 @@ Deno.serve(async (req: Request) => {
     const contractAddress =
       match.contract_address ?? Deno.env.get("CONTRACT_ADDRESS") ?? null;
     const rpcUrl =
-      Deno.env.get("SEPOLIA_RPC_URL") ?? "https://ethereum-sepolia-rpc.publicnode.com";
+      Deno.env.get("SEPOLIA_RPC_URL") ??
+      "https://ethereum-sepolia-rpc.publicnode.com";
     const oraclePrivateKey = Deno.env.get("ORACLE_PRIVATE_KEY") ?? null;
 
     if (contractAddress && oraclePrivateKey) {
@@ -460,9 +530,11 @@ Deno.serve(async (req: Request) => {
           .in("status", ["settled_won", "settled_lost"]);
       } catch (onChainErr) {
         const msg = String(onChainErr);
-        if (msg.includes("already settled")) {
+        // "already settled" OR "not active" both mean the match outcome is already
+        // recorded on-chain — safe to proceed to settleUserBalances.
+        if (msg.includes("already settled") || msg.includes("not active")) {
           console.log(
-            "[settle-match] settleMatch: already settled on-chain, continuing to settleUserBalances",
+            "[settle-match] settleMatch: already settled on-chain (match inactive), continuing to settleUserBalances",
           );
           settleTxHash = "already_settled";
         } else {
@@ -483,48 +555,55 @@ Deno.serve(async (req: Request) => {
         );
         balanceTxHash = "SKIPPED: settleMatch failed";
       } else
-      try {
-        // Build user → total payout map (in USDC micro-units, 6 decimals)
-        const userPayoutMap = new Map<string, bigint>();
-        for (const s of settled) {
-          const prev = userPayoutMap.get(s.bettor) ?? 0n;
-          // Convert dollar amount to USDC micro-units (× 1_000_000)
-          const microUsdc = BigInt(Math.round(s.payout * 1_000_000));
-          userPayoutMap.set(s.bettor, prev + microUsdc);
-        }
-        // Include losers with 0 payout so their deposit balance is overwritten to 0
-        for (const bet of (bets ?? []) as BetRow[]) {
-          if (!userPayoutMap.has(bet.bettor_wallet)) {
-            userPayoutMap.set(bet.bettor_wallet, 0n);
+        try {
+          // Build user → total payout map (in USDC micro-units, 6 decimals)
+          const userPayoutMap = new Map<string, bigint>();
+          for (const s of settled) {
+            const prev = userPayoutMap.get(s.bettor) ?? 0n;
+            // Convert dollar amount to USDC micro-units (× 1_000_000)
+            const microUsdc = BigInt(Math.round(s.payout * 1_000_000));
+            userPayoutMap.set(s.bettor, prev + microUsdc);
+          }
+          // Include losers with 0 payout so their deposit balance is overwritten to 0
+          for (const bet of (bets ?? []) as BetRow[]) {
+            if (!userPayoutMap.has(bet.bettor_wallet)) {
+              userPayoutMap.set(bet.bettor_wallet, 0n);
+            }
+          }
+
+          const users = [...userPayoutMap.keys()];
+          const payouts = users.map((u) => userPayoutMap.get(u)!);
+
+          // If no bets were placed, call settleUserBalances with the oracle address
+          // as a sentinel (0 payout). This ensures poolSize - 0 = poolSize flows
+          // into collectedFees so the admin can call withdrawFees() to reclaim
+          // the admin-funded pool liquidity.
+          const finalUsers = users.length > 0 ? users : [wallet.address];
+          const finalPayouts = users.length > 0 ? payouts : [0n];
+
+          if (finalUsers.length > 0) {
+            const tx2 = await contract.settleUserBalances(
+              onChainMatchId,
+              finalUsers,
+              finalPayouts,
+            );
+            await tx2.wait();
+            balanceTxHash = tx2.hash;
+            console.log(
+              "[settle-match] settleUserBalances on-chain:",
+              balanceTxHash,
+            );
+          }
+        } catch (balanceErr) {
+          const msg = String(balanceErr);
+          if (msg.includes("balances already settled")) {
+            console.log("[settle-match] settleUserBalances: already done");
+            balanceTxHash = "already_settled";
+          } else {
+            console.error("[settle-match] settleUserBalances failed:", msg);
+            balanceTxHash = `ERROR: ${msg}`;
           }
         }
-
-        const users = [...userPayoutMap.keys()];
-        const payouts = users.map((u) => userPayoutMap.get(u)!);
-
-        if (users.length > 0) {
-          const tx2 = await contract.settleUserBalances(
-            onChainMatchId,
-            users,
-            payouts,
-          );
-          await tx2.wait();
-          balanceTxHash = tx2.hash;
-          console.log(
-            "[settle-match] settleUserBalances on-chain:",
-            balanceTxHash,
-          );
-        }
-      } catch (balanceErr) {
-        const msg = String(balanceErr);
-        if (msg.includes("balances already settled")) {
-          console.log("[settle-match] settleUserBalances: already done");
-          balanceTxHash = "already_settled";
-        } else {
-          console.error("[settle-match] settleUserBalances failed:", msg);
-          balanceTxHash = `ERROR: ${msg}`;
-        }
-      }
     } else {
       console.warn(
         "[settle-match] skipping on-chain: missing contract_address or ORACLE_PRIVATE_KEY.",

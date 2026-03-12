@@ -199,7 +199,9 @@ Deno.serve(async (req: Request) => {
       }
     >();
 
-    const categories: GoalserveCategory[] = toArray(gsData?.scores?.category);
+    const categories: GoalserveCategory[] = toArray(
+      gsData?.newscores?.category ?? gsData?.scores?.category,
+    );
     for (const cat of categories) {
       const matches: GoalserveMatch[] = toArray(cat?.matches?.match);
       for (const m of matches) {
@@ -230,7 +232,7 @@ Deno.serve(async (req: Request) => {
     const { data: dbMatches, error: dbErr } = await supabase
       .from("matches")
       .select(
-        "id, goalserve_static_id, status, current_minute, score_home, score_away",
+        "id, goalserve_static_id, status, current_minute, score_home, score_away, goalserve_finished",
       )
       .not("status", "in", '("finished","cancelled")')
       .not("goalserve_static_id", "is", null);
@@ -278,6 +280,7 @@ Deno.serve(async (req: Request) => {
         if (newStatus === "finished") {
           return false;
         }
+        // (goalserve_finished flag is set below, outside shouldUpdate)
         // Only allow forward progress
         return (
           (STATUS_ORDER[newStatus] ?? -1) > (STATUS_ORDER[currentStatus] ?? -1)
@@ -291,6 +294,13 @@ Deno.serve(async (req: Request) => {
 
       if (shouldUpdate) {
         updates.status = newStatus;
+        hasChanges = true;
+      }
+
+      // When Goalserve signals FT, set the flag so the admin Settle button enables.
+      // We do NOT change status here — that's the admin's job via settle-match.
+      if (newStatus === "finished" && !dbMatch.goalserve_finished) {
+        updates.goalserve_finished = true;
         hasChanges = true;
       }
 

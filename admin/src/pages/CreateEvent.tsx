@@ -4,24 +4,33 @@ import { supabase } from "@shared/lib/supabase";
 import { contractService } from "../services/contractService";
 
 // ─── Odds API helpers ─────────────────────────────────────────────────────────
-const ODDS_API_KEY = "069be437bad9795678cdc1c1cee711c3";
+const ODDS_API_KEY = "46978d34dc5ac52756dd87ffbf9844b0";
 
 /** Goalserve league ID for each Odds API sport_key */
 const SPORT_TO_GS_LEAGUE: Record<string, string> = {
   soccer_epl: "1204",
   soccer_spain_la_liga: "1399",
   soccer_italy_serie_a: "1269",
-  soccer_france_ligue_1: "1221",
+  soccer_france_ligue_one: "1221",
   soccer_uefa_champs_league: "1005",
   soccer_uefa_europa_league: "1007",
-  soccer_uefa_europa_conference_league: "1009",
+  soccer_uefa_europa_conference_league: "18853",
 };
+
+const GOALSERVE_LIVE_LINEUPS_SUPPORTED = new Set<string>([
+  "soccer_epl",
+  "soccer_spain_la_liga",
+  "soccer_italy_serie_a",
+  "soccer_france_ligue_one",
+  "soccer_uefa_champs_league",
+  "soccer_uefa_europa_league",
+]);
 
 const SPORT_LABELS: Record<string, string> = {
   soccer_epl: "Premier League",
   soccer_spain_la_liga: "La Liga",
   soccer_italy_serie_a: "Serie A",
-  soccer_france_ligue_1: "Ligue 1",
+  soccer_france_ligue_one: "Ligue 1",
   soccer_uefa_champs_league: "UEFA Champions League",
   soccer_uefa_europa_league: "UEFA Europa League",
   soccer_uefa_europa_conference_league: "UEFA Europa Conference League",
@@ -37,7 +46,7 @@ const SPORT_COLOR: Record<string, { badge: string }> = {
   soccer_italy_serie_a: {
     badge: "bg-blue-400/15 text-blue-400 border-blue-400/25",
   },
-  soccer_france_ligue_1: {
+  soccer_france_ligue_one: {
     badge: "bg-sky-400/15 text-sky-400 border-sky-400/25",
   },
   soccer_uefa_champs_league: {
@@ -129,6 +138,7 @@ export default function CreateEvent() {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [step, setStep] = useState<Step>({ id: "idle" });
   const [error, setError] = useState<string | null>(null);
+  const [seedWarning, setSeedWarning] = useState<string | null>(null);
 
   // ── Tonight's Europa matches ───────────────────────────────────────────────
   const [tonightEvents, setTonightEvents] = useState<OddsEvent[]>([]);
@@ -170,7 +180,7 @@ export default function CreateEvent() {
           "soccer_epl",
           "soccer_spain_la_liga",
           "soccer_italy_serie_a",
-          "soccer_france_ligue_1",
+          "soccer_france_ligue_one",
           "soccer_uefa_champs_league",
           "soccer_uefa_europa_league",
           "soccer_uefa_europa_conference_league",
@@ -253,6 +263,7 @@ export default function CreateEvent() {
         const homeWord = homeTeam.split(" ")[0].toLowerCase();
         const awayWord = awayTeam.split(" ")[0].toLowerCase();
         const cats: any[] =
+          liveData?.newscores?.category ??
           liveData?.scores?.category ??
           (Array.isArray(liveData?.scores) ? liveData.scores : []);
         for (const cat of cats) {
@@ -395,7 +406,52 @@ export default function CreateEvent() {
       })),
     ];
 
-    if (squad.length === 0) return "";
+    if (squad.length === 0) {
+      // ── Odds-API-direct fallback ──────────────────────────────────────────
+      // Goalserve has no lineup (e.g. UECL league 18853 has live_lineups=False).
+      // Seed players directly from the Odds API scorer market so the match has
+      // at least odds data. Names match exactly — no fuzzy matching needed.
+      if (priceMap.size === 0) return "";
+
+      // Try to figure out team from outcome.name (some bookmakers set it to team name)
+      const teamMapCreate = new Map<string, "home" | "away">();
+      const normHC = normAccent(homeName);
+      const normAC = normAccent(awayName);
+      for (const bm of (oddsRaw as any)?.bookmakers ?? []) {
+        for (const mkt of bm.markets ?? []) {
+          if (mkt.key !== "player_first_goal_scorer") continue;
+          for (const o of mkt.outcomes ?? []) {
+            const pName: string = (o.description ?? o.name ?? "").trim();
+            if (!pName || pName.toLowerCase() === "no scorer") continue;
+            if (teamMapCreate.has(pName)) continue;
+            if (o.name && o.name !== pName) {
+              const tNorm = normAccent(o.name);
+              if (normHC && tNorm.includes(normHC.split(" ")[0]))
+                teamMapCreate.set(pName, "home");
+              else if (normAC && tNorm.includes(normAC.split(" ")[0]))
+                teamMapCreate.set(pName, "away");
+            }
+          }
+        }
+      }
+      const oddsRows = [...priceMap.entries()].map(([playerName, price]) => ({
+        match_id: matchDbId,
+        external_player_id:
+          "odds_" + normAccent(playerName).replace(/[^a-z0-9]/g, "_"),
+        name: playerName,
+        team: teamMapCreate.get(playerName) ?? "home",
+        jersey_number: null,
+        position: null,
+        is_starter: true,
+        odds: price,
+      }));
+      await supabase
+        .from("players")
+        .upsert(oddsRows, { onConflict: "match_id,external_player_id" });
+      // No static_id from Goalserve — return a sentinel so the caller
+      // knows seeding happened but GS discovery failed.
+      return "odds_seeded";
+    }
 
     // 4. Fetch Odds API scorer odds
     const priceMap = new Map<string, number>();
@@ -481,6 +537,7 @@ export default function CreateEvent() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setSeedWarning(null);
 
     const poolAmount = parseFloat(form.poolAmountUsdc);
     if (!form.poolAmountUsdc || isNaN(poolAmount) || poolAmount <= 0) {
@@ -523,6 +580,20 @@ export default function CreateEvent() {
         form.awayTeam,
         selectedEvent?.sport_key ?? "soccer_epl",
       ).catch(() => "");
+
+      if (!gsStaticId) {
+        const selectedSport = selectedEvent?.sport_key ?? "soccer_epl";
+        if (!GOALSERVE_LIVE_LINEUPS_SUPPORTED.has(selectedSport)) {
+          setSeedWarning(
+            "Goalserve does not currently expose live lineups/stats for this competition, so players could not be auto-seeded before kickoff.",
+          );
+        } else {
+          setSeedWarning(
+            "Goalserve lineup discovery failed for this match, so players were not auto-seeded. The event was still created and you can retry seeding later.",
+          );
+        }
+      }
+
       // Persist the discovered Goalserve static_id (and ensure odds_api_config is current)
       if (gsStaticId) {
         await supabase
@@ -823,6 +894,13 @@ export default function CreateEvent() {
             <div className="flex items-start gap-2 text-red-400 text-sm bg-red-500/10 border border-red-500/20 px-3 py-2.5 rounded-lg">
               <span className="mt-0.5 shrink-0">⚠</span>
               <span>{error}</span>
+            </div>
+          )}
+
+          {seedWarning && !error && (
+            <div className="flex items-start gap-2 text-yellow-300 text-sm bg-yellow-500/10 border border-yellow-500/20 px-3 py-2.5 rounded-lg">
+              <span className="mt-0.5 shrink-0">⚠</span>
+              <span>{seedWarning}</span>
             </div>
           )}
 
