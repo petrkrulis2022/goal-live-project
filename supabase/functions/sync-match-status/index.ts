@@ -109,28 +109,37 @@ interface GoalPlayer {
   minute: number;
 }
 
-// Fetches the Goalserve commentary endpoint for a specific match and tries to
-// extract goal scorers from the `goalscorer` node.
-// Returns empty arrays on any failure (network, parse, missing data) — callers
-// fall back to player_id='unknown'.
-async function tryGetGoalScorers(
+interface CommentaryData {
+  scorers: { home: GoalPlayer[]; away: GoalPlayer[] };
+  /** Corner counts from Goalserve stats node. -1 when not available. */
+  cornersHome: number;
+  cornersAway: number;
+}
+
+// Fetches the Goalserve commentary endpoint for a specific match.
+// Returns goal scorers AND current corner counts from the stats node.
+// Returns zeros/empty arrays on any failure — callers handle gracefully.
+async function tryGetCommentaryData(
   apiKey: string,
   staticId: string,
   leagueId: string | null,
-): Promise<{ home: GoalPlayer[]; away: GoalPlayer[] }> {
-  if (!staticId || staticId === "0" || !leagueId) {
-    return { home: [], away: [] };
-  }
+): Promise<CommentaryData> {
+  const empty: CommentaryData = {
+    scorers: { home: [], away: [] },
+    cornersHome: -1,
+    cornersAway: -1,
+  };
+  if (!staticId || staticId === "0" || !leagueId) return empty;
   try {
     const url = `${GOALSERVE_BASE}/${apiKey}/commentaries/match?id=${staticId}&league=${leagueId}&json=1`;
     const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
-    if (!res.ok) return { home: [], away: [] };
+    if (!res.ok) return empty;
     const data = await res.json();
     const raw =
       data?.commentaries?.tournament?.match ??
       data?.commentaries?.match ??
       null;
-    if (!raw) return { home: [], away: [] };
+    if (!raw) return empty;
     const matchNode = Array.isArray(raw) ? raw[0] : raw;
     const gs = matchNode?.goalscorer ?? {};
 
@@ -151,12 +160,81 @@ async function tryGetGoalScorers(
       );
     }
 
+    // Corner counts from stats node (present when Goalserve streams them).
+    // Goalserve JSON uses @ prefix for XML attributes, so try both forms.
+    const stats = matchNode?.stats ?? {};
+    console.log("[sync] stats node:", JSON.stringify(stats).slice(0, 400));
+    const cornersRaw =
+      // @-prefixed forms (XML-to-JSON conversion)
+      stats?.corners?.["@localteam"] ??
+      stats?.corners?.["@home"] ??
+      stats?.localteam?.["@corners"] ??
+      stats?.["@corners"]?.localteam ??
+      // non-@ forms
+      stats?.corners?.localteam ??
+      stats?.localteam?.corners ??
+      "";
+    const cornersAwayRaw =
+      stats?.corners?.["@visitorteam"] ??
+      stats?.corners?.["@away"] ??
+      stats?.visitorteam?.["@corners"] ??
+      stats?.["@corners"]?.visitorteam ??
+      stats?.corners?.visitorteam ??
+      stats?.visitorteam?.corners ??
+      "";
+    const cornersHome = parseInt(String(cornersRaw), 10);
+    const cornersAway = parseInt(String(cornersAwayRaw), 10);
+    console.log(
+      "[sync] corners raw:",
+      cornersRaw,
+      cornersAwayRaw,
+      "→",
+      cornersHome,
+      cornersAway,
+    );
+
     return {
-      home: parseScorerPlayers(gs?.localteam),
-      away: parseScorerPlayers(gs?.visitorteam),
+      scorers: {
+        home: parseScorerPlayers(gs?.localteam),
+        away: parseScorerPlayers(gs?.visitorteam),
+      },
+      cornersHome: isNaN(cornersHome) ? -1 : cornersHome,
+      cornersAway: isNaN(cornersAway) ? -1 : cornersAway,
     };
   } catch {
-    return { home: [], away: [] };
+    return empty;
+  }
+}
+
+/** Settle all active NEXT_CORNER bets for a specific corner number.
+ *  cornerNumber is the sequential total corner count (e.g. 7 = 7th corner of the match).
+ *  winningTeam is 'home' or 'away' — the team that scored that corner. */
+async function settleCornerBets(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  matchId: string,
+  cornerNumber: number,
+  winningTeam: "home" | "away",
+): Promise<void> {
+  const { data: bets } = await supabase
+    .from("bets")
+    .select("id, odds, current_amount, outcome")
+    .eq("match_id", matchId)
+    .eq("bet_type", "NEXT_CORNER")
+    .eq("current_player_id", String(cornerNumber))
+    .eq("status", "active");
+
+  if (!bets || bets.length === 0) return;
+
+  for (const bet of bets) {
+    const won = bet.outcome === winningTeam;
+    await supabase
+      .from("bets")
+      .update({
+        status: won ? "settled_won" : "settled_lost",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", bet.id);
   }
 }
 
@@ -232,7 +310,7 @@ Deno.serve(async (req: Request) => {
     const { data: dbMatches, error: dbErr } = await supabase
       .from("matches")
       .select(
-        "id, goalserve_static_id, status, current_minute, score_home, score_away, goalserve_finished",
+        "id, goalserve_static_id, status, current_minute, score_home, score_away, goalserve_finished, corners_home, corners_away, corners_last_settled",
       )
       .not("status", "in", '("finished","cancelled")')
       .not("goalserve_static_id", "is", null);
@@ -329,27 +407,33 @@ Deno.serve(async (req: Request) => {
         hasChanges = true;
       }
 
-      if (!hasChanges) continue;
+      // Always check corners for live matches, regardless of other changes.
+      const matchIsLive =
+        newStatus === "live" ||
+        newStatus === "halftime" ||
+        currentStatus === "live" ||
+        currentStatus === "halftime";
 
-      const { error: updateErr } = await supabase
-        .from("matches")
-        .update(updates)
-        .eq("id", dbMatch.id);
+      if (hasChanges) {
+        const { error: updateErr } = await supabase
+          .from("matches")
+          .update(updates)
+          .eq("id", dbMatch.id);
 
-      if (!updateErr) {
-        updatedCount++;
-        if (shouldUpdate) {
-          updatedMatches.push({
-            id: dbMatch.id,
-            old_status: currentStatus,
-            new_status: newStatus,
-            minute: gsInfo.minute,
-          });
+        if (!updateErr) {
+          updatedCount++;
+          if (shouldUpdate) {
+            updatedMatches.push({
+              id: dbMatch.id,
+              old_status: currentStatus,
+              new_status: newStatus,
+              minute: gsInfo.minute,
+            });
+          }
         }
+      }
 
-        // ── Goal event detection ─────────────────────────────────────────────
-        // Detect score increases and insert goal_events rows (source=chainlink_cre,
-        // confirmed=false). The admin confirms them in the Oracle tab.
+      if (matchIsLive) {
         const prevHome = dbMatch.score_home ?? 0;
         const prevAway = dbMatch.score_away ?? 0;
         const newHome =
@@ -364,55 +448,106 @@ Deno.serve(async (req: Request) => {
         const homeGoalsDelta = Math.max(0, newHome - prevHome);
         const awayGoalsDelta = Math.max(0, newAway - prevAway);
 
-        if (homeGoalsDelta > 0 || awayGoalsDelta > 0) {
-          // Try to get scorers from Goalserve commentary endpoint.
-          const scorers = await tryGetGoalScorers(
+        // Fetch commentary data for scorers (if goal) and corners (always)
+        {
+          const commentary = await tryGetCommentaryData(
             apiKey,
             dbMatch.goalserve_static_id,
             gsInfo.leagueId,
           );
 
-          // deno-lint-ignore no-explicit-any
-          const eventsToInsert: any[] = [];
-          const rawPayload = {
-            score_before: `${prevHome}-${prevAway}`,
-            score_after: `${newHome}-${newAway}`,
-            goalserve_static_id: dbMatch.goalserve_static_id,
-          };
+          // ── Goal event insertion ─────────────────────────────────────────
+          if (homeGoalsDelta > 0 || awayGoalsDelta > 0) {
+            // deno-lint-ignore no-explicit-any
+            const eventsToInsert: any[] = [];
+            const rawPayload = {
+              score_before: `${prevHome}-${prevAway}`,
+              score_after: `${newHome}-${newAway}`,
+              goalserve_static_id: dbMatch.goalserve_static_id,
+            };
 
-          for (let i = 0; i < homeGoalsDelta; i++) {
-            // Take from the END of scorers.home — most recent goals if multiple
-            const s = scorers.home[scorers.home.length - homeGoalsDelta + i];
-            eventsToInsert.push({
-              match_id: dbMatch.id,
-              player_id: s?.player_id ?? "unknown",
-              player_name: s?.player_name ?? "Unknown scorer",
-              team: "home",
-              minute: s?.minute ?? gsInfo.minute ?? 0,
-              event_type: "GOAL",
-              confirmed: false,
-              source: "chainlink_cre",
-              raw_payload: rawPayload,
-            });
+            for (let i = 0; i < homeGoalsDelta; i++) {
+              // Take from the END of scorers.home — most recent goals if multiple
+              const s =
+                commentary.scorers.home[
+                  commentary.scorers.home.length - homeGoalsDelta + i
+                ];
+              eventsToInsert.push({
+                match_id: dbMatch.id,
+                player_id: s?.player_id ?? "unknown",
+                player_name: s?.player_name ?? "Unknown scorer",
+                team: "home",
+                minute: s?.minute ?? gsInfo.minute ?? 0,
+                event_type: "GOAL",
+                confirmed: false,
+                source: "chainlink_cre",
+                raw_payload: rawPayload,
+              });
+            }
+
+            for (let i = 0; i < awayGoalsDelta; i++) {
+              const s =
+                commentary.scorers.away[
+                  commentary.scorers.away.length - awayGoalsDelta + i
+                ];
+              eventsToInsert.push({
+                match_id: dbMatch.id,
+                player_id: s?.player_id ?? "unknown",
+                player_name: s?.player_name ?? "Unknown scorer",
+                team: "away",
+                minute: s?.minute ?? gsInfo.minute ?? 0,
+                event_type: "GOAL",
+                confirmed: false,
+                source: "chainlink_cre",
+                raw_payload: rawPayload,
+              });
+            }
+
+            if (eventsToInsert.length > 0) {
+              await supabase.from("goal_events").insert(eventsToInsert);
+            }
           }
 
-          for (let i = 0; i < awayGoalsDelta; i++) {
-            const s = scorers.away[scorers.away.length - awayGoalsDelta + i];
-            eventsToInsert.push({
-              match_id: dbMatch.id,
-              player_id: s?.player_id ?? "unknown",
-              player_name: s?.player_name ?? "Unknown scorer",
-              team: "away",
-              minute: s?.minute ?? gsInfo.minute ?? 0,
-              event_type: "GOAL",
-              confirmed: false,
-              source: "chainlink_cre",
-              raw_payload: rawPayload,
-            });
-          }
+          // ── Corner detection + NEXT_CORNER bet settlement ────────────────
+          // Only process when Goalserve returned valid (non-negative) corner counts.
+          if (commentary.cornersHome >= 0 && commentary.cornersAway >= 0) {
+            const prevCornersHome = dbMatch.corners_home ?? 0;
+            const prevCornersAway = dbMatch.corners_away ?? 0;
+            const prevTotal = prevCornersHome + prevCornersAway;
+            const newCornersHome = commentary.cornersHome;
+            const newCornersAway = commentary.cornersAway;
+            const newTotal = newCornersHome + newCornersAway;
 
-          if (eventsToInsert.length > 0) {
-            await supabase.from("goal_events").insert(eventsToInsert);
+            if (newTotal > prevTotal) {
+              // Determine which team(s) got new corners.
+              // Typical case: exactly one new corner. Handle multi-corner delta
+              // (e.g. if sync missed a cycle) by working through each corner number.
+              const homeDelta = Math.max(0, newCornersHome - prevCornersHome);
+              const awayDelta = Math.max(0, newCornersAway - prevCornersAway);
+
+              // Build ordered list of new corners (home/away) by sequential number.
+              // We interleave home/away deltas in order of the total corner count.
+              // Since we don't know the exact order within the same sync window, we
+              // attribute home corners first then away (conservative ordering).
+              let cornerSeq = prevTotal + 1;
+              for (let h = 0; h < homeDelta; h++, cornerSeq++) {
+                await settleCornerBets(supabase, dbMatch.id, cornerSeq, "home");
+              }
+              for (let a = 0; a < awayDelta; a++, cornerSeq++) {
+                await settleCornerBets(supabase, dbMatch.id, cornerSeq, "away");
+              }
+
+              // Persist new corner counts
+              await supabase
+                .from("matches")
+                .update({
+                  corners_home: newCornersHome,
+                  corners_away: newCornersAway,
+                  corners_last_settled: newTotal,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", dbMatch.id);
+            }
           }
         }
       }

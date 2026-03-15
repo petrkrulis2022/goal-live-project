@@ -28,6 +28,7 @@ export interface MatchCallbacks {
   onScoreUpdate: (score: { home: number; away: number }) => void;
   onMatchEnd: (score: { home: number; away: number }) => void;
   onStatusChange: (status: Match["status"]) => void;
+  onCornersUpdate?: (home: number, away: number) => void;
 }
 
 // ── IDataService ──────────────────────────────
@@ -49,8 +50,10 @@ export interface PlaceBetParams {
   wallet: string;
   betType: BetType;
   playerId?: string; // NEXT_GOAL_SCORER
-  outcome?: MatchWinnerOutcome; // MATCH_WINNER
+  outcome?: MatchWinnerOutcome; // MATCH_WINNER / NEXT_CORNER
   goalsTarget?: number; // EXACT_GOALS
+  /** NEXT_CORNER: which corner number this bet targets (cornersHome + cornersAway + 1 at bet time) */
+  cornerNumber?: number;
   amount: number;
   odds: number;
   currentMinute: number;

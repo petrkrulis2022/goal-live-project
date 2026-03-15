@@ -67,9 +67,9 @@ export const VideoOverlayDebugGrid: React.FC<VideoOverlayDebugGridProps> = ({
               });
             }}
             style={{
-              border: "1px solid rgba(16,185,129,0.24)",
-              background: "rgba(16,185,129,0.04)",
-              color: "rgba(255,255,255,0.45)",
+              border: "1px solid rgba(16,185,129,0.07)",
+              background: "rgba(16,185,129,0.01)",
+              color: "rgba(255,255,255,0)",
               cursor: "crosshair",
               fontSize: "9px",
               fontWeight: 700,
@@ -77,10 +77,10 @@ export const VideoOverlayDebugGrid: React.FC<VideoOverlayDebugGridProps> = ({
               transition: "background 0.12s ease",
             }}
             onMouseEnter={(event) => {
-              event.currentTarget.style.background = "rgba(16,185,129,0.12)";
+              event.currentTarget.style.background = "rgba(16,185,129,0.05)";
             }}
             onMouseLeave={(event) => {
-              event.currentTarget.style.background = "rgba(16,185,129,0.04)";
+              event.currentTarget.style.background = "rgba(16,185,129,0.01)";
             }}
           >
             {cell.row + 1}:{cell.col + 1}

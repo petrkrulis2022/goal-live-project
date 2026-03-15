@@ -58,6 +58,7 @@ class SupabaseBettingService implements IBettingService {
       playerId,
       outcome,
       goalsTarget,
+      cornerNumber,
       amount,
       odds,
       currentMinute,
@@ -115,16 +116,26 @@ class SupabaseBettingService implements IBettingService {
         bettor_wallet: wallet,
         match_id: match.id,
         bet_type: betType,
-        // EXACT_GOALS: encode goalsTarget as string (no dedicated column in schema)
+        // EXACT_GOALS: encode goalsTarget as string in player_id columns
+        // NEXT_CORNER: encode cornerNumber as string in player_id columns; outcome = home|away
         original_player_id:
           playerId ??
+          (betType === "NEXT_CORNER" && cornerNumber !== undefined
+            ? String(cornerNumber)
+            : undefined) ??
           outcome ??
           (goalsTarget !== undefined ? String(goalsTarget) : ""),
         current_player_id:
           playerId ??
+          (betType === "NEXT_CORNER" && cornerNumber !== undefined
+            ? String(cornerNumber)
+            : undefined) ??
           outcome ??
           (goalsTarget !== undefined ? String(goalsTarget) : ""),
-        outcome: betType === "MATCH_WINNER" ? outcome : null,
+        outcome:
+          betType === "MATCH_WINNER" || betType === "NEXT_CORNER"
+            ? outcome
+            : null,
         original_amount: amount,
         current_amount: amount,
         total_penalties: 0,
@@ -258,7 +269,12 @@ class SupabaseBettingService implements IBettingService {
     const provisional = bets
       .filter((b) => b.status === "provisional_win")
       .reduce((s, b) => s + b.current_amount * b.odds, 0);
-    const locked = active.reduce((s, b) => s + b.current_amount, 0);
+    // Locked = active bets + provisional_loss bets (stake stays locked until end-of-game settlement)
+    const provisionalLoss = bets.filter((b) => b.status === "provisional_loss");
+    const locked = [...active, ...provisionalLoss].reduce(
+      (s, b) => s + b.current_amount,
+      0,
+    );
     // bets are already filtered per-match, so lockedThisGame === locked
     const lockedThisGame = locked;
     const slashedThisGame = bets.reduce((s, b) => s + b.total_penalties, 0);

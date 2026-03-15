@@ -374,6 +374,13 @@ export default function EventDetail() {
     bookmaker: string;
   } | null>(null);
 
+  const [cornerOddsHome, setCornerOddsHome] = useState<number>(1.9);
+  const [cornerOddsAway, setCornerOddsAway] = useState<number>(1.9);
+  const [cornerOddsSaving, setCornerOddsSaving] = useState(false);
+  const [cornerOddsSavedMsg, setCornerOddsSavedMsg] = useState<string | null>(
+    null,
+  );
+
   async function fetchMatchOdds(m: DbMatch) {
     try {
       const sport = resolveOddsApiSport(m);
@@ -413,6 +420,30 @@ export default function EventDetail() {
         .eq("id", m.id);
     } catch {
       // silent
+    }
+  }
+
+  async function saveCornerOdds(m: DbMatch) {
+    setCornerOddsSaving(true);
+    setCornerOddsSavedMsg(null);
+    try {
+      const existingCfg = (m.odds_api_config ?? {}) as Record<string, unknown>;
+      await supabase
+        .from("matches")
+        .update({
+          odds_api_config: {
+            ...existingCfg,
+            corner_odds: { home: cornerOddsHome, away: cornerOddsAway },
+          },
+        })
+        .eq("id", m.id);
+      setCornerOddsSavedMsg(
+        `Saved: ${cornerOddsHome.toFixed(2)}× / ${cornerOddsAway.toFixed(2)}×`,
+      );
+    } catch {
+      setCornerOddsSavedMsg("Save failed");
+    } finally {
+      setCornerOddsSaving(false);
     }
   }
 
@@ -954,6 +985,15 @@ export default function EventDetail() {
         return;
       }
       setMatch(m);
+      // Initialize corner odds from stored config
+      const cfg = (m.odds_api_config ?? {}) as Record<string, unknown>;
+      const storedCorner = cfg.corner_odds as
+        | { home?: number; away?: number }
+        | undefined;
+      if (storedCorner) {
+        setCornerOddsHome(storedCorner.home ?? 1.9);
+        setCornerOddsAway(storedCorner.away ?? 1.9);
+      }
 
       Promise.all([
         supabase.from("players").select("*").eq("match_id", m.id).order("odds"),
@@ -1524,6 +1564,55 @@ export default function EventDetail() {
               </div>
             </div>
           )}
+          {/* ── Corner bet odds ── */}
+          <div className="bg-gray-900/70 border border-white/5 rounded-xl px-4 py-3">
+            <div className="text-[10px] text-gray-600 uppercase tracking-wider font-medium mb-3">
+              Corner Bet Odds
+            </div>
+            <div className="flex flex-wrap gap-4 items-end">
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] text-gray-500">
+                  {match.home_team.split(" ")[0]} (Home)
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="1"
+                  value={cornerOddsHome}
+                  onChange={(e) => setCornerOddsHome(Number(e.target.value))}
+                  className="bg-gray-950/60 text-white rounded-lg px-3 py-2 w-24 text-sm border border-white/5 focus:outline-none focus:border-yellow-500/50"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] text-gray-500">
+                  {match.away_team.split(" ")[0]} (Away)
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="1"
+                  value={cornerOddsAway}
+                  onChange={(e) => setCornerOddsAway(Number(e.target.value))}
+                  className="bg-gray-950/60 text-white rounded-lg px-3 py-2 w-24 text-sm border border-white/5 focus:outline-none focus:border-yellow-500/50"
+                />
+              </label>
+              <button
+                onClick={() => saveCornerOdds(match)}
+                disabled={cornerOddsSaving}
+                className="px-4 py-2 rounded-lg bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30 transition-colors text-xs font-medium disabled:opacity-50"
+              >
+                {cornerOddsSaving ? "Saving…" : "Save Corner Odds"}
+              </button>
+              {cornerOddsSavedMsg && (
+                <span className="text-emerald-400 text-xs">
+                  {cornerOddsSavedMsg}
+                </span>
+              )}
+            </div>
+            <p className="text-gray-600 text-[10px] mt-2">
+              Stored in odds_api_config.corner_odds · Default 1.9× if not set
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-2 text-sm">
             {[
               ["External ID", match.external_match_id],

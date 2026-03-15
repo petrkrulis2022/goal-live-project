@@ -3,12 +3,18 @@ import type { Player, MatchWinnerOdds, Bet, BalanceState } from "../types";
 import type { MatchWinnerOutcome } from "../types";
 
 interface BetModalProps {
-  // One of these three will be set
+  // One of these will be set
   player?: Player;
   mwOutcome?: MatchWinnerOutcome;
   mwOdds?: MatchWinnerOdds;
   egGoals?: number; // EXACT_GOALS — total goals target
   egOdds?: number; // pre-set odds for that goals count
+  // NEXT_CORNER
+  ncSide?: "home" | "away";
+  ncOdds?: number;
+  ncCornerNumber?: number;
+  ncHomeTeam?: string;
+  ncAwayTeam?: string;
   // Context
   currentMinute: number;
   goalWindow: number;
@@ -17,10 +23,15 @@ interface BetModalProps {
   activeBet: Bet | null;
   // Callbacks
   onPlaceBet: (params: {
-    betType: "NEXT_GOAL_SCORER" | "MATCH_WINNER" | "EXACT_GOALS";
+    betType:
+      | "NEXT_GOAL_SCORER"
+      | "MATCH_WINNER"
+      | "EXACT_GOALS"
+      | "NEXT_CORNER";
     playerId?: string;
     outcome?: MatchWinnerOutcome;
     goalsTarget?: number;
+    cornerNumber?: number;
     amount: number;
     odds: number;
     currentMinute: number;
@@ -45,6 +56,11 @@ export const BetModal: React.FC<BetModalProps> = ({
   mwOdds,
   egGoals,
   egOdds,
+  ncSide,
+  ncOdds,
+  ncCornerNumber,
+  ncHomeTeam,
+  ncAwayTeam,
   currentMinute,
   goalWindow,
   matchId,
@@ -60,18 +76,25 @@ export const BetModal: React.FC<BetModalProps> = ({
 
   const isNGS = !!player;
   const isEG = egGoals !== undefined;
+  const isNC = ncSide !== undefined;
   const odds = isNGS
     ? (player?.odds ?? 1)
     : isEG
       ? (egOdds ?? 1)
-      : mwOdds
-        ? mwOdds[mwOutcome!]
-        : 1;
+      : isNC
+        ? (ncOdds ?? 1.9)
+        : mwOdds
+          ? mwOdds[mwOutcome!]
+          : 1;
+  const ncTeamLabel =
+    ncSide === "home" ? (ncHomeTeam ?? "Home") : (ncAwayTeam ?? "Away");
   const label = isNGS
     ? player!.name
     : isEG
       ? `Exact Goals: ${egGoals === 6 ? "6+" : egGoals}`
-      : outcomeLabel(mwOutcome!);
+      : isNC
+        ? `Next Corner: ${ncTeamLabel}`
+        : outcomeLabel(mwOutcome!);
   const payout = amount * odds;
   // available = deposited - already locked in active bets
   const maxBet = balance.available;
@@ -103,10 +126,14 @@ export const BetModal: React.FC<BetModalProps> = ({
             ? "NEXT_GOAL_SCORER"
             : isEG
               ? "EXACT_GOALS"
-              : "MATCH_WINNER",
+              : isNC
+                ? "NEXT_CORNER"
+                : "MATCH_WINNER",
           playerId: isNGS ? player!.id : undefined,
-          outcome: !isNGS && !isEG ? mwOutcome : undefined,
+          outcome:
+            !isNGS && !isEG && !isNC ? mwOutcome : isNC ? ncSide : undefined,
           goalsTarget: isEG ? egGoals : undefined,
+          cornerNumber: isNC ? ncCornerNumber : undefined,
           amount,
           odds,
           currentMinute,
@@ -123,7 +150,7 @@ export const BetModal: React.FC<BetModalProps> = ({
             const changeRes = (await onChangeBet(
               existingBetId,
               isNGS ? player!.id : undefined,
-              !isNGS && !isEG ? mwOutcome : undefined,
+              !isNGS && !isEG && !isNC ? mwOutcome : undefined,
               odds,
               currentMinute,
             )) as { success: boolean; error?: string };
@@ -149,6 +176,11 @@ export const BetModal: React.FC<BetModalProps> = ({
     onPlaceBet,
     isNGS,
     player,
+    ncSide,
+    ncOdds,
+    ncCornerNumber,
+    ncHomeTeam,
+    ncAwayTeam,
     mwOutcome,
     odds,
     currentMinute,
@@ -172,7 +204,9 @@ export const BetModal: React.FC<BetModalProps> = ({
                 ? "Next Goal Scorer"
                 : isEG
                   ? "Exact Goals"
-                  : "Match Winner"}{" "}
+                  : isNC
+                    ? "Next Corner"
+                    : "Match Winner"}{" "}
               · {currentMinute}'
             </p>
             <h2 className="text-white font-black text-xl">{label}</h2>

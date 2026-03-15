@@ -46,16 +46,30 @@ import type { Player, Bet } from "../types";
 import type { MatchWinnerOutcome } from "../types";
 import { tryUnmuteVideo } from "../utils/videoUtils";
 import { calcPenalty } from "../utils/penaltyCalculator";
+import { VideoOverlayDebugGrid } from "./VideoOverlayDebugGrid";
+import { useVideoOverlayBounds } from "../hooks/useVideoOverlayBounds";
 
 type ModalState =
   | { type: "player"; player: Player }
   | { type: "mw"; outcome: MatchWinnerOutcome }
   | { type: "eg"; goals: number }
+  | {
+      type: "corner";
+      side: "home" | "away";
+      odds: number;
+      cornerNumber: number;
+    }
   | { type: "topup" }
   | { type: "fundmatch" }
   | { type: "withdraw" }
   | { type: "claim" }
-  | { type: "goalWin"; playerName: string }
+  | {
+      type: "goalResult";
+      won: boolean;
+      scorerName: string;
+      betPlayerName: string;
+      betType: "goal" | "corner";
+    }
   | null;
 
 const MW_OUTCOMES: Array<{ outcome: MatchWinnerOutcome; label: string }> = [
@@ -101,6 +115,8 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
 
   const [modal, setModal] = useState<ModalState>(null);
   const [hidden, setHidden] = useState(false);
+  const [showGrid, setShowGrid] = useState(false);
+  const gridBounds = useVideoOverlayBounds(showGrid);
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMatches, setPickerMatches] = useState<MatchRow[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
@@ -246,41 +262,99 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
   const [activeCorner, setActiveCorner] = useState<
     null | "A" | "B" | "C" | "D"
   >(null);
+  void activeCorner;
+  void setActiveCorner; // suppressed — replaced by real corner UI below
 
-  // Goal celebration
-  const [celebrationPlayer, setCelebrationPlayer] = useState<string | null>(
-    null,
-  );
-  const prevScoreRef = useRef<{
-    home: number;
-    away: number;
-  }>({ home: 0, away: 0 });
+  // Refs for win/loss modal logic
+  const pendingScorerRef = useRef<{
+    playerId: string;
+    playerName: string;
+  } | null>(null);
+  const prevBetStatusesRef = useRef<Map<string, string>>(new Map());
+  const betsInitializedRef = useRef(false);
 
-  // Detect goal scoring and trigger celebration
+  // Reset bet-status tracking when match changes
   useEffect(() => {
-    if (!match) return;
-    const home = match.score?.home ?? 0;
-    const away = match.score?.away ?? 0;
-    const prevScore = prevScoreRef.current;
+    betsInitializedRef.current = false;
+    prevBetStatusesRef.current = new Map();
+  }, [match?.dbId]);
 
-    let goalScorer: string | null = null;
+  // Capture scorer dispatched by useMatchData when a real goal fires
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { scorerPlayerId, scorerPlayerName } = (
+        e as CustomEvent<{ scorerPlayerId: string; scorerPlayerName: string }>
+      ).detail;
+      pendingScorerRef.current = {
+        playerId: scorerPlayerId,
+        playerName: scorerPlayerName,
+      };
+    };
+    window.addEventListener("gl:goalScored", handler);
+    return () => window.removeEventListener("gl:goalScored", handler);
+  }, []);
 
-    if (home > prevScore.home) {
-      goalScorer =
-        homePlayers.length > 0 ? (homePlayers[0].name ?? "Home Team") : "Goal!";
-    } else if (away > prevScore.away) {
-      goalScorer =
-        awayPlayers.length > 0 ? (awayPlayers[0].name ?? "Away Team") : "Goal!";
+  // Detect bet status transitions (active → provisional_win/loss) → show result modal
+  useEffect(() => {
+    if (bets.length === 0) return;
+    const prevStatuses = prevBetStatusesRef.current;
+    if (!betsInitializedRef.current) {
+      bets.forEach((b) => prevStatuses.set(b.id, b.status));
+      betsInitializedRef.current = true;
+      return;
     }
-
-    if (goalScorer) {
-      setCelebrationPlayer(goalScorer);
-      setModal({ type: "goalWin", playerName: goalScorer });
-      setTimeout(() => setCelebrationPlayer(null), 5000);
+    for (const bet of bets) {
+      const prev = prevStatuses.get(bet.id);
+      const curr = bet.status;
+      if (
+        prev === "active" &&
+        (curr === "provisional_win" ||
+          curr === "provisional_loss" ||
+          curr === "settled_won" ||
+          curr === "settled_lost")
+      ) {
+        // Map settled statuses to won/lost for NEXT_CORNER (which skips provisional)
+        const won = curr === "provisional_win" || curr === "settled_won";
+        if (bet.betType === "NEXT_GOAL_SCORER") {
+          const scorerInfo = pendingScorerRef.current;
+          const scorerName = scorerInfo?.playerName ?? "A player";
+          const betPlayer =
+            players.find((p) => p.id === bet.current_player_id)?.name ??
+            "your player";
+          setModal({
+            type: "goalResult",
+            won,
+            scorerName,
+            betPlayerName: betPlayer,
+            betType: "goal",
+          });
+          pendingScorerRef.current = null;
+        } else if (bet.betType === "NEXT_CORNER") {
+          const winningTeam: "home" | "away" = won
+            ? (bet.outcome as "home" | "away")
+            : bet.outcome === "home"
+              ? "away"
+              : "home";
+          const scorerName =
+            winningTeam === "home"
+              ? (match?.homeTeam ?? "Home team")
+              : (match?.awayTeam ?? "Away team");
+          const betTeam =
+            bet.outcome === "home"
+              ? (match?.homeTeam ?? "Home")
+              : (match?.awayTeam ?? "Away");
+          setModal({
+            type: "goalResult",
+            won,
+            scorerName,
+            betPlayerName: betTeam,
+            betType: "corner",
+          });
+        }
+      }
+      prevStatuses.set(bet.id, curr);
     }
-
-    prevScoreRef.current = { home, away };
-  }, [match?.score?.home, match?.score?.away, homePlayers, awayPlayers, match]);
+  }, [bets, players, match]);
 
   const leftLineup = panelFlipped ? awayLineup : homeLineup;
   const rightLineup = panelFlipped ? homeLineup : awayLineup;
@@ -528,10 +602,15 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
 
   const handlePlaceBet = useCallback(
     async (params: {
-      betType: "NEXT_GOAL_SCORER" | "MATCH_WINNER" | "EXACT_GOALS";
+      betType:
+        | "NEXT_GOAL_SCORER"
+        | "MATCH_WINNER"
+        | "EXACT_GOALS"
+        | "NEXT_CORNER";
       playerId?: string;
       outcome?: MatchWinnerOutcome;
       goalsTarget?: number;
+      cornerNumber?: number;
       amount: number;
       odds: number;
       currentMinute: number;
@@ -653,6 +732,25 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             }}
           >
             ⚽ Events
+          </button>
+
+          {/* Grid toggle */}
+          <button
+            onClick={() => setShowGrid((v) => !v)}
+            className="gl-interactive"
+            title={showGrid ? "Hide video grid" : "Show video calibration grid"}
+            style={{
+              background: showGrid ? "#10b981" : "rgba(0,0,0,0.6)",
+              border: `1px solid ${showGrid ? "#10b981" : "rgba(255,255,255,0.18)"}`,
+              borderRadius: "5px",
+              color: showGrid ? "#000" : "#9ca3af",
+              fontSize: "11px",
+              fontWeight: 700,
+              padding: "4px 9px",
+              cursor: "pointer",
+            }}
+          >
+            ⊞ Grid
           </button>
 
           {/* Panel swap button */}
@@ -900,17 +998,26 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
         >
           {/* Logo — same height as score box, left of it */}
           {LOGO_URL && (
-            <img
-              src={LOGO_URL}
-              alt="goal.live"
-              style={{
-                height: "52px",
-                width: "auto",
-                display: "block",
-                borderRadius: "8px",
-                flexShrink: 0,
-              }}
-            />
+            <a
+              href="https://goal-live-landing-page.netlify.app/"
+              target="_blank"
+              rel="noreferrer"
+              className="gl-interactive"
+              title="goal.live — visit our site"
+              style={{ display: "block", flexShrink: 0, lineHeight: 0 }}
+            >
+              <img
+                src={LOGO_URL}
+                alt="goal.live"
+                style={{
+                  height: "52px",
+                  width: "auto",
+                  display: "block",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                }}
+              />
+            </a>
           )}
 
           {/* match scoreboard + MW bets inside */}
@@ -1400,52 +1507,109 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
         />
       )}
 
-      {modal?.type === "goalWin" && (
-        <GoalWinCelebration
-          playerName={modal.playerName}
+      {modal?.type === "corner" && (
+        <BetModal
+          ncSide={modal.side}
+          ncOdds={modal.odds}
+          ncCornerNumber={modal.cornerNumber}
+          ncHomeTeam={match?.homeTeam}
+          ncAwayTeam={match?.awayTeam}
+          currentMinute={match?.currentMinute ?? 0}
+          goalWindow={currentGoalWindow}
+          matchId={match?.id ?? ""}
+          balance={balance}
+          activeBet={null}
+          onPlaceBet={handlePlaceBet}
+          onChangeBet={changeBet}
           onClose={() => setModal(null)}
         />
       )}
 
-      {/* ── CORNER BET MOCK BUTTONS — one per screen corner ───────────── */}
-      {["A", "B", "C", "D"].map((corner) => {
-        const isTop = corner === "A" || corner === "B";
-        const isLeft = corner === "A" || corner === "C";
-        const isActive = activeCorner === corner;
+      {modal?.type === "goalResult" && (
+        <GoalWinCelebration
+          won={modal.won}
+          scorerName={modal.scorerName}
+          betPlayerName={modal.betPlayerName}
+          betType={modal.betType}
+          onClose={() => setModal(null)}
+        />
+      )}
+
+      {/* ── VIDEO CALIBRATION GRID ─────────────────────────────────────── */}
+      {showGrid && gridBounds && <VideoOverlayDebugGrid bounds={gridBounds} />}
+
+      {/* ── CORNER BET BUTTONS — Home (top-left) and Away (top-right) ─── */}
+      {(["home", "away"] as const).map((side) => {
+        const isHome = side === "home";
+        const cornerOdds = mwOdds.cornerOdds;
+        const oddsValue = cornerOdds
+          ? isHome
+            ? cornerOdds.home
+            : cornerOdds.away
+          : 1.9;
+        const teamLabel = isHome
+          ? (match?.homeTeam ?? "Home")
+          : (match?.awayTeam ?? "Away");
+        const cornersHome = match?.cornersHome ?? 0;
+        const cornersAway = match?.cornersAway ?? 0;
+        const nextCornerNum = cornersHome + cornersAway + 1;
+        // Any active corner bet regardless of side — used to detect cross-side switch
+        const anyActiveCrBet = bets.find(
+          (b) => b.betType === "NEXT_CORNER" && b.status === "active",
+        );
+        // Only the side matching the current active bet is green
+        const isActive = anyActiveCrBet?.outcome === side;
         return (
           <button
-            key={corner}
-            onClick={() =>
-              setActiveCorner((prev) =>
-                prev === corner ? null : (corner as "A" | "B" | "C" | "D"),
-              )
-            }
+            key={side}
+            onClick={() => {
+              if (isPreMatch || isFinished) return;
+              // Already active on this side — nothing to do
+              if (isActive) return;
+              // Active on the OTHER side → slash and switch (no new-bet modal)
+              if (anyActiveCrBet) {
+                void quickSwitchBet(anyActiveCrBet, {
+                  label: teamLabel,
+                  newOutcome: side,
+                  newOdds: oddsValue,
+                });
+                return;
+              }
+              // No active corner bet → open place-bet modal
+              setModal({
+                type: "corner",
+                side,
+                odds: oddsValue,
+                cornerNumber: nextCornerNum,
+              });
+            }}
             className="gl-interactive"
-            title={`Corner ${corner} — next corner kick bet (mock)`}
+            title={`Next Corner: ${teamLabel} — corner #${nextCornerNum} at ${oddsValue}×`}
             style={{
               position: "fixed",
-              ...(isTop ? { top: "0" } : { bottom: "0" }),
-              ...(isLeft ? { left: "0" } : { right: "0" }),
+              bottom: "0",
+              ...(isHome ? { left: "0" } : { right: "0" }),
               zIndex: 2147483645,
-              pointerEvents: "auto",
+              pointerEvents: isPreMatch || isFinished ? "none" : "auto",
+              opacity: isPreMatch || isFinished ? 0.4 : 1,
               width: "156px",
-              height: "60px",
+              height: "64px",
               background: isActive
-                ? "linear-gradient(180deg,#fef08a 0%,#fde047 40%,#eab308 100%)"
+                ? "linear-gradient(180deg,#86efac 0%,#22c55e 40%,#16a34a 100%)"
                 : "linear-gradient(180deg,#fde047 0%,#eab308 40%,#ca8a04 100%)",
               borderTop: `1px solid ${isActive ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.35)"}`,
               borderLeft: `1px solid ${isActive ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.18)"}`,
               borderRight: `1px solid ${isActive ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.18)"}`,
-              borderBottom: `3px solid ${isActive ? "#92400e" : "#a16207"}`,
+              borderBottom: `3px solid ${isActive ? "#14532d" : "#a16207"}`,
               borderRadius: "8px",
-              cursor: "pointer",
+              cursor: isPreMatch || isFinished ? "default" : "pointer",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
               gap: "2px",
               boxShadow: isActive
-                ? "0 0 14px rgba(253,211,77,0.8), inset 0 1px 0 rgba(255,255,255,0.4)"
+                ? "0 0 16px rgba(34,197,94,0.85), inset 0 1px 0 rgba(255,255,255,0.4)"
                 : "0 5px 0 #a16207, 0 6px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.35)",
               transform: isActive ? "translateY(2px)" : "translateY(0px)",
               transition: "all 0.12s ease",
@@ -1454,23 +1618,37 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           >
             <span
               style={{
-                fontSize: "11px",
-                color: isActive ? "#78350f" : "#1c1917",
-                fontWeight: 800,
-                letterSpacing: "0.04em",
+                fontSize: "9px",
+                color: isActive ? "#052e16" : "#44200a",
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
               }}
             >
-              Corner {corner}
+              Next Corner #{nextCornerNum}
+            </span>
+            <span
+              style={{
+                fontSize: "12px",
+                color: isActive ? "#14532d" : "#1c1917",
+                fontWeight: 800,
+                maxWidth: "140px",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {teamLabel}
             </span>
             <span
               style={{
                 fontSize: "13px",
                 fontWeight: 800,
-                color: isActive ? "#92400e" : "#1c1917",
-                textShadow: isActive ? "0 0 8px rgba(255,255,255,0.4)" : "none",
+                color: isActive ? "#14532d" : "#1c1917",
+                textShadow: isActive ? "0 0 8px rgba(255,255,255,0.5)" : "none",
               }}
             >
-              2.80×
+              {oddsValue.toFixed(2)}×
             </span>
           </button>
         );

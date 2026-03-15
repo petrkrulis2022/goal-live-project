@@ -25,7 +25,7 @@
  * Logic:
  *  1. Validates match exists; 409 if finished + !force.
  *  2. Auto-fetch or explicit winner/goals/scorers resolution.
- *  3. Settles all bet types (NGS, MATCH_WINNER, EXACT_GOALS).
+ *  3. Settles all bet types (NGS, MATCH_WINNER, EXACT_GOALS, NEXT_CORNER).
  *  4. Calls settleMatch() on-chain via ORACLE_PRIVATE_KEY.
  *  5. Calls settleUserBalances() so users can withdraw() USDC.
  *  6. Upserts provisional_credits, marks match finished.
@@ -59,7 +59,7 @@ const WINNER_TO_UINT: Record<string, number> = {
 interface BetRow {
   id: string;
   bettor_wallet: string;
-  bet_type: "NEXT_GOAL_SCORER" | "MATCH_WINNER" | "EXACT_GOALS";
+  bet_type: "NEXT_GOAL_SCORER" | "MATCH_WINNER" | "EXACT_GOALS" | "NEXT_CORNER";
   current_player_id: string; // Goalserve integer string for NGS; numeric string for EXACT_GOALS (goal count target)
   outcome: "home" | "away" | "draw" | null; // for MATCH_WINNER
   current_amount: string | number;
@@ -92,6 +92,11 @@ function didBetWin(
     case "EXACT_GOALS":
       // current_player_id stores the goals target count as a numeric string
       return parseInt(bet.current_player_id, 10) === totalGoals;
+    case "NEXT_CORNER":
+      // Corner bets are settled live by sync-match-status.
+      // Any still-active NEXT_CORNER bets at FT are treated as lost
+      // (the corner they were waiting for never came).
+      return false;
     default:
       return false;
   }

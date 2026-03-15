@@ -3,7 +3,11 @@
 // ─────────────────────────────────────────────
 
 export type MatchStatus = "pre-match" | "live" | "halftime" | "finished";
-export type BetType = "NEXT_GOAL_SCORER" | "MATCH_WINNER" | "EXACT_GOALS";
+export type BetType =
+  | "NEXT_GOAL_SCORER"
+  | "MATCH_WINNER"
+  | "EXACT_GOALS"
+  | "NEXT_CORNER";
 export type BetStatus =
   | "active"
   | "provisional_win"
@@ -27,6 +31,9 @@ export interface Match {
   half: 1 | 2;
   /** On-chain escrow contract for this match (unique per game) */
   contractAddress?: string | null;
+  /** Current corner counts from Goalserve commentary sync */
+  cornersHome: number;
+  cornersAway: number;
 }
 
 // ── Player ────────────────────────────────────
@@ -64,6 +71,8 @@ export interface MatchWinnerOdds {
    *  Keys are total-goals strings: "0" | "1" | "2" | "3" | "4" | "5" (= 5+).
    *  Null when not yet fetched or unavailable. */
   egOdds?: Record<string, number>;
+  /** Corner kick odds. Null when not configured by admin. */
+  cornerOdds?: { home: number; away: number };
 }
 
 // ── Bet ───────────────────────────────────────

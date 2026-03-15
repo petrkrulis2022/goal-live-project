@@ -35,6 +35,9 @@ export interface DbMatch {
   contract_address: string | null;
   goalserve_static_id: string | null;
   goalserve_finished: boolean;
+  corners_home: number;
+  corners_away: number;
+  corners_last_settled: number;
   created_at: string;
   updated_at: string;
 }
@@ -56,7 +59,7 @@ export interface DbBet {
   id: string;
   bettor_wallet: string;
   match_id: string;
-  bet_type: "NEXT_GOAL_SCORER" | "MATCH_WINNER" | "EXACT_GOALS";
+  bet_type: "NEXT_GOAL_SCORER" | "MATCH_WINNER" | "EXACT_GOALS" | "NEXT_CORNER";
   original_player_id: string;
   current_player_id: string;
   outcome: "home" | "away" | "draw" | null;

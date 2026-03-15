@@ -80,10 +80,15 @@ export function useBetting(wallet: string | null, matchUuid?: string) {
 
   const placeBet = useCallback(
     async (params: {
-      betType: "NEXT_GOAL_SCORER" | "MATCH_WINNER" | "EXACT_GOALS";
+      betType:
+        | "NEXT_GOAL_SCORER"
+        | "MATCH_WINNER"
+        | "EXACT_GOALS"
+        | "NEXT_CORNER";
       playerId?: string;
       outcome?: "home" | "away" | "draw";
       goalsTarget?: number;
+      cornerNumber?: number;
       amount: number;
       odds: number;
       currentMinute: number;

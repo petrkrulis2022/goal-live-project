@@ -74,7 +74,7 @@ export function useMatchData(matchKey?: string) {
         setPlayers(updatedPlayers);
         setMwOdds(updatedMw);
       },
-      onGoal: async (playerId, _playerName, minute, _team) => {
+      onGoal: async (playerId, playerName, minute, _team) => {
         const gw = goalWindowRef.current;
         goalWindowRef.current = gw + 1;
         setMatch((prev) => (prev ? { ...prev, currentMinute: minute } : prev));
@@ -84,6 +84,11 @@ export function useMatchData(matchKey?: string) {
           minute,
           gw,
         );
+        window.dispatchEvent(
+          new CustomEvent("gl:goalScored", {
+            detail: { scorerPlayerId: playerId, scorerPlayerName: playerName },
+          }),
+        );
         window.dispatchEvent(new CustomEvent("gl:balanceRefresh"));
       },
       onGoalCorrected: (_originalPlayerId) => {
@@ -91,6 +96,13 @@ export function useMatchData(matchKey?: string) {
       },
       onScoreUpdate: (score) => {
         setMatch((prev) => (prev ? { ...prev, score } : prev));
+      },
+      onCornersUpdate: (cornersHome, cornersAway) => {
+        setMatch((prev) =>
+          prev ? { ...prev, cornersHome, cornersAway } : prev,
+        );
+        // Trigger bet refresh so corner settlement (active→settled) is picked up
+        window.dispatchEvent(new CustomEvent("gl:balanceRefresh"));
       },
       onMatchEnd: async (score) => {
         setMatch((prev) =>
