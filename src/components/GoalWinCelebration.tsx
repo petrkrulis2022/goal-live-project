@@ -66,7 +66,9 @@ function playResultSound(won: boolean, betType: "goal" | "corner") {
       osc.stop(ctx.currentTime + 0.7);
     }
     setTimeout(() => ctx.close(), 2500);
-  } catch { /* AudioContext may be unavailable in some contexts */ }
+  } catch {
+    /* AudioContext may be unavailable in some contexts */
+  }
 }
 
 interface GoalWinCelebrationProps {

@@ -165,22 +165,24 @@ async function tryGetCommentaryData(
     const stats = matchNode?.stats ?? {};
     console.log("[sync] stats node:", JSON.stringify(stats).slice(0, 400));
     const cornersRaw =
-      // @-prefixed forms (XML-to-JSON conversion)
+      // Actual Goalserve format: stats.localteam.corners["@total"]
+      stats?.localteam?.corners?.["@total"] ??
+      stats?.localteam?.corners?.total ??
+      // legacy / fallback forms
       stats?.corners?.["@localteam"] ??
       stats?.corners?.["@home"] ??
       stats?.localteam?.["@corners"] ??
       stats?.["@corners"]?.localteam ??
-      // non-@ forms
       stats?.corners?.localteam ??
-      stats?.localteam?.corners ??
       "";
     const cornersAwayRaw =
+      stats?.visitorteam?.corners?.["@total"] ??
+      stats?.visitorteam?.corners?.total ??
       stats?.corners?.["@visitorteam"] ??
       stats?.corners?.["@away"] ??
       stats?.visitorteam?.["@corners"] ??
       stats?.["@corners"]?.visitorteam ??
       stats?.corners?.visitorteam ??
-      stats?.visitorteam?.corners ??
       "";
     const cornersHome = parseInt(String(cornersRaw), 10);
     const cornersAway = parseInt(String(cornersAwayRaw), 10);
