@@ -18,8 +18,8 @@ function dbMatchToMatch(row: DbMatch): Match {
     score: { home: row.score_home, away: row.score_away },
     half: row.half as 1 | 2,
     contractAddress: row.contract_address ?? null,
-    cornersHome: ((row as Record<string, unknown>).corners_home as number) ?? 0,
-    cornersAway: ((row as Record<string, unknown>).corners_away as number) ?? 0,
+    cornersHome: row.corners_home ?? 0,
+    cornersAway: row.corners_away ?? 0,
   };
 }
 

@@ -9,6 +9,8 @@ export const CLICKABLE_LAB_DEMO_MATCH: Match = {
   score: { home: 1, away: 2 },
   half: 2,
   contractAddress: null,
+  cornersHome: 0,
+  cornersAway: 0,
 };
 
 export const CLICKABLE_LAB_DEMO_PLAYERS: Player[] = [

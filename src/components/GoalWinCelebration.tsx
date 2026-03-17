@@ -1,5 +1,74 @@
 import React, { useEffect } from "react";
 
+function playResultSound(won: boolean, betType: "goal" | "corner") {
+  try {
+    const ctx = new AudioContext();
+    if (won && betType === "goal") {
+      // Triumphant ascending fanfare: C-E-G-C
+      const notes = [523.25, 659.25, 783.99, 1046.5];
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = "triangle";
+        osc.frequency.value = freq;
+        const t = ctx.currentTime + i * 0.13;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.28, t + 0.03);
+        gain.gain.setValueAtTime(0.28, t + 0.09);
+        gain.gain.linearRampToValueAtTime(0, t + 0.22);
+        osc.start(t);
+        osc.stop(t + 0.25);
+      });
+      // Final chord hold
+      [523.25, 659.25, 783.99].forEach((freq) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = "triangle";
+        osc.frequency.value = freq;
+        const t = ctx.currentTime + 0.55;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.22, t + 0.06);
+        gain.gain.linearRampToValueAtTime(0, t + 0.9);
+        osc.start(t);
+        osc.stop(t + 0.95);
+      });
+    } else if (won && betType === "corner") {
+      // Bright two-tone ding
+      [880, 1108.73].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        const t = ctx.currentTime + i * 0.18;
+        gain.gain.setValueAtTime(0.32, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+        osc.start(t);
+        osc.stop(t + 0.45);
+      });
+    } else {
+      // Loss — descending wah-wah
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(320, ctx.currentTime);
+      osc.frequency.linearRampToValueAtTime(140, ctx.currentTime + 0.65);
+      gain.gain.setValueAtTime(0.28, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.65);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.7);
+    }
+    setTimeout(() => ctx.close(), 2500);
+  } catch { /* AudioContext may be unavailable in some contexts */ }
+}
+
 interface GoalWinCelebrationProps {
   won: boolean;
   scorerName: string;
@@ -16,9 +85,10 @@ export const GoalWinCelebration: React.FC<GoalWinCelebrationProps> = ({
   onClose,
 }) => {
   useEffect(() => {
+    playResultSound(won, betType);
     const timer = setTimeout(onClose, 5000);
     return () => clearTimeout(timer);
-  }, [onClose]);
+  }, [onClose]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const icon = betType === "goal" ? "⚽" : "🏳️";
 

@@ -11,7 +11,7 @@ import { contractService } from "../services/contractService";
 import { MATCH_REGISTRY } from "@shared/data/matchRegistry";
 import { CREWorkflowPanel } from "../components/CREWorkflowPanel";
 
-const ODDS_API_KEY = "46978d34dc5ac52756dd87ffbf9844b0";
+const ODDS_API_KEY = "8d90e1a5fa443922e69844377834c0ab";
 // Note: Goalserve key is baked into the Vite proxy rewrite (vite.admin.config.ts)
 
 // Goalserve league ID ↔ Odds-API sport key (used as bidirectional fallback)
@@ -592,7 +592,7 @@ export default function EventDetail() {
       if (!raw) return null;
       const matchNode = Array.isArray(raw) ? raw[0] : raw;
 
-      const teamsNode = matchNode.teams ?? {};
+      const teamsNode = matchNode.lineup ?? matchNode.teams ?? {};
       const subsNode = matchNode.substitutes ?? {};
       const statsNode = matchNode.player_stats ?? {};
 

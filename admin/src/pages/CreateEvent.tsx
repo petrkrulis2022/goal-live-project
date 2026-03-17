@@ -4,7 +4,7 @@ import { supabase } from "@shared/lib/supabase";
 import { contractService } from "../services/contractService";
 
 // ─── Odds API helpers ─────────────────────────────────────────────────────────
-const ODDS_API_KEY = "46978d34dc5ac52756dd87ffbf9844b0";
+const ODDS_API_KEY = "8d90e1a5fa443922e69844377834c0ab";
 
 /** Goalserve league ID for each Odds API sport_key */
 const SPORT_TO_GS_LEAGUE: Record<string, string> = {
@@ -350,7 +350,7 @@ export default function CreateEvent() {
     if (!raw) return "";
     const matchNode = Array.isArray(raw) ? raw[0] : raw;
 
-    const teamsNode = matchNode.teams ?? {};
+    const teamsNode = matchNode.lineup ?? matchNode.teams ?? {};
     const subsNode = matchNode.substitutes ?? {};
 
     function normAccent(s: string): string {

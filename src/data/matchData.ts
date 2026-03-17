@@ -15,6 +15,8 @@ export const CURRENT_MATCH: Match = {
   currentMinute: 0,
   score: { home: 0, away: 0 },
   half: 1,
+  cornersHome: 0,
+  cornersAway: 0,
 };
 
 export const INITIAL_MW_ODDS: MatchWinnerOdds = {

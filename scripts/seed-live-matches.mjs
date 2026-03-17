@@ -7,7 +7,7 @@
 const SUPABASE_URL = "https://weryswulejhjkrmervnf.supabase.co";
 const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlcnlzd3VsZWpoamtybWVydm5mIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjAyMTI4MSwiZXhwIjoyMDg3NTk3MjgxfQ.iNo5ZaDJMdFixl8sgoNr6uSDH5Wmvkx9c3jSpDgVXtQ";
-const ODDS_API_KEY = "46978d34dc5ac52756dd87ffbf9844b0";
+const ODDS_API_KEY = "8d90e1a5fa443922e69844377834c0ab";
 const GS_KEY = "5dc9cf20aca34682682708de71344f52";
 
 // sport key → Goalserve league id

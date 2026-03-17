@@ -38,6 +38,8 @@ const LIVERPOOL_WESTHAM: MatchConfig = {
     currentMinute: 0,
     score: { home: 0, away: 0 },
     half: 1,
+    cornersHome: 0,
+    cornersAway: 0,
   },
   startingXI: [], // populated at lineup confirmation
   initialMWOdds: { home: 1.5, draw: 4.2, away: 6.5 }, // pre-match estimate
@@ -61,6 +63,8 @@ const REALMADRID_GETAFE: MatchConfig = {
     currentMinute: 0,
     score: { home: 0, away: 0 },
     half: 1,
+    cornersHome: 0,
+    cornersAway: 0,
   },
   startingXI: [],
   initialMWOdds: { home: 1.4, draw: 4.8, away: 8.5 },

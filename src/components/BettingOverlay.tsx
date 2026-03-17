@@ -1576,6 +1576,21 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
                 return;
               }
               // No active corner bet → open place-bet modal
+              try {
+                const _ctx = new AudioContext();
+                const _osc = _ctx.createOscillator();
+                const _gain = _ctx.createGain();
+                _osc.connect(_gain);
+                _gain.connect(_ctx.destination);
+                _osc.type = "sine";
+                _osc.frequency.setValueAtTime(1200, _ctx.currentTime);
+                _osc.frequency.linearRampToValueAtTime(900, _ctx.currentTime + 0.12);
+                _gain.gain.setValueAtTime(0.25, _ctx.currentTime);
+                _gain.gain.exponentialRampToValueAtTime(0.001, _ctx.currentTime + 0.25);
+                _osc.start(_ctx.currentTime);
+                _osc.stop(_ctx.currentTime + 0.25);
+                setTimeout(() => _ctx.close(), 500);
+              } catch { /* noop */ }
               setModal({
                 type: "corner",
                 side,
