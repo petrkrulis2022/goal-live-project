@@ -53,7 +53,7 @@ function resolveOddsApiSport(m: {
 const SEPOLIA_RPC = "https://sepolia.drpc.org";
 const USDC_SEPOLIA = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
 const HEDERA_RPC = "https://testnet.hashio.io/api";
-const USDC_HEDERA = "0x00000000000000000000000000000000006e169c"; // USDd
+const USDC_HEDERA = "0x00000000000000000000000000000000006dBa7F"; // USDd
 
 /** Detect which chain a match runs on from odds_api_config.network */
 function getMatchNetwork(m: {

@@ -11,8 +11,8 @@ import type { IWalletService, WalletState } from "../../types/services.types";
 
 // Hedera Testnet — Chain ID 296 (0x128)
 const HEDERA_TESTNET_CHAIN_ID = "0x128";
-// USDd stablecoin on Hedera Testnet (0x00000000000000000000000000000000006e169c)
-const USDC_CONTRACT = "0x00000000000000000000000000000000006e169c";
+// USDd stablecoin on Hedera Testnet (0x00000000000000000000000000000000006dBa7F)
+const USDC_CONTRACT = "0x00000000000000000000000000000000006dBa7F";
 const USDC_DECIMALS = 6;
 const PLAYER_ADDR_KEY = "gl_hedera_player_address";
 
