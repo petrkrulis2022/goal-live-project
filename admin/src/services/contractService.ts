@@ -183,7 +183,7 @@ export const contractService = {
     const address = requireContract(network);
     const signer = await getSigner();
     const contract = getContract(address, signer);
-    const gasOverride = network === "hedera" ? { gasLimit: 300_000 } : {};
+    const gasOverride = network === "hedera" ? { gasLimit: 800_000 } : {};
     console.log("[contractService] createMatch", matchId);
     const tx = await contract.createMatch(matchId, gasOverride);
     await tx.wait();
@@ -205,8 +205,9 @@ export const contractService = {
     const amount = toUsdc6(amountUsdc);
     const usdcAddress = getUsdcAddress(network);
 
-    // Hedera's relay fails estimateGas — supply explicit gasLimit for every tx.
-    const gasOverride = network === "hedera" ? { gasLimit: 300_000 } : {};
+    // Hedera's relay fails estimateGas and HTS token precompile calls are
+    // expensive (~300k+ gas). Use a generous limit to avoid out-of-gas reverts.
+    const gasOverride = network === "hedera" ? { gasLimit: 800_000 } : {};
 
     const usdc = new ethers.Contract(usdcAddress, ERC20_ABI, signer);
     console.log(
