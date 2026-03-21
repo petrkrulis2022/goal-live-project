@@ -183,8 +183,9 @@ export const contractService = {
     const address = requireContract(network);
     const signer = await getSigner();
     const contract = getContract(address, signer);
+    const gasOverride = network === "hedera" ? { gasLimit: 300_000 } : {};
     console.log("[contractService] createMatch", matchId);
-    const tx = await contract.createMatch(matchId);
+    const tx = await contract.createMatch(matchId, gasOverride);
     await tx.wait();
     return tx.hash as string;
   },
@@ -204,6 +205,9 @@ export const contractService = {
     const amount = toUsdc6(amountUsdc);
     const usdcAddress = getUsdcAddress(network);
 
+    // Hedera's relay fails estimateGas — supply explicit gasLimit for every tx.
+    const gasOverride = network === "hedera" ? { gasLimit: 300_000 } : {};
+
     const usdc = new ethers.Contract(usdcAddress, ERC20_ABI, signer);
     console.log(
       "[contractService] USDC approve",
@@ -214,12 +218,12 @@ export const contractService = {
       usdcAddress,
       ")",
     );
-    const approveTx = await usdc.approve(address, amount);
+    const approveTx = await usdc.approve(address, amount, gasOverride);
     await approveTx.wait();
 
     const contract = getContract(address, signer);
     console.log("[contractService] fundPool", matchId, amountUsdc);
-    const fundTx = await contract.fundPool(matchId, amount);
+    const fundTx = await contract.fundPool(matchId, amount, gasOverride);
     await fundTx.wait();
     return fundTx.hash as string;
   },
