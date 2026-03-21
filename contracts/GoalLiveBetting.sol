@@ -192,6 +192,16 @@ contract GoalLiveBetting is ReentrancyGuard, Ownable {
         usdc = IERC20(_usdc);
         oracle = _oracle;
         relayer = _relayer;
+
+        // On Hedera: associate this contract with the HTS token so it can be
+        // an approved spender.  The call is a no-op / ignored on other networks.
+        address(0x0000000000000000000000000000000000000167).call(
+            abi.encodeWithSignature(
+                "associateToken(address,address)",
+                address(this),
+                _usdc
+            )
+        );
     }
 
     // ─────────────────────────────────────────────────────────────
