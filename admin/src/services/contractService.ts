@@ -26,7 +26,7 @@ import { GLB_ABI, GLB_BYTECODE } from "./glb.artifact";
 // ─── Constants ────────────────────────────────────────────────────────────────
 const USDC_SEPOLIA = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
 // USDd stablecoin on Hedera Testnet (EVM address format)
-const USDC_HEDERA = "0x00000000000000000000000000000000006e169c";
+const USDC_HEDERA = "0x00000000000000000000000000000000006dBa7F";
 
 export type DeployNetwork = "sepolia" | "hedera";
 
