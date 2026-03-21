@@ -508,6 +508,20 @@ Deno.serve(async (req: Request) => {
             if (eventsToInsert.length > 0) {
               await supabase.from("goal_events").insert(eventsToInsert);
             }
+
+            // ── Trigger immediate odds refresh after goal ──────────────────
+            // sync-odds normally runs every 60s independently. Firing it here
+            // ensures odds update within seconds of a goal rather than waiting
+            // up to another full minute for the next pg_cron cycle.
+            fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/sync-odds`, {
+              method: "POST",
+              headers: {
+                apikey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+                Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ match_id: dbMatch.id }),
+            }).catch(() => {}); // fire and forget
           }
 
           // ── Corner detection + NEXT_CORNER bet settlement ────────────────

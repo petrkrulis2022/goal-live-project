@@ -1,6 +1,11 @@
 import React, { useEffect } from "react";
 
-function playResultSound(won: boolean, betType: "goal" | "corner") {
+function playResultSound(
+  won: boolean,
+  betType: "goal" | "corner",
+  noBet?: boolean,
+) {
+  if (noBet) return; // neutral event notification — no sound
   try {
     const ctx = new AudioContext();
     if (won && betType === "goal") {
@@ -73,6 +78,7 @@ function playResultSound(won: boolean, betType: "goal" | "corner") {
 
 interface GoalWinCelebrationProps {
   won: boolean;
+  noBet?: boolean;
   scorerName: string;
   betPlayerName: string;
   betType: "goal" | "corner";
@@ -81,13 +87,14 @@ interface GoalWinCelebrationProps {
 
 export const GoalWinCelebration: React.FC<GoalWinCelebrationProps> = ({
   won,
+  noBet,
   scorerName,
   betPlayerName,
   betType,
   onClose,
 }) => {
   useEffect(() => {
-    playResultSound(won, betType);
+    playResultSound(won, betType, noBet);
     const timer = setTimeout(onClose, 5000);
     return () => clearTimeout(timer);
   }, [onClose]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -120,13 +127,21 @@ export const GoalWinCelebration: React.FC<GoalWinCelebrationProps> = ({
                   boxShadow:
                     "0 0 60px rgba(34,197,94,0.8), 0 0 120px rgba(34,197,94,0.4)",
                 }
-              : {
-                  borderColor: "#f87171",
-                  background:
-                    "linear-gradient(135deg, rgba(185,28,28,0.97) 0%, rgba(127,29,29,0.97) 100%)",
-                  boxShadow:
-                    "0 0 60px rgba(185,28,28,0.8), 0 0 120px rgba(185,28,28,0.4)",
-                }
+              : noBet
+                ? {
+                    borderColor: "#fbbf24",
+                    background:
+                      "linear-gradient(135deg, rgba(146,64,14,0.97) 0%, rgba(120,53,15,0.97) 100%)",
+                    boxShadow:
+                      "0 0 60px rgba(251,191,36,0.7), 0 0 120px rgba(251,191,36,0.3)",
+                  }
+                : {
+                    borderColor: "#f87171",
+                    background:
+                      "linear-gradient(135deg, rgba(185,28,28,0.97) 0%, rgba(127,29,29,0.97) 100%)",
+                    boxShadow:
+                      "0 0 60px rgba(185,28,28,0.8), 0 0 120px rgba(185,28,28,0.4)",
+                  }
           }
         >
           {won && (
@@ -217,18 +232,22 @@ export const GoalWinCelebration: React.FC<GoalWinCelebrationProps> = ({
                     ? `${scorerName} scored`
                     : `${scorerName} corner`}
                 </p>
-                <p
-                  className="text-base font-semibold mt-3"
-                  style={{ color: "rgba(252,165,165,0.95)" }}
-                >
-                  Your <strong>{betPlayerName}</strong> bet is locked 🔒
-                </p>
-                <p
-                  className="text-sm mt-2"
-                  style={{ color: "rgba(254,202,202,0.65)" }}
-                >
-                  Place a new bet to stay in the game
-                </p>
+                {!noBet && betPlayerName && (
+                  <>
+                    <p
+                      className="text-base font-semibold mt-3"
+                      style={{ color: "rgba(252,165,165,0.95)" }}
+                    >
+                      Your <strong>{betPlayerName}</strong> bet is locked 🔒
+                    </p>
+                    <p
+                      className="text-sm mt-2"
+                      style={{ color: "rgba(254,202,202,0.65)" }}
+                    >
+                      Place a new bet to stay in the game
+                    </p>
+                  </>
+                )}
               </>
             )}
           </div>
