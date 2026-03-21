@@ -145,10 +145,15 @@ export const contractService = {
       // constructor(address _usdc, address _oracle, address _relayer)
       // Dev: deployer = owner/oracle/relayer; override via setOracle()/setRelayer() later.
       const signerAddress = await signer.getAddress();
+      // Hedera's JSON-RPC relay fails eth_estimateGas for deploys (returns null
+      // revert data). Supply an explicit gasLimit to bypass estimateGas entirely.
+      const deployOverrides =
+        network === "hedera" ? { gasLimit: 8_000_000 } : {};
       const contract = await factory.deploy(
         usdcAddress,
         signerAddress, // oracle
         signerAddress, // relayer
+        deployOverrides,
       );
       await contract.waitForDeployment();
       address = await contract.getAddress();

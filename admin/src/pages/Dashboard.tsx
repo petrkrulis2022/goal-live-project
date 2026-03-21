@@ -5,10 +5,10 @@ import type { DbMatch } from "@shared/lib/supabase";
 
 // ─── Known networks ──────────────────────────────────────────────────────────
 const NETWORKS: Record<string, { label: string; color: string }> = {
-  "0x1":   { label: "Ethereum Mainnet", color: "text-blue-400" },
-  "0xaa36a7": { label: "Sepolia",          color: "text-blue-400" },
-  "0x128": { label: "Hedera Testnet",    color: "text-purple-400" },
-  "0x89":  { label: "Polygon",            color: "text-violet-400" },
+  "0x1": { label: "Ethereum Mainnet", color: "text-blue-400" },
+  "0xaa36a7": { label: "Sepolia", color: "text-blue-400" },
+  "0x128": { label: "Hedera Testnet", color: "text-purple-400" },
+  "0x89": { label: "Polygon", color: "text-violet-400" },
 };
 
 function useWallet() {
@@ -17,9 +17,11 @@ function useWallet() {
 
   useEffect(() => {
     const eth = (window as Record<string, unknown>).ethereum as
-      | { request: (a: { method: string }) => Promise<unknown>;
+      | {
+          request: (a: { method: string }) => Promise<unknown>;
           on: (e: string, cb: (v: unknown) => void) => void;
-          removeListener: (e: string, cb: (v: unknown) => void) => void; }
+          removeListener: (e: string, cb: (v: unknown) => void) => void;
+        }
       | undefined;
     if (!eth) return;
 
@@ -31,10 +33,10 @@ function useWallet() {
     eth.request({ method: "eth_chainId" }).then(onChain);
 
     eth.on("accountsChanged", onAccounts);
-    eth.on("chainChanged",    onChain);
+    eth.on("chainChanged", onChain);
     return () => {
       eth.removeListener("accountsChanged", onAccounts);
-      eth.removeListener("chainChanged",    onChain);
+      eth.removeListener("chainChanged", onChain);
     };
   }, []);
 
@@ -101,7 +103,12 @@ export default function Dashboard() {
     },
   };
 
-  const netInfo = chainId ? (NETWORKS[chainId.toLowerCase()] ?? { label: `Chain ${parseInt(chainId, 16)}`, color: "text-gray-400" }) : null;
+  const netInfo = chainId
+    ? (NETWORKS[chainId.toLowerCase()] ?? {
+        label: `Chain ${parseInt(chainId, 16)}`,
+        color: "text-gray-400",
+      })
+    : null;
 
   return (
     <div>
@@ -112,7 +119,9 @@ export default function Dashboard() {
             <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
             <span className="text-gray-300 truncate">{account}</span>
             {netInfo && (
-              <span className={`ml-auto shrink-0 font-semibold ${netInfo.color}`}>
+              <span
+                className={`ml-auto shrink-0 font-semibold ${netInfo.color}`}
+              >
                 {netInfo.label}
               </span>
             )}
