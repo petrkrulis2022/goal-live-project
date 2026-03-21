@@ -15,6 +15,7 @@ export function useMatchData(matchKey?: string) {
   });
   const [loading, setLoading] = useState(true);
   const goalWindowRef = useRef(0);
+  const prevCornersRef = useRef({ home: 0, away: 0 });
 
   // All matches use the real Supabase data service.
   const { dataService, activeMatchId } = useMemo(() => {
@@ -45,6 +46,11 @@ export function useMatchData(matchKey?: string) {
         setMatch(m);
         setPlayers(p);
         setMwOdds(mw);
+        // Seed corner tracking so first Realtime update doesn't misfire
+        prevCornersRef.current = {
+          home: m.cornersHome ?? 0,
+          away: m.cornersAway ?? 0,
+        };
       } catch (err) {
         console.error("[goal.live] Failed to load match data:", err);
       } finally {
@@ -103,6 +109,29 @@ export function useMatchData(matchKey?: string) {
         );
         // Trigger bet refresh so corner settlement (active→settled) is picked up
         window.dispatchEvent(new CustomEvent("gl:balanceRefresh"));
+        // Dispatch corner notification only when total actually increases
+        const prevHome = prevCornersRef.current.home;
+        const prevAway = prevCornersRef.current.away;
+        const homeDelta = Math.max(0, cornersHome - prevHome);
+        const awayDelta = Math.max(0, cornersAway - prevAway);
+        if (homeDelta > 0 || awayDelta > 0) {
+          // Determine scoring team; if both in same sync window, prefer home then away
+          if (homeDelta > 0) {
+            window.dispatchEvent(
+              new CustomEvent("gl:cornerScored", {
+                detail: { cornersHome, cornersAway, team: "home" },
+              }),
+            );
+          }
+          if (awayDelta > 0) {
+            window.dispatchEvent(
+              new CustomEvent("gl:cornerScored", {
+                detail: { cornersHome, cornersAway, team: "away" },
+              }),
+            );
+          }
+        }
+        prevCornersRef.current = { home: cornersHome, away: cornersAway };
       },
       onMatchEnd: async (score) => {
         setMatch((prev) =>

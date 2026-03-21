@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { services } from "../services";
+import { supabase } from "../lib/supabase";
 import type { Bet, BalanceState } from "../types";
 
 export function useBetting(wallet: string | null, matchUuid?: string) {
@@ -54,6 +55,31 @@ export function useBetting(wallet: string | null, matchUuid?: string) {
       if (ws) refreshRef.current();
     });
   }, []);
+
+  // Supabase Realtime: re-fetch bets whenever a row in this match is updated.
+  // This fires when the poll script settles a bet externally (e.g. NEXT_CORNER),
+  // which is what triggers the result modal in BettingOverlay.
+  useEffect(() => {
+    if (!wallet || !matchUuid) return;
+    const channel = supabase
+      .channel(`bets-watch:${matchUuid}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "bets",
+          filter: `match_id=eq.${matchUuid}`,
+        },
+        () => {
+          refreshRef.current();
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [wallet, matchUuid]);
 
   // Initial load + listen for balance refresh events
   useEffect(() => {
