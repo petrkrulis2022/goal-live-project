@@ -50,6 +50,15 @@ const ERC20_ABI = [
   "function balanceOf(address account) view returns (uint256)",
 ];
 
+// ─── Hedera HTS System Contract (0x167) ──────────────────────────────────────
+// On Hedera, ERC-20 approve() on HTS tokens can fail for contract spenders.
+// Use the HTS precompile's 3-arg approve() instead — it sets the native HTS
+// allowance which safeTransferFrom() on the contract side then consumes.
+const HTS_PRECOMPILE = "0x0000000000000000000000000000000000000167";
+const HTS_ABI = [
+  "function approve(address token, address spender, uint256 amount) returns (int64 responseCode)",
+];
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function getProvider(): ethers.BrowserProvider {
   if (!window.ethereum)
@@ -209,7 +218,6 @@ export const contractService = {
     // expensive (~300k+ gas). Use a generous limit to avoid out-of-gas reverts.
     const gasOverride = network === "hedera" ? { gasLimit: 800_000 } : {};
 
-    const usdc = new ethers.Contract(usdcAddress, ERC20_ABI, signer);
     console.log(
       "[contractService] USDC approve",
       amountUsdc,
@@ -219,8 +227,19 @@ export const contractService = {
       usdcAddress,
       ")",
     );
-    const approveTx = await usdc.approve(address, amount, gasOverride);
-    await approveTx.wait();
+
+    if (network === "hedera") {
+      // On Hedera, ERC-20 approve() on HTS tokens fails for contract spenders.
+      // Use the HTS system precompile (0x167) approve(token, spender, amount)
+      // instead — sets the native HTS allowance that safeTransferFrom reads.
+      const hts = new ethers.Contract(HTS_PRECOMPILE, HTS_ABI, signer);
+      const approveTx = await hts.approve(usdcAddress, address, amount, gasOverride);
+      await approveTx.wait();
+    } else {
+      const usdc = new ethers.Contract(usdcAddress, ERC20_ABI, signer);
+      const approveTx = await usdc.approve(address, amount, gasOverride);
+      await approveTx.wait();
+    }
 
     const contract = getContract(address, signer);
     console.log("[contractService] fundPool", matchId, amountUsdc);
