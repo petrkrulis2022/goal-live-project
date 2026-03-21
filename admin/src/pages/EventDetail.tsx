@@ -52,17 +52,32 @@ function resolveOddsApiSport(m: {
 // Sepolia on-chain constants
 const SEPOLIA_RPC = "https://sepolia.drpc.org";
 const USDC_SEPOLIA = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
+const HEDERA_RPC = "https://testnet.hashio.io/api";
+const USDC_HEDERA = "0x00000000000000000000000000000000006e169c"; // USDd
 
-/** Returns USDC balance (6 decimals) of an address on Sepolia */
-async function fetchUsdcBalance(address: string): Promise<number> {
+/** Detect which chain a match runs on from odds_api_config.network */
+function getMatchNetwork(m: {
+  odds_api_config?: unknown;
+}): "hedera" | "sepolia" {
+  const cfg = m.odds_api_config as Record<string, string> | undefined;
+  return cfg?.network === "hedera" ? "hedera" : "sepolia";
+}
+
+/** Returns stablecoin balance (6 decimals) of the contract on its network */
+async function fetchUsdcBalance(
+  address: string,
+  network: "hedera" | "sepolia" = "sepolia",
+): Promise<number> {
+  const rpc = network === "hedera" ? HEDERA_RPC : SEPOLIA_RPC;
+  const token = network === "hedera" ? USDC_HEDERA : USDC_SEPOLIA;
   const data = "0x70a08231" + address.slice(2).padStart(64, "0");
-  const res = await fetch(SEPOLIA_RPC, {
+  const res = await fetch(rpc, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       jsonrpc: "2.0",
       method: "eth_call",
-      params: [{ to: USDC_SEPOLIA, data }, "latest"],
+      params: [{ to: token, data }, "latest"],
       id: 1,
     }),
   });
@@ -1174,7 +1189,10 @@ export default function EventDetail() {
     if (!match?.contract_address) return;
     setContractBalanceLoading(true);
     try {
-      const bal = await fetchUsdcBalance(match.contract_address);
+      const bal = await fetchUsdcBalance(
+        match.contract_address,
+        getMatchNetwork(match),
+      );
       setContractUsdcBalance(bal);
     } catch {
       setContractUsdcBalance(null);
@@ -1192,8 +1210,12 @@ export default function EventDetail() {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
       const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+      // Route to the correct edge function based on which chain the match is on
+      const matchNetwork = getMatchNetwork(match);
+      const settleFn =
+        matchNetwork === "hedera" ? "settle-match-hedera" : "settle-match";
       // POST only match_id — edge fn auto-fetches result from Goalserve
-      const res = await fetch(`${supabaseUrl}/functions/v1/settle-match`, {
+      const res = await fetch(`${supabaseUrl}/functions/v1/${settleFn}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1822,12 +1844,18 @@ export default function EventDetail() {
                   </button>
                 </div>
                 <a
-                  href={`https://sepolia.etherscan.io/address/${match.contract_address}`}
+                  href={
+                    getMatchNetwork(match) === "hedera"
+                      ? `https://hashscan.io/testnet/contract/${match.contract_address}`
+                      : `https://sepolia.etherscan.io/address/${match.contract_address}`
+                  }
                   target="_blank"
                   rel="noreferrer"
                   className="text-indigo-400 text-[10px] hover:text-indigo-200 mt-1 inline-block"
                 >
-                  View on Etherscan ↗
+                  {getMatchNetwork(match) === "hedera"
+                    ? "View on HashScan ↗"
+                    : "View on Etherscan ↗"}
                 </a>
               </div>
 

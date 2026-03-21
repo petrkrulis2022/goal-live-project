@@ -119,6 +119,9 @@ export default function Dashboard() {
         <div className="space-y-2">
           {matches.map((m) => {
             const s = statusStyles[m.status] ?? statusStyles.cancelled;
+            const cfg = (m.odds_api_config ?? {}) as Record<string, string>;
+            const network: "hedera" | "sepolia" =
+              cfg.network === "hedera" ? "hedera" : "sepolia";
             return (
               <div
                 key={m.id}
@@ -144,6 +147,16 @@ export default function Dashboard() {
                       {m.score_home ?? 0}–{m.score_away ?? 0}
                     </span>
                   )}
+                  {/* Network badge */}
+                  <span
+                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                      network === "hedera"
+                        ? "text-purple-400 bg-purple-500/10 border-purple-500/30"
+                        : "text-blue-400 bg-blue-500/10 border-blue-500/30"
+                    }`}
+                  >
+                    {network === "hedera" ? "⬡ Hedera" : "Sepolia"}
+                  </span>
                   <span
                     className={`text-[11px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide ${s.badge}`}
                   >

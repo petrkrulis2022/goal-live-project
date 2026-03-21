@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@shared/lib/supabase";
-import { contractService } from "../services/contractService";
+import {
+  contractService,
+  type DeployNetwork,
+} from "../services/contractService";
 
 // ─── Odds API helpers ─────────────────────────────────────────────────────────
 const ODDS_API_KEY = "8d90e1a5fa443922e69844377834c0ab";
@@ -110,6 +113,7 @@ interface FormState {
   isDemo: boolean;
   oracleAddress: string;
   poolAmountUsdc: string;
+  network: DeployNetwork;
 }
 
 // Platform wallet = oracle (signs settleMatch on-chain via ORACLE_PRIVATE_KEY in edge fn)
@@ -123,6 +127,7 @@ const EMPTY: FormState = {
   isDemo: false,
   oracleAddress: PLATFORM_ORACLE,
   poolAmountUsdc: "",
+  network: "sepolia",
 };
 
 type Step =
@@ -565,7 +570,11 @@ export default function CreateEvent() {
           score_home: 0,
           score_away: 0,
           half: 1,
-          odds_api_config: { sport: sportKey, goalserve_league: gsLeague },
+          odds_api_config: {
+            sport: sportKey,
+            goalserve_league: gsLeague,
+            network: form.network,
+          },
         })
         .select()
         .single();
@@ -600,7 +609,11 @@ export default function CreateEvent() {
           .from("matches")
           .update({
             goalserve_static_id: gsStaticId,
-            odds_api_config: { sport: sportKey, goalserve_league: gsLeague },
+            odds_api_config: {
+              sport: sportKey,
+              goalserve_league: gsLeague,
+              network: form.network,
+            },
           })
           .eq("id", match.id);
       }
@@ -612,6 +625,7 @@ export default function CreateEvent() {
       });
       const contractAddress = await contractService.deployContract(
         form.externalMatchId,
+        form.network,
       );
 
       // Save contract address back
@@ -625,6 +639,7 @@ export default function CreateEvent() {
       const txHash = await contractService.fundPool(
         form.externalMatchId,
         poolAmount,
+        form.network,
       );
 
       // ── Done ───────────────────────────────────────────────────────────────
@@ -826,6 +841,26 @@ export default function CreateEvent() {
                 MetaMask
               </span>
             </div>
+
+            {/* ── Network selector ──────────────────────────────────────── */}
+            <Field label="Network" required>
+              <select
+                className={INPUT}
+                value={form.network}
+                onChange={(e) => set("network", e.target.value)}
+                disabled={busy}
+              >
+                <option value="sepolia">Sepolia Testnet (USDC)</option>
+                <option value="hedera">Hedera Testnet (USDd)</option>
+              </select>
+            </Field>
+            {form.network === "hedera" && (
+              <p className="text-[11px] text-purple-400 bg-purple-500/10 border border-purple-500/20 rounded-lg px-3 py-2 mt-2 mb-3">
+                ⬡ Hedera — make sure MetaMask is switched to{" "}
+                <strong>Hedera Testnet</strong> (chain 296) before confirming.
+                Token: <span className="font-mono">USDd</span>.
+              </p>
+            )}
 
             <Field label="Initial Pool Amount (USDC)" required>
               <div className="relative">

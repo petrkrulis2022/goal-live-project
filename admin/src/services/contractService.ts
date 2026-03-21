@@ -25,8 +25,17 @@ import { GLB_ABI, GLB_BYTECODE } from "./glb.artifact";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const USDC_SEPOLIA = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
-const USDC_ADDRESS =
-  (import.meta.env.VITE_USDC_ADDRESS as string | undefined) ?? USDC_SEPOLIA;
+// USDd stablecoin on Hedera Testnet (EVM address format)
+const USDC_HEDERA = "0x00000000000000000000000000000000006e169c";
+
+export type DeployNetwork = "sepolia" | "hedera";
+
+function getUsdcAddress(network: DeployNetwork = "sepolia"): string {
+  if (network === "hedera") return USDC_HEDERA;
+  return (
+    (import.meta.env.VITE_USDC_ADDRESS as string | undefined) ?? USDC_SEPOLIA
+  );
+}
 
 const CONTRACT_KEY = "gl_contract_address";
 
@@ -52,7 +61,14 @@ async function getSigner(): Promise<ethers.JsonRpcSigner> {
   return getProvider().getSigner();
 }
 
-function getStoredContractAddress(): string | null {
+function getStoredContractAddress(
+  network: DeployNetwork = "sepolia",
+): string | null {
+  if (network === "hedera") {
+    // Hedera has its own singleton — never fall back to VITE_CONTRACT_ADDRESS
+    // which points at the Sepolia deployment.
+    return localStorage.getItem(`${CONTRACT_KEY}_hedera`) || null;
+  }
   return (
     (import.meta.env.VITE_CONTRACT_ADDRESS as string | undefined) ||
     localStorage.getItem(CONTRACT_KEY) ||
@@ -60,8 +76,12 @@ function getStoredContractAddress(): string | null {
   );
 }
 
-function saveContractAddress(addr: string): void {
-  localStorage.setItem(CONTRACT_KEY, addr);
+function saveContractAddress(
+  addr: string,
+  network: DeployNetwork = "sepolia",
+): void {
+  const key = network === "hedera" ? `${CONTRACT_KEY}_hedera` : CONTRACT_KEY;
+  localStorage.setItem(key, addr);
 }
 
 function getContract(
@@ -71,8 +91,8 @@ function getContract(
   return new ethers.Contract(address, GLB_ABI as ethers.InterfaceAbi, signer);
 }
 
-function requireContract(): string {
-  const address = getStoredContractAddress();
+function requireContract(network: DeployNetwork = "sepolia"): string {
+  const address = getStoredContractAddress(network);
   if (!address)
     throw new Error("Contract not deployed yet. Run deployContract first.");
   return address;
@@ -86,8 +106,8 @@ function toUsdc6(amountHuman: number): bigint {
 
 export const contractService = {
   /** Return the stored singleton contract address (or null if not yet deployed). */
-  getContractAddress(): string | null {
-    return getStoredContractAddress();
+  getContractAddress(network: DeployNetwork = "sepolia"): string | null {
+    return getStoredContractAddress(network);
   },
 
   // ──────────────────────────────────────────────────────────────
@@ -104,12 +124,19 @@ export const contractService = {
    *
    * Returns the contract address.
    */
-  async deployContract(firstMatchId?: string): Promise<string> {
+  async deployContract(
+    firstMatchId?: string,
+    network: DeployNetwork = "sepolia",
+  ): Promise<string> {
     const signer = await getSigner();
-    let address = getStoredContractAddress();
+    // Each network has its own singleton — key by network
+    let address = getStoredContractAddress(network);
 
     if (!address) {
-      console.log("[contractService] deploying GoalLiveBetting V1 singleton…");
+      const usdcAddress = getUsdcAddress(network);
+      console.log(
+        `[contractService] deploying GoalLiveBetting V1 singleton on ${network} with USDC ${usdcAddress}…`,
+      );
       const factory = new ethers.ContractFactory(
         GLB_ABI as ethers.InterfaceAbi,
         GLB_BYTECODE,
@@ -119,20 +146,23 @@ export const contractService = {
       // Dev: deployer = owner/oracle/relayer; override via setOracle()/setRelayer() later.
       const signerAddress = await signer.getAddress();
       const contract = await factory.deploy(
-        USDC_ADDRESS,
+        usdcAddress,
         signerAddress, // oracle
         signerAddress, // relayer
       );
       await contract.waitForDeployment();
       address = await contract.getAddress();
-      saveContractAddress(address);
+      saveContractAddress(address, network);
       console.log("[contractService] deployed at", address);
     } else {
-      console.log("[contractService] using existing contract at", address);
+      console.log(
+        `[contractService] using existing ${network} contract at`,
+        address,
+      );
     }
 
     if (firstMatchId) {
-      await this.createMatch(firstMatchId);
+      await this.createMatch(firstMatchId, network);
     }
     return address;
   },
@@ -141,8 +171,11 @@ export const contractService = {
    * Register a match in the existing singleton contract.
    * Calls createMatch(matchId) on-chain. Returns tx hash.
    */
-  async createMatch(matchId: string): Promise<string> {
-    const address = requireContract();
+  async createMatch(
+    matchId: string,
+    network: DeployNetwork = "sepolia",
+  ): Promise<string> {
+    const address = requireContract(network);
     const signer = await getSigner();
     const contract = getContract(address, signer);
     console.log("[contractService] createMatch", matchId);
@@ -156,13 +189,26 @@ export const contractService = {
    * approve → fundPool.  2 MetaMask prompts.
    * amountUsdc in human units (e.g. 1000 = $1 000).
    */
-  async fundPool(matchId: string, amountUsdc: number): Promise<string> {
-    const address = requireContract();
+  async fundPool(
+    matchId: string,
+    amountUsdc: number,
+    network: DeployNetwork = "sepolia",
+  ): Promise<string> {
+    const address = requireContract(network);
     const signer = await getSigner();
     const amount = toUsdc6(amountUsdc);
+    const usdcAddress = getUsdcAddress(network);
 
-    const usdc = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, signer);
-    console.log("[contractService] USDC approve", amountUsdc, "for", address);
+    const usdc = new ethers.Contract(usdcAddress, ERC20_ABI, signer);
+    console.log(
+      "[contractService] USDC approve",
+      amountUsdc,
+      "for",
+      address,
+      "(token:",
+      usdcAddress,
+      ")",
+    );
     const approveTx = await usdc.approve(address, amount);
     await approveTx.wait();
 
