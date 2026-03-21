@@ -3,11 +3,50 @@ import { Link } from "react-router-dom";
 import { supabase } from "@shared/lib/supabase";
 import type { DbMatch } from "@shared/lib/supabase";
 
+// ─── Known networks ──────────────────────────────────────────────────────────
+const NETWORKS: Record<string, { label: string; color: string }> = {
+  "0x1":   { label: "Ethereum Mainnet", color: "text-blue-400" },
+  "0xaa36a7": { label: "Sepolia",          color: "text-blue-400" },
+  "0x128": { label: "Hedera Testnet",    color: "text-purple-400" },
+  "0x89":  { label: "Polygon",            color: "text-violet-400" },
+};
+
+function useWallet() {
+  const [account, setAccount] = useState<string | null>(null);
+  const [chainId, setChainId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const eth = (window as Record<string, unknown>).ethereum as
+      | { request: (a: { method: string }) => Promise<unknown>;
+          on: (e: string, cb: (v: unknown) => void) => void;
+          removeListener: (e: string, cb: (v: unknown) => void) => void; }
+      | undefined;
+    if (!eth) return;
+
+    const onAccounts = (accs: unknown) =>
+      setAccount(Array.isArray(accs) && accs[0] ? (accs[0] as string) : null);
+    const onChain = (id: unknown) => setChainId(id as string);
+
+    eth.request({ method: "eth_accounts" }).then(onAccounts);
+    eth.request({ method: "eth_chainId" }).then(onChain);
+
+    eth.on("accountsChanged", onAccounts);
+    eth.on("chainChanged",    onChain);
+    return () => {
+      eth.removeListener("accountsChanged", onAccounts);
+      eth.removeListener("chainChanged",    onChain);
+    };
+  }, []);
+
+  return { account, chainId };
+}
+
 export default function Dashboard() {
   const [matches, setMatches] = useState<DbMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const { account, chainId } = useWallet();
 
   useEffect(() => {
     supabase
@@ -62,8 +101,30 @@ export default function Dashboard() {
     },
   };
 
+  const netInfo = chainId ? (NETWORKS[chainId.toLowerCase()] ?? { label: `Chain ${parseInt(chainId, 16)}`, color: "text-gray-400" }) : null;
+
   return (
     <div>
+      {/* Wallet / network bar */}
+      <div className="flex items-center gap-3 mb-6 px-4 py-2.5 rounded-xl bg-gray-900 border border-white/5 text-xs font-mono">
+        {account ? (
+          <>
+            <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
+            <span className="text-gray-300 truncate">{account}</span>
+            {netInfo && (
+              <span className={`ml-auto shrink-0 font-semibold ${netInfo.color}`}>
+                {netInfo.label}
+              </span>
+            )}
+          </>
+        ) : (
+          <>
+            <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+            <span className="text-gray-500">MetaMask not connected</span>
+          </>
+        )}
+      </div>
+
       {/* Page header */}
       <div className="flex items-center justify-between mb-8">
         <div>
