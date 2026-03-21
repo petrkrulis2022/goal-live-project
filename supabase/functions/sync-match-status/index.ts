@@ -378,8 +378,10 @@ Deno.serve(async (req: Request) => {
       }
 
       // When Goalserve signals FT, set the flag so the admin Settle button enables.
-      // We do NOT change status here — that's the admin's job via settle-match.
-      if (newStatus === "finished" && !dbMatch.goalserve_finished) {
+      // On Hedera branch: also auto-trigger settle-match (replaces CRE DON trigger).
+      const justFinished =
+        newStatus === "finished" && !dbMatch.goalserve_finished;
+      if (justFinished) {
         updates.goalserve_finished = true;
         hasChanges = true;
       }
@@ -431,6 +433,24 @@ Deno.serve(async (req: Request) => {
               new_status: newStatus,
               minute: gsInfo.minute,
             });
+          }
+
+          // ── Auto-settlement (Hedera branch) ───────────────────────────────
+          // When Goalserve first signals FT, automatically trigger settle-match-hedera.
+          // This replaces the CRE DON worker that was used on the Sepolia branch.
+          if (justFinished) {
+            fetch(
+              `${Deno.env.get("SUPABASE_URL")}/functions/v1/settle-match-hedera`,
+              {
+                method: "POST",
+                headers: {
+                  apikey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+                  Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ match_id: dbMatch.id }),
+              },
+            ).catch(() => {}); // fire and forget
           }
         }
       }

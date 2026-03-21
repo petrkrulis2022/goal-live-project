@@ -1,0 +1,1 @@
+chrome.runtime.onInstalled.addListener(()=>{console.log("goal.live extension installed (Phase 1 mock)")});chrome.runtime.onMessage.addListener((e,o,n)=>{e.type==="GET_VERSION"&&n({version:chrome.runtime.getManifest().version})});

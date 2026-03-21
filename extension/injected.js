@@ -64,8 +64,24 @@
     }
   });
 
+  // If multiple EVM wallets are installed, window.ethereum.providers is an array.
+  // Force MetaMask to be the active provider so selectExtension doesn't fail.
+  function resolveMetaMaskProvider() {
+    if (!window.ethereum) return;
+    if (window.ethereum.providers && Array.isArray(window.ethereum.providers)) {
+      var mm = window.ethereum.providers.find(function (p) {
+        return p.isMetaMask && !p.isBraveWallet;
+      });
+      if (mm) {
+        // Override so all our calls go directly to MetaMask
+        window.ethereum = mm;
+      }
+    }
+  }
+
   // If ethereum is already present, attach immediately
   if (window.ethereum) {
+    resolveMetaMaskProvider();
     attachEthereumListeners();
   } else {
     // MetaMask injects asynchronously on some pages — wait for it
@@ -79,6 +95,7 @@
         this._ethereum = val;
         if (!ready) {
           ready = true;
+          resolveMetaMaskProvider();
           attachEthereumListeners();
         }
       },

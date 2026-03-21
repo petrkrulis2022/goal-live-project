@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>goal.live — Match Picker</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        width: 320px;
+        min-height: 120px;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: #0a0c0f;
+        color: #e5e7eb;
+        padding: 0;
+      }
+
+      /* ── Header ── */
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 14px 10px;
+        border-bottom: 1px solid #1e293b;
+      }
+      .header-logo {
+        font-size: 18px;
+      }
+      .header-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #10b981;
+      }
+      .header-sub {
+        font-size: 10px;
+        color: #4b5563;
+        margin-left: auto;
+      }
+
+      /* ── Section label ── */
+      .section-label {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #4b5563;
+        padding: 10px 14px 6px;
+      }
+
+      /* ── Match card ── */
+      .match-card {
+        margin: 0 10px 8px;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #0f172a;
+        transition: border-color 0.15s;
+      }
+      .match-card.active {
+        border-color: #10b981;
+      }
+
+      .match-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 10px 4px;
+      }
+      .league-badge {
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #6b7280;
+        background: #1e293b;
+        border-radius: 3px;
+        padding: 2px 6px;
+      }
+      .match-status {
+        font-size: 10px;
+        font-weight: 600;
+        color: #f59e0b;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .live-dot {
+        width: 6px;
+        height: 6px;
+        background: #f59e0b;
+        border-radius: 50%;
+        animation: pulse 1.4s infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.3;
+        }
+      }
+
+      .match-teams {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 6px 10px;
+      }
+      .team-name {
+        font-size: 12px;
+        font-weight: 700;
+        flex: 1;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .score {
+        font-size: 18px;
+        font-weight: 900;
+        color: #ffffff;
+        min-width: 48px;
+        text-align: center;
+        letter-spacing: 2px;
+      }
+
+      .match-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 10px 8px;
+        border-top: 1px solid #1e293b;
+        gap: 6px;
+      }
+      .match-minute {
+        font-size: 11px;
+        color: #6b7280;
+      }
+
+      .btn-select {
+        flex: 1;
+        background: #10b981;
+        color: #000;
+        border: none;
+        border-radius: 5px;
+        padding: 5px 10px;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .btn-select:hover {
+        background: #059669;
+      }
+      .btn-select.selected {
+        background: transparent;
+        color: #10b981;
+        border: 1px solid #10b981;
+        cursor: default;
+      }
+      .btn-select.selected::before {
+        content: "✓ ";
+      }
+
+      /* ── Clear button ── */
+      .clear-bar {
+        display: none;
+        justify-content: center;
+        padding: 0 10px 10px;
+      }
+      .clear-bar.show {
+        display: flex;
+      }
+      .btn-clear {
+        background: transparent;
+        border: 1px solid #374151;
+        color: #6b7280;
+        border-radius: 5px;
+        padding: 4px 14px;
+        font-size: 10px;
+        cursor: pointer;
+        width: 100%;
+      }
+      .btn-clear:hover {
+        border-color: #ef4444;
+        color: #ef4444;
+      }
+
+      /* ── Empty state ── */
+      .empty {
+        padding: 20px 14px;
+        text-align: center;
+        color: #4b5563;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <span class="header-logo">⚽</span>
+      <span class="header-title">goal.live</span>
+      <span class="header-sub">beta</span>
+    </div>
+
+    <div class="section-label">Select a match to watch</div>
+    <div id="match-list"></div>
+    <div class="clear-bar" id="clear-bar">
+      <button class="btn-clear" id="btn-clear">Clear selection</button>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

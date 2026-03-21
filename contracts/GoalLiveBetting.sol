@@ -15,7 +15,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  *   2. User places/changes bets via Supabase (instant, no tx, no MetaMask).
  *   3. Platform relayer calls recordBet() async (background, platform pays gas).
  *      This builds an immutable on-chain audit trail of every bet & change.
- *   4. CRE (Chainlink DON) calls onReport() → settles match result on-chain.
+ *   4. Oracle EOA calls settleMatch() → settles match result on-chain.
+ *      (Triggered automatically by sync-match-status edge fn on Hedera testnet)
  *   5. Platform relayer calls settleUserBalances() with off-chain P&L computed
  *      from Supabase bets + on-chain match result.
  *   6. User calls withdraw() → pulls their final USDC balance. 1 MetaMask tx.
@@ -79,10 +80,6 @@ contract GoalLiveBetting is ReentrancyGuard, Ownable {
 
     IERC20 public immutable usdc;
     address public oracle;
-    /// @dev Chainlink KeystoneForwarder. Set to oracle at deploy for dev;
-    ///      call setKeystoneForwarder(0x15fc6ae953e024d975e77382eeec56a9101f9f88)
-    ///      before going live on Sepolia.
-    address public keystoneForwarder;
     /// @dev Platform relayer wallet — may call recordBet() and settleUserBalances().
     ///      Cannot move funds.
     address public relayer;
@@ -149,10 +146,6 @@ contract GoalLiveBetting is ReentrancyGuard, Ownable {
         uint256 amount
     );
     event OracleUpdated(address indexed oldOracle, address indexed newOracle);
-    event KeystoneForwarderUpdated(
-        address indexed oldFwd,
-        address indexed newFwd
-    );
     event RelayerUpdated(
         address indexed oldRelayer,
         address indexed newRelayer
@@ -184,8 +177,8 @@ contract GoalLiveBetting is ReentrancyGuard, Ownable {
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * @param _usdc    USDC ERC-20 (Sepolia: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238)
-     * @param _oracle  Initial oracle — used as keystoneForwarder placeholder for dev.
+     * @param _usdc    USDC ERC-20 (Hedera testnet USDC address)
+     * @param _oracle  Oracle EOA — calls settleMatch(). Auto-triggered by sync-match-status.
      * @param _relayer Platform relayer wallet that records bets and distributes balances.
      */
     constructor(
@@ -199,7 +192,6 @@ contract GoalLiveBetting is ReentrancyGuard, Ownable {
         usdc = IERC20(_usdc);
         oracle = _oracle;
         relayer = _relayer;
-        keystoneForwarder = _oracle; // override via setKeystoneForwarder() before production
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -409,45 +401,13 @@ contract GoalLiveBetting is ReentrancyGuard, Ownable {
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  CRE — Settlement Entry Point
+    //  Oracle — Settlement Entry Point
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * @notice Called by the Chainlink KeystoneForwarder after DON consensus.
-     *         Only settles the MATCH RESULT (scorers, winner, score).
-     *         User balance distribution happens separately via settleUserBalances().
-     * @param  report ABI-encoded: (string matchId, uint256[] goalScorers,
-     *                              uint8 winner, uint8 homeGoals, uint8 awayGoals)
-     */
-    function onReport(
-        bytes calldata /* metadata */,
-        bytes calldata report
-    ) external {
-        require(
-            msg.sender == keystoneForwarder,
-            "GLB: only keystone forwarder"
-        );
-
-        (
-            string memory matchId,
-            uint256[] memory goalScorers,
-            uint8 winnerRaw,
-            uint8 homeGoals,
-            uint8 awayGoals
-        ) = abi.decode(report, (string, uint256[], uint8, uint8, uint8));
-
-        _settleMatch(
-            matchId,
-            goalScorers,
-            MatchOutcome(winnerRaw),
-            homeGoals,
-            awayGoals
-        );
-    }
-
-    /**
-     * @notice Direct oracle settlement (oracle EOA, without Chainlink forwarder).
-     *         Used during development / CRE simulation.
+     * @notice Oracle EOA settlement. Called automatically by sync-match-status
+     *         edge function when Goalserve reports FT (Hedera testnet flow).
+     *         Admin can also trigger via emergencySettle() as a safety net.
      */
     function settleMatch(
         string calldata matchId,
@@ -467,13 +427,6 @@ contract GoalLiveBetting is ReentrancyGuard, Ownable {
         require(newOracle != address(0), "GLB: zero oracle");
         emit OracleUpdated(oracle, newOracle);
         oracle = newOracle;
-    }
-
-    /// @notice Set to 0x15fc6ae953e024d975e77382eeec56a9101f9f88 on Sepolia for production.
-    function setKeystoneForwarder(address _fwd) external onlyOwner {
-        require(_fwd != address(0), "GLB: zero forwarder");
-        emit KeystoneForwarderUpdated(keystoneForwarder, _fwd);
-        keystoneForwarder = _fwd;
     }
 
     function setRelayer(address _relayer) external onlyOwner {

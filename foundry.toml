@@ -22,6 +22,9 @@ verbosity = 2      # show logs; use -vvvv on failing tests for full traces
 
 [rpc_endpoints]
 sepolia = "${VITE_SEPOLIA_RPC_URL}"
+hedera_testnet = "https://testnet.hashio.io/api"
 
 [etherscan]
 sepolia = { key = "${ETHERSCAN_API_KEY}", url = "https://api-sepolia.etherscan.io/api" }
+# Hedera uses HashScan — no etherscan key needed; verify manually on hashscan.io/testnet
+hedera_testnet = { key = "no-key", url = "https://server-verify.hashscan.io" }
