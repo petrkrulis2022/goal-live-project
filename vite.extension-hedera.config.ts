@@ -115,6 +115,11 @@ export default defineConfig(({ mode }) => {
           find: /^@\/services$/,
           replacement: resolve(__dirname, "src/services/hedera/index.ts"),
         },
+        // Redirect network config to Hedera version (RPC + USDC address).
+        {
+          find: /^@\/config\/network$/,
+          replacement: resolve(__dirname, "src/config/network.hedera.ts"),
+        },
         { find: "@", replacement: resolve(__dirname, "src") },
       ],
     },

@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Interface } from "ethers";
-
-const SEPOLIA_RPC = "https://sepolia.drpc.org";
+import { NETWORK_RPC } from "@/config/network";
 const POLL_MS = 60_000; // refresh every 60 s
 
 // Minimal ABI for the public matches(string) getter.
@@ -35,7 +34,7 @@ export function usePoolBalance(
     async function fetch_() {
       try {
         const data = IFACE.encodeFunctionData("matches", [onChainMatchId]);
-        const res = await fetch(SEPOLIA_RPC, {
+        const res = await fetch(NETWORK_RPC, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

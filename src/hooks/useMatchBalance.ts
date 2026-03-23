@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Interface } from "ethers";
-
-const SEPOLIA_RPC = "https://sepolia.drpc.org";
+import { NETWORK_RPC } from "@/config/network";
 const POLL_MS = 15_000; // refresh every 15 s (balances change on settle)
 
 const IFACE = new Interface([
@@ -75,17 +74,17 @@ export function useMatchBalance(
         // Fire all three reads in parallel
         const [matchRaw, balanceRaw, withdrawnRaw] = await Promise.all([
           ethCall(
-            SEPOLIA_RPC,
+            NETWORK_RPC,
             contractAddress!,
             IFACE.encodeFunctionData("matches", [matchId]),
           ),
           ethCall(
-            SEPOLIA_RPC,
+            NETWORK_RPC,
             contractAddress!,
             IFACE.encodeFunctionData("matchBalance", [matchId, userAddress]),
           ),
           ethCall(
-            SEPOLIA_RPC,
+            NETWORK_RPC,
             contractAddress!,
             IFACE.encodeFunctionData("hasWithdrawn", [matchId, userAddress]),
           ),

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { services } from "../services";
+import { services } from "@/services";
 import { supabase } from "../lib/supabase";
 import type { Bet, BalanceState } from "../types";
 
