@@ -28,13 +28,13 @@ The Goal.Live extension icon should now appear in your Chrome toolbar.
 
 Add the Hedera Testnet network to MetaMask with these settings:
 
-| Setting | Value |
-|---------|-------|
-| **Network Name** | Hedera Testnet |
-| **RPC URL** | `https://testnet.hashio.io/api` |
-| **Chain ID** | `296` |
-| **Currency Symbol** | `HBAR` |
-| **Block Explorer** | `https://hashscan.io/testnet` |
+| Setting             | Value                           |
+| ------------------- | ------------------------------- |
+| **Network Name**    | Hedera Testnet                  |
+| **RPC URL**         | `https://testnet.hashio.io/api` |
+| **Chain ID**        | `296`                           |
+| **Currency Symbol** | `HBAR`                          |
+| **Block Explorer**  | `https://hashscan.io/testnet`   |
 
 ### Step 5 — Get Test Tokens
 
