@@ -18,24 +18,26 @@ sportsdata/
 ### Import the module
 
 ```typescript
-import { createSportsDataProvider, MockSportsDataProvider } from './sportsdata';
+import { createSportsDataProvider, MockSportsDataProvider } from "./sportsdata";
 ```
 
 ### Get upcoming matches
 
 ```typescript
-const provider = createSportsDataProvider('development');
+const provider = createSportsDataProvider("development");
 const upcomingMatches = await provider.getUpcomingMatches(10);
 
-upcomingMatches.forEach(match => {
-  console.log(`${match.homeTeam} vs ${match.awayTeam} at ${new Date(match.startTime * 1000)}`);
+upcomingMatches.forEach((match) => {
+  console.log(
+    `${match.homeTeam} vs ${match.awayTeam} at ${new Date(match.startTime * 1000)}`,
+  );
 });
 ```
 
 ### Get live odds
 
 ```typescript
-const odds = await provider.getOdds('match_001');
+const odds = await provider.getOdds("match_001");
 console.log(`Home Win: ${odds.odds.homeWin}`);
 console.log(`Draw: ${odds.odds.draw}`);
 console.log(`Away Win: ${odds.odds.awayWin}`);
@@ -44,8 +46,8 @@ console.log(`Away Win: ${odds.odds.awayWin}`);
 ### Subscribe to live odds updates
 
 ```typescript
-const unsubscribe = provider.subscribeToLiveOdds('match_001', (newOdds) => {
-  console.log('Odds updated:', newOdds.odds);
+const unsubscribe = provider.subscribeToLiveOdds("match_001", (newOdds) => {
+  console.log("Odds updated:", newOdds.odds);
 });
 
 // Later, unsubscribe
@@ -57,14 +59,14 @@ unsubscribe();
 ### Odds Calculations
 
 ```typescript
-import { 
+import {
   oddsToImpliedProbability,
   oddsToMoneyline,
   calculatePayout,
-  calculateProfit 
-} from './sportsdata';
+  calculateProfit,
+} from "./sportsdata";
 
-const odds = '2.50';
+const odds = "2.50";
 const probability = oddsToImpliedProbability(odds); // 0.4 (40%)
 const moneyline = oddsToMoneyline(odds); // +150
 const payout = calculatePayout(odds, 100); // 250
@@ -74,13 +76,13 @@ const profit = calculateProfit(odds, 100); // 150
 ### Chainlink Oracle Integration
 
 ```typescript
-import { ChainlinkOracleClient, createOracleConfigFromEnv } from './sportsdata';
+import { ChainlinkOracleClient, createOracleConfigFromEnv } from "./sportsdata";
 
 const config = createOracleConfigFromEnv();
 const oracle = new ChainlinkOracleClient(config);
 
 // Request odds from Chainlink Functions
-const oddsData = await oracle.requestOddsData('match_001', 'PL');
+const oddsData = await oracle.requestOddsData("match_001", "PL");
 
 // Request VRF randomness
 const { requestId, randomWord } = await oracle.requestVRFRandomness();
@@ -113,9 +115,9 @@ interface OddsSnapshot {
   id: string;
   matchId: string;
   timestamp: number;
-  source: 'CHAINLINK' | 'MOCK' | 'EXTERNAL';
+  source: "CHAINLINK" | "MOCK" | "EXTERNAL";
   odds: {
-    homeWin: string;  // Decimal odds
+    homeWin: string; // Decimal odds
     draw: string;
     awayWin: string;
   };
@@ -132,9 +134,9 @@ interface OddsSnapshot {
 All odds are stored as strings to maintain precision. For blockchain operations, they're converted to fixed-point format:
 
 ```typescript
-import { oddsToBlockchainFormat, blockchainFormatToOdds } from './sportsdata';
+import { oddsToBlockchainFormat, blockchainFormatToOdds } from "./sportsdata";
 
-const decimalOdds = '2.5';
+const decimalOdds = "2.5";
 const blockchainFormat = oddsToBlockchainFormat(decimalOdds); // '2500000'
 const roundTrip = blockchainFormatToOdds(blockchainFormat); // '2.5000'
 ```
@@ -142,10 +144,11 @@ const roundTrip = blockchainFormatToOdds(blockchainFormat); // '2.5000'
 ### Stale Data Detection
 
 ```typescript
-import { isOddsStale } from './sportsdata';
+import { isOddsStale } from "./sportsdata";
 
-if (isOddsStale(odds, 300)) { // 5 minutes
-  console.log('Odds are outdated, refresh needed');
+if (isOddsStale(odds, 300)) {
+  // 5 minutes
+  console.log("Odds are outdated, refresh needed");
 }
 ```
 
@@ -166,6 +169,7 @@ CHAINLINK_CALLBACK_FUNCTION=fulfillOddsRequest
 ### Mock Provider Behavior
 
 The `MockSportsDataProvider` simulates realistic data:
+
 - Updates live match odds every 5 seconds
 - Odds move within ±2% variance
 - Includes realistic match schedules and scores
@@ -174,6 +178,7 @@ The `MockSportsDataProvider` simulates realistic data:
 ### Chainlink Integration (MVP Phase)
 
 Current implementation includes:
+
 - ✅ Type definitions for oracle data
 - ✅ Mock oracle client for testing
 - ✅ Gas estimation helpers
@@ -183,12 +188,12 @@ Current implementation includes:
 ## Testing
 
 ```typescript
-import { MockSportsDataProvider } from './sportsdata';
+import { MockSportsDataProvider } from "./sportsdata";
 
 const provider = new MockSportsDataProvider();
 
 // Test odds retrieval
-const odds = await provider.getOdds('match_001');
+const odds = await provider.getOdds("match_001");
 expect(odds).toBeDefined();
 
 // Test live matches

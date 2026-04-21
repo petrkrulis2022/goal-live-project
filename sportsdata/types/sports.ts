@@ -18,18 +18,18 @@ export interface Match {
 }
 
 export enum MatchStatus {
-  SCHEDULED = 'SCHEDULED',
-  LIVE = 'LIVE',
-  HALFTIME = 'HALFTIME',
-  FINISHED = 'FINISHED',
-  CANCELLED = 'CANCELLED',
+  SCHEDULED = "SCHEDULED",
+  LIVE = "LIVE",
+  HALFTIME = "HALFTIME",
+  FINISHED = "FINISHED",
+  CANCELLED = "CANCELLED",
 }
 
 export interface OddsSnapshot {
   id: string;
   matchId: string;
   timestamp: number;
-  source: 'CHAINLINK' | 'MOCK' | 'EXTERNAL';
+  source: "CHAINLINK" | "MOCK" | "EXTERNAL";
   odds: {
     homeWin: string; // Decimal odds as string for precision
     draw: string;
@@ -47,7 +47,10 @@ export interface SportsDataProvider {
   getUpcomingMatches(limit?: number): Promise<Match[]>;
   getLiveMatches(): Promise<Match[]>;
   getOdds(matchId: string): Promise<OddsSnapshot | null>;
-  subscribeToLiveOdds(matchId: string, callback: (odds: OddsSnapshot) => void): () => void;
+  subscribeToLiveOdds(
+    matchId: string,
+    callback: (odds: OddsSnapshot) => void,
+  ): () => void;
 }
 
 export interface ChainlinkOracleConfig {
@@ -64,7 +67,7 @@ export interface BetResolution {
     home: number;
     away: number;
   };
-  result: 'HOME_WIN' | 'DRAW' | 'AWAY_WIN';
+  result: "HOME_WIN" | "DRAW" | "AWAY_WIN";
   resolvedAt: number;
   chainlinkVRFProof?: string;
   blockConfirmation: number;

@@ -76,20 +76,20 @@ On-chain State
 ### 1. Real-Time Odds
 
 ```typescript
-const provider = createSportsDataProvider('development');
+const provider = createSportsDataProvider("development");
 
 // Get live odds with auto-updates
 provider.subscribeToLiveOdds(matchId, (newOdds) => {
-  console.log('Home:', newOdds.odds.homeWin);
-  console.log('Draw:', newOdds.odds.draw);
-  console.log('Away:', newOdds.odds.awayWin);
+  console.log("Home:", newOdds.odds.homeWin);
+  console.log("Draw:", newOdds.odds.draw);
+  console.log("Away:", newOdds.odds.awayWin);
 });
 ```
 
 ### 2. Odds Validation
 
 ```typescript
-import { validateOdds, isOddsStale } from '@/sportsdata';
+import { validateOdds, isOddsStale } from "@/sportsdata";
 
 // Verify odds are legitimate and fresh
 if (validateOdds(odds) && !isOddsStale(odds, 300)) {
@@ -100,10 +100,10 @@ if (validateOdds(odds) && !isOddsStale(odds, 300)) {
 ### 3. Blockchain Conversion
 
 ```typescript
-import { oddsToBlockchainFormat, blockchainFormatToOdds } from '@/sportsdata';
+import { oddsToBlockchainFormat, blockchainFormatToOdds } from "@/sportsdata";
 
 // Convert to fixed-point for smart contract
-const uint256 = oddsToBlockchainFormat('2.50'); // '2500000'
+const uint256 = oddsToBlockchainFormat("2.50"); // '2500000'
 
 // Convert back for display
 const display = blockchainFormatToOdds(uint256); // '2.5000'
@@ -112,10 +112,10 @@ const display = blockchainFormatToOdds(uint256); // '2.5000'
 ### 4. Automated Betting
 
 ```typescript
-import { createBettingBot } from '@/hooks/BettingBotManager';
+import { createBettingBot } from "@/hooks/BettingBotManager";
 
 const bot = createBettingBot({
-  maxBetSize: 5,        // USDC
+  maxBetSize: 5, // USDC
   minOddsThreshold: 1.5,
   maxOddsThreshold: 10,
   useChainlinkOracle: true, // Production
@@ -129,12 +129,12 @@ bot.stop();
 ### 5. Chainlink Oracle Integration
 
 ```typescript
-import { ChainlinkOracleClient } from '@/sportsdata';
+import { ChainlinkOracleClient } from "@/sportsdata";
 
 const oracle = new ChainlinkOracleClient(createOracleConfigFromEnv());
 
 // Request trustless odds
-const odds = await oracle.requestOddsData(matchId, 'PL');
+const odds = await oracle.requestOddsData(matchId, "PL");
 
 // Request randomness for settlement
 const vrf = await oracle.requestVRFRandomness();
@@ -267,6 +267,7 @@ VITE_DEBUG=true
 ```
 
 **Features:**
+
 - Fast iterations
 - No external dependencies
 - Full feature access
@@ -282,6 +283,7 @@ VITE_CHAINLINK_DON_ID=fun-solana-devnet-1
 ```
 
 **Features:**
+
 - Real oracle calls
 - Chainlink Functions integration
 - VRF randomness
@@ -297,6 +299,7 @@ VITE_SOLANA_CLUSTER=mainnet-beta
 ```
 
 **Features:**
+
 - Live sports data
 - Real settlement
 - Real USDC bets
@@ -334,14 +337,14 @@ After infrastructure is complete, Phase 2 focuses on:
 
 ## MVP Success Metrics
 
-| Metric | Target | Status |
-| ------ | ------ | ------ |
-| Odds latency | <1s | ✅ <500ms (mock) |
-| Oracle callback | <30s | ⏳ TBD |
-| Bet placement | <2s | ✅ <1s |
-| Settlement | <60s | ⏳ TBD |
-| Test coverage | >80% | ✅ 100% |
-| Documentation | Complete | ✅ Done |
+| Metric          | Target   | Status           |
+| --------------- | -------- | ---------------- |
+| Odds latency    | <1s      | ✅ <500ms (mock) |
+| Oracle callback | <30s     | ⏳ TBD           |
+| Bet placement   | <2s      | ✅ <1s           |
+| Settlement      | <60s     | ⏳ TBD           |
+| Test coverage   | >80%     | ✅ 100%          |
+| Documentation   | Complete | ✅ Done          |
 
 ## Commands
 
@@ -389,11 +392,12 @@ npm run logs:contracts         # Watch contract logs
 - **Integration**: [SPORTSDATA_INTEGRATION_GUIDE.md](docs/SPORTSDATA_INTEGRATION_GUIDE.md)
 - **Module API**: [sportsdata/README.md](sportsdata/README.md)
 - **Environment**: [.env.example.chainlink](.env.example.chainlink)
-- **Tests**: [sportsdata/__tests__/integration.test.ts](sportsdata/__tests__/integration.test.ts)
+- **Tests**: [sportsdata/**tests**/integration.test.ts](sportsdata/__tests__/integration.test.ts)
 
 ## Timeline
 
 **Current Phase**: Infrastructure Complete (Week 1)
+
 - ✅ Sportsdata module ready
 - ✅ Betting bot ready
 - ✅ Chainlink integration ready
@@ -401,12 +405,14 @@ npm run logs:contracts         # Watch contract logs
 - ✅ Documentation complete
 
 **Next Phase**: Validation (Weeks 2-4)
+
 - ⏳ Solana program deployment
 - ⏳ Proving ground launch
 - ⏳ User testing
 - ⏳ Performance monitoring
 
 **Final Phase**: Launch (Weeks 5-8)
+
 - ⏳ Security audit
 - ⏳ Mainnet deployment
 - ⏳ Go live

@@ -3,7 +3,7 @@
  * Handles requests to Chainlink Functions and VRF for sports data and randomness
  */
 
-import { OddsSnapshot, ChainlinkOracleConfig } from '../types/sports';
+import { OddsSnapshot, ChainlinkOracleConfig } from "../types/sports";
 
 export class ChainlinkOracleClient {
   private config: ChainlinkOracleConfig;
@@ -18,7 +18,10 @@ export class ChainlinkOracleClient {
    * In production, this will call the actual Chainlink oracle
    * For MVP, this returns mock data with oracle metadata
    */
-  async requestOddsData(matchId: string, leagueCode: string = 'PL'): Promise<OddsSnapshot> {
+  async requestOddsData(
+    matchId: string,
+    leagueCode: string = "PL",
+  ): Promise<OddsSnapshot> {
     const requestId = this.generateRequestId();
 
     // Mock implementation - in production, this calls Chainlink Functions
@@ -26,7 +29,7 @@ export class ChainlinkOracleClient {
       id: requestId,
       matchId,
       timestamp: Math.floor(Date.now() / 1000),
-      source: 'CHAINLINK',
+      source: "CHAINLINK",
       odds: {
         homeWin: (1.5 + Math.random() * 1.5).toFixed(4),
         draw: (3 + Math.random() * 1).toFixed(4),
@@ -41,7 +44,7 @@ export class ChainlinkOracleClient {
       matchId,
       leagueCode,
       timestamp: oddsData.timestamp,
-      status: 'fulfilled',
+      status: "fulfilled",
     });
 
     return oddsData;
@@ -61,11 +64,11 @@ export class ChainlinkOracleClient {
     const randomWord = this.generateMockRandomness();
 
     this.requestLog.set(requestId, {
-      type: 'VRF',
+      type: "VRF",
       requestId,
       randomWord,
       timestamp: Math.floor(Date.now() / 1000),
-      status: 'fulfilled',
+      status: "fulfilled",
     });
 
     return {
@@ -77,7 +80,10 @@ export class ChainlinkOracleClient {
   /**
    * Verify Chainlink oracle response has required confirmations
    */
-  verifyOracleResponse(odds: OddsSnapshot, requiredConfirmations: number = 3): boolean {
+  verifyOracleResponse(
+    odds: OddsSnapshot,
+    requiredConfirmations: number = 3,
+  ): boolean {
     if (!odds.blockNumber || !odds.confirmations) {
       return false;
     }
@@ -110,9 +116,9 @@ export class ChainlinkOracleClient {
     // Generate a 32-byte hex string (256-bit random number)
     const bytes = new Uint8Array(32);
     crypto.getRandomValues(bytes);
-    let hex = '0x';
+    let hex = "0x";
     for (let i = 0; i < bytes.length; i++) {
-      hex += bytes[i].toString(16).padStart(2, '0');
+      hex += bytes[i].toString(16).padStart(2, "0");
     }
     return hex;
   }
@@ -123,10 +129,13 @@ export class ChainlinkOracleClient {
  */
 export function createOracleConfigFromEnv(): ChainlinkOracleConfig {
   return {
-    routerAddress: process.env.CHAINLINK_ROUTER_ADDRESS || '0x0000000000000000000000000000000000000000',
-    donId: process.env.CHAINLINK_DON_ID || 'fun-solana-devnet-1',
-    subscriptionId: parseInt(process.env.CHAINLINK_SUBSCRIPTION_ID || '0', 10),
-    gasLimit: parseInt(process.env.CHAINLINK_GAS_LIMIT || '200000', 10),
-    callbackFunction: process.env.CHAINLINK_CALLBACK_FUNCTION || 'fulfillOddsRequest',
+    routerAddress:
+      process.env.CHAINLINK_ROUTER_ADDRESS ||
+      "0x0000000000000000000000000000000000000000",
+    donId: process.env.CHAINLINK_DON_ID || "fun-solana-devnet-1",
+    subscriptionId: parseInt(process.env.CHAINLINK_SUBSCRIPTION_ID || "0", 10),
+    gasLimit: parseInt(process.env.CHAINLINK_GAS_LIMIT || "200000", 10),
+    callbackFunction:
+      process.env.CHAINLINK_CALLBACK_FUNCTION || "fulfillOddsRequest",
   };
 }

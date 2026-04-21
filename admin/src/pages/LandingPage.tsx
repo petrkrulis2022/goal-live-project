@@ -8,8 +8,8 @@ const DEMO_VIDEO_URL =
   "/media/videos/AI_Betting_Experience_In_Football_Broadcast.mp4";
 const SECONDARY_DEMO_VIDEO_URL = "/media/videos/Arsenal_Goal_From_Live_Bet.mp4";
 const EXTENSION_BETA_URL =
-  "https://github.com/petrkrulis2022/goal-live-project";
-const CONTACT_URL = "mailto:hello@goal.live";
+  "https://github.com/petrkrulis2022/goal-live-project/tree/solana-sportsdata";
+const CONTACT_URL = "/contact";
 
 const SCREENSHOTS = [
   {
@@ -86,19 +86,19 @@ const REAL_RECORDINGS = [
 
 const DEPLOYMENTS = [
   {
-    name: "GoalLiveBetting V1 (Sepolia)",
-    address: "0x0ac469B0DE6C5d67fb904C54A1f7cA8c8bf347Bc",
-    url: "https://sepolia.etherscan.io/address/0x0ac469B0DE6C5d67fb904C54A1f7cA8c8bf347Bc",
+    name: "GoalLiveBetting V1 (Solana Devnet)",
+    address: "TBD - Deploying to Solana devnet",
+    url: "https://solscan.io",
   },
   {
-    name: "Chainlink KeystoneForwarder",
-    address: "0x15fc6ae953e024d975e77382eeec56a9101f9f88",
-    url: "https://sepolia.etherscan.io/address/0x15fc6ae953e024d975e77382eeec56a9101f9f88",
+    name: "SportsData Integration (Supabase)",
+    address: "https://weryswulejhjkrmervnf.supabase.co",
+    url: "https://supabase.com",
   },
   {
-    name: "USDC (Circle Sepolia)",
-    address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-    url: "https://sepolia.etherscan.io/address/0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+    name: "USDC on Solana",
+    address: "EPjFWaJB7w4YrMDwWYCzLPfVVHjNvP7VjKPmvS9xKKCb",
+    url: "https://solscan.io/token/EPjFWaJB7w4YrMDwWYCzLPfVVHjNvP7VjKPmvS9xKKCb",
   },
 ];
 
@@ -257,13 +257,20 @@ export default function LandingPage() {
 
       {/* Logo icon — top left corner */}
       <div
-        className="absolute z-20 pointer-events-none"
-        style={{ top: 20, left: 24 }}
+        className="absolute z-10 pointer-events-none"
+        style={{
+          top: 0,
+          left: -20,
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          gap: "0.2rem",
+        }}
       >
         <img
-          src="/logo-icon.png"
+          src="/logo jersay & text.png"
           alt=""
-          style={{ height: 96, width: "auto", display: "block" }}
+          style={{ height: 150, width: "auto", display: "block" }}
         />
       </div>
 
@@ -302,13 +309,13 @@ export default function LandingPage() {
               flexShrink: 0,
             }}
           />
-          Chainlink CRE · Sepolia Testnet
+          Solana · Devnet
         </div>
 
         {/* Logo */}
         <div style={{ lineHeight: 1 }}>
           <img
-            src="/logo.png"
+            src="/logo movement.png"
             alt="goal.live"
             style={{ maxWidth: 500, width: "80vw", display: "block" }}
           />
@@ -330,7 +337,7 @@ export default function LandingPage() {
           <span
             style={{ color: "#0A7B95", fontStyle: "normal", fontWeight: 600 }}
           >
-            real-time on-chain odds oracles
+            real-time SportsData oracles
           </span>
         </p>
 
@@ -344,9 +351,9 @@ export default function LandingPage() {
             lineHeight: 1.65,
           }}
         >
-          We built the MVP on Sepolia for fastest Chainlink CRE development and
-          iteration. The same trust model is being prepared for Base Sepolia and
-          Base mainnet rollout.
+          We built the MVP on Solana devnet for fastest integration and
+          iteration. The same betting engine and SportsData integration is being
+          prepared for Solana mainnet rollout.
         </p>
 
         {/* Divider */}
@@ -372,11 +379,11 @@ export default function LandingPage() {
           {[
             {
               title: "What Makes It Different",
-              text: "Users can place and change positions during the live match, not just before kickoff. It feels like a multiplayer game, while final settlement remains transparent and onchain.",
+              text: "Users can place and change positions during the live match, not just before kickoff. It feels like a multiplayer game, while final settlement remains transparent and onchain on Solana.",
             },
             {
-              title: "Why Base Is A Fit",
-              text: "Base combines mainstream distribution through Coinbase with a fast app ecosystem. We bring a category expansion: live sports and event prediction, not only static markets.",
+              title: "Why Solana Is A Fit",
+              text: "Solana offers sub-second transaction confirmation and minimal costs. Real-time betting demands instant settlement, making Solana the ideal foundation for live sports prediction markets.",
             },
             {
               title: "Who It Is For",
@@ -452,8 +459,8 @@ export default function LandingPage() {
           >
             {[
               "1. Users place and adjust live bets instantly during match events.",
-              "2. Offchain services provide fast UX while preserving a verifiable audit trail.",
-              "3. Chainlink CRE triggers decentralized result settlement and onchain payouts.",
+              "2. Real-time SportsData API feeds live odds and match results to Solana.",
+              "3. Smart contract settlement triggers automated payouts based on final scores.",
             ].map((step) => (
               <div
                 key={step}
@@ -814,9 +821,9 @@ export default function LandingPage() {
               lineHeight: 1.55,
             }}
           >
-            Core settlement logic is onchain. CRE orchestrates decentralized
-            reporting while users get instant product interactions in the app
-            layer.
+            Core settlement logic is onchain. SportsData feeds real-time odds
+            while smart contracts handle decentralized settlement and instant
+            payouts in the app layer.
           </p>
           <div
             style={{
@@ -909,7 +916,7 @@ export default function LandingPage() {
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
-          How it works · CRE Architecture
+          How it works · Real-time Settlement
         </a>
 
         {/* CTA buttons */}
@@ -1027,8 +1034,8 @@ export default function LandingPage() {
             fontWeight: 600,
           }}
         >
-          Built for Chainlink Hackathon · 2026 · Availability depends on
-          jurisdiction
+          Built on Solana · 2026 · Real-time Sports Betting · Availability
+          depends on jurisdiction
         </p>
       </div>
 

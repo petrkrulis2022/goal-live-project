@@ -3,7 +3,7 @@
  * Helpers for odds validation, conversion, and blockchain integration
  */
 
-import { OddsSnapshot, ODDS_DECIMAL_PLACES } from '../types/sports';
+import { OddsSnapshot, ODDS_DECIMAL_PLACES } from "../types/sports";
 
 /**
  * Validate odds values are within acceptable ranges
@@ -42,7 +42,7 @@ export function oddsToMoneyline(decimalOdds: string): number {
   if (odds >= 2) {
     return Math.round((odds - 1) * 100);
   } else {
-    return Math.round((-100) / (odds - 1));
+    return Math.round(-100 / (odds - 1));
   }
 }
 
@@ -59,7 +59,9 @@ export function oddsToBlockchainFormat(decimalOdds: string): string {
 /**
  * Convert blockchain uint format back to decimal odds
  */
-export function blockchainFormatToOdds(blockchainValue: string | number): string {
+export function blockchainFormatToOdds(
+  blockchainValue: string | number,
+): string {
   const divisor = Math.pow(10, ODDS_DECIMAL_PLACES);
   const odds = parseFloat(blockchainValue.toString()) / divisor;
   return odds.toFixed(4);
@@ -72,7 +74,7 @@ export function blockchainFormatToOdds(blockchainValue: string | number): string
 export function calculateNoVigOdds(
   homeOdds: string,
   drawOdds: string,
-  awayOdds: string
+  awayOdds: string,
 ): { home: string; draw: string; away: string } {
   const home = 1 / parseFloat(homeOdds);
   const draw = 1 / parseFloat(drawOdds);
@@ -89,7 +91,10 @@ export function calculateNoVigOdds(
 /**
  * Check if odds have stale data (older than threshold)
  */
-export function isOddsStale(odds: OddsSnapshot, maxAgeSeconds: number = 300): boolean {
+export function isOddsStale(
+  odds: OddsSnapshot,
+  maxAgeSeconds: number = 300,
+): boolean {
   const now = Math.floor(Date.now() / 1000);
   return now - odds.timestamp > maxAgeSeconds;
 }
@@ -112,7 +117,10 @@ export function calculateProfit(oddsString: string, betAmount: number): number {
 /**
  * Format odds string for display with rounding
  */
-export function formatOddsDisplay(oddsString: string, decimals: number = 2): string {
+export function formatOddsDisplay(
+  oddsString: string,
+  decimals: number = 2,
+): string {
   return parseFloat(oddsString).toFixed(decimals);
 }
 
@@ -122,7 +130,7 @@ export function formatOddsDisplay(oddsString: string, decimals: number = 2): str
 export function detectOddsMovement(
   previousOdds: OddsSnapshot,
   currentOdds: OddsSnapshot,
-  thresholdPercent: number = 5
+  thresholdPercent: number = 5,
 ): {
   homeMoved: boolean;
   drawMoved: boolean;
@@ -130,13 +138,21 @@ export function detectOddsMovement(
   totalMovement: number;
 } {
   const homeChange = Math.abs(
-    ((parseFloat(currentOdds.odds.homeWin) - parseFloat(previousOdds.odds.homeWin)) / parseFloat(previousOdds.odds.homeWin)) * 100
+    ((parseFloat(currentOdds.odds.homeWin) -
+      parseFloat(previousOdds.odds.homeWin)) /
+      parseFloat(previousOdds.odds.homeWin)) *
+      100,
   );
   const drawChange = Math.abs(
-    ((parseFloat(currentOdds.odds.draw) - parseFloat(previousOdds.odds.draw)) / parseFloat(previousOdds.odds.draw)) * 100
+    ((parseFloat(currentOdds.odds.draw) - parseFloat(previousOdds.odds.draw)) /
+      parseFloat(previousOdds.odds.draw)) *
+      100,
   );
   const awayChange = Math.abs(
-    ((parseFloat(currentOdds.odds.awayWin) - parseFloat(previousOdds.odds.awayWin)) / parseFloat(previousOdds.odds.awayWin)) * 100
+    ((parseFloat(currentOdds.odds.awayWin) -
+      parseFloat(previousOdds.odds.awayWin)) /
+      parseFloat(previousOdds.odds.awayWin)) *
+      100,
   );
 
   return {

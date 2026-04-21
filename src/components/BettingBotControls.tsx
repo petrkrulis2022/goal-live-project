@@ -3,8 +3,8 @@
  * Provides UI controls for managing the automated betting bot
  */
 
-import React from 'react';
-import { useBettingBot } from '@/hooks/useBettingBot';
+import React from "react";
+import { useBettingBot } from "@/hooks/useBettingBot";
 
 interface BettingBotControlsProps {
   onStateChange?: (state: any) => void;
@@ -19,12 +19,20 @@ export function BettingBotControls({
   maxOdds = 5,
   maxBetSize = 5,
 }: BettingBotControlsProps) {
-  const { state, isRunning, error, start, stop, getConfig, estimateOracleCost, verifyOracleResponse } =
-    useBettingBot({
-      minOddsThreshold: minOdds,
-      maxOddsThreshold: maxOdds,
-      maxBetSize,
-    });
+  const {
+    state,
+    isRunning,
+    error,
+    start,
+    stop,
+    getConfig,
+    estimateOracleCost,
+    verifyOracleResponse,
+  } = useBettingBot({
+    minOddsThreshold: minOdds,
+    maxOddsThreshold: maxOdds,
+    maxBetSize,
+  });
 
   React.useEffect(() => {
     onStateChange?.(state);
@@ -36,13 +44,19 @@ export function BettingBotControls({
     <div className="betting-bot-controls border border-gray-300 rounded-lg p-4 bg-gray-50">
       <h2 className="text-lg font-bold mb-4">Betting Bot Control</h2>
 
-      {error && <div className="text-red-600 mb-3 font-semibold">Error: {error}</div>}
+      {error && (
+        <div className="text-red-600 mb-3 font-semibold">Error: {error}</div>
+      )}
 
       {/* Status */}
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-2">
-          <div className={`w-3 h-3 rounded-full ${isRunning ? 'bg-green-500' : 'bg-gray-400'}`} />
-          <span className="font-semibold">{isRunning ? 'Running' : 'Stopped'}</span>
+          <div
+            className={`w-3 h-3 rounded-full ${isRunning ? "bg-green-500" : "bg-gray-400"}`}
+          />
+          <span className="font-semibold">
+            {isRunning ? "Running" : "Stopped"}
+          </span>
         </div>
       </div>
 
@@ -75,7 +89,9 @@ export function BettingBotControls({
               <strong>{state.currentOdds.odds.awayWin}</strong>
             </div>
           </div>
-          <p className="text-xs text-gray-600 mt-2">Source: {state.currentOdds.source}</p>
+          <p className="text-xs text-gray-600 mt-2">
+            Source: {state.currentOdds.source}
+          </p>
         </div>
       )}
 
@@ -91,7 +107,8 @@ export function BettingBotControls({
             <p>
               <span className="text-gray-600">Odds Range: </span>
               <strong>
-                {config.minOddsThreshold.toFixed(2)} - {config.maxOddsThreshold.toFixed(2)}
+                {config.minOddsThreshold.toFixed(2)} -{" "}
+                {config.maxOddsThreshold.toFixed(2)}
               </strong>
             </p>
             <p>
@@ -100,7 +117,9 @@ export function BettingBotControls({
             </p>
             <p>
               <span className="text-gray-600">Chainlink: </span>
-              <strong>{config.useChainlinkOracle ? 'Enabled' : 'Disabled'}</strong>
+              <strong>
+                {config.useChainlinkOracle ? "Enabled" : "Disabled"}
+              </strong>
             </p>
           </div>
         </div>
@@ -117,7 +136,11 @@ export function BettingBotControls({
             </p>
             <p>
               <span className="text-gray-600">Total Profit: </span>
-              <strong className={state.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}>
+              <strong
+                className={
+                  state.totalProfit >= 0 ? "text-green-600" : "text-red-600"
+                }
+              >
                 ${state.totalProfit.toFixed(2)}
               </strong>
             </p>
@@ -133,9 +156,14 @@ export function BettingBotControls({
         <div className="bg-blue-50 p-3 rounded mb-4 border border-blue-200">
           <h3 className="font-semibold mb-2 text-blue-900">Chainlink Oracle</h3>
           <div className="text-sm text-blue-800 space-y-1">
-            <p>Gas Cost Estimate: {estimateOracleCost() || 'N/A'}</p>
+            <p>Gas Cost Estimate: {estimateOracleCost() || "N/A"}</p>
             <p>
-              Response Valid: {verifyOracleResponse(3) ? <span className="text-green-600">✓</span> : <span className="text-red-600">✗</span>}
+              Response Valid:{" "}
+              {verifyOracleResponse(3) ? (
+                <span className="text-green-600">✓</span>
+              ) : (
+                <span className="text-red-600">✗</span>
+              )}
             </p>
           </div>
         </div>

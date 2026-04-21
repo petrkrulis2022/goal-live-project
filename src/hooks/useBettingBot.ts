@@ -3,9 +3,9 @@
  * Provides easy access to bot state and controls
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { BettingBotManager, createBettingBot } from './BettingBotManager';
-import type { BettingBotConfig, BotState } from './BettingBotManager';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { BettingBotManager, createBettingBot } from "./BettingBotManager";
+import type { BettingBotConfig, BotState } from "./BettingBotManager";
 
 export function useBettingBot(initialConfig?: Partial<BettingBotConfig>) {
   const botRef = useRef<BettingBotManager | null>(null);
@@ -38,7 +38,7 @@ export function useBettingBot(initialConfig?: Partial<BettingBotConfig>) {
 
   const start = useCallback(async () => {
     if (!botRef.current) {
-      setError('Bot not initialized');
+      setError("Bot not initialized");
       return;
     }
 
@@ -48,14 +48,15 @@ export function useBettingBot(initialConfig?: Partial<BettingBotConfig>) {
       setIsRunning(true);
       setBotState(botRef.current.getState());
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to start bot';
+      const message =
+        err instanceof Error ? err.message : "Failed to start bot";
       setError(message);
     }
   }, []);
 
   const stop = useCallback(() => {
     if (!botRef.current) {
-      setError('Bot not initialized');
+      setError("Bot not initialized");
       return;
     }
 
@@ -65,7 +66,7 @@ export function useBettingBot(initialConfig?: Partial<BettingBotConfig>) {
       setIsRunning(false);
       setBotState(botRef.current.getState());
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to stop bot';
+      const message = err instanceof Error ? err.message : "Failed to stop bot";
       setError(message);
     }
   }, []);

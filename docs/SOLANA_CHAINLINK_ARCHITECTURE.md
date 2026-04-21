@@ -149,7 +149,7 @@ interface OddsSnapshot {
   id: string;
   matchId: string;
   timestamp: number;
-  source: 'CHAINLINK' | 'MOCK' | 'EXTERNAL';
+  source: "CHAINLINK" | "MOCK" | "EXTERNAL";
   odds: {
     homeWin: string; // Decimal string
     draw: string;
@@ -165,14 +165,14 @@ interface OddsSnapshot {
 Simulates real data for development/testing:
 
 ```typescript
-const provider = createSportsDataProvider('development');
+const provider = createSportsDataProvider("development");
 
 // Get match data
 const matches = await provider.getUpcomingMatches(5);
 
 // Get live odds with subscriptions
-const unsubscribe = provider.subscribeToLiveOdds('match_001', (newOdds) => {
-  console.log('Odds updated:', newOdds.odds);
+const unsubscribe = provider.subscribeToLiveOdds("match_001", (newOdds) => {
+  console.log("Odds updated:", newOdds.odds);
   // Update UI or state
 });
 
@@ -189,16 +189,16 @@ Odds calculations and conversions:
 validateOdds(odds); // Check odds are within valid ranges
 
 // Conversions for blockchain
-const blockchainValue = oddsToBlockchainFormat('2.50'); // → '2500000'
+const blockchainValue = oddsToBlockchainFormat("2.50"); // → '2500000'
 const decimalOdds = blockchainFormatToOdds(blockchainValue); // → '2.5000'
 
 // Analytics
-const probability = oddsToImpliedProbability('2.50'); // → 0.4
-const moneyline = oddsToMoneyline('2.50'); // → +150
+const probability = oddsToImpliedProbability("2.50"); // → 0.4
+const moneyline = oddsToMoneyline("2.50"); // → +150
 
 // Payout calculations
-const payout = calculatePayout('2.50', 100); // → 250
-const profit = calculateProfit('2.50', 100); // → 150
+const payout = calculatePayout("2.50", 100); // → 250
+const profit = calculateProfit("2.50", 100); // → 150
 ```
 
 #### Chainlink Oracle (`integration/ChainlinkOracleClient.ts`)
@@ -209,7 +209,7 @@ Direct interface to Chainlink Functions and VRF:
 const oracle = new ChainlinkOracleClient(createOracleConfigFromEnv());
 
 // Request odds from oracle
-const oddsData = await oracle.requestOddsData('match_001', 'PL');
+const oddsData = await oracle.requestOddsData("match_001", "PL");
 
 // Request randomness for settlement
 const { requestId, randomWord } = await oracle.requestVRFRandomness();
@@ -432,13 +432,13 @@ Tests with real Solana devnet and Chainlink testnet.
 
 ## Performance Targets
 
-| Metric | Target | Current |
-| ------ | ------ | ------- |
-| Odds update latency | <1s | <1s (mock) |
-| Oracle callback | <30s | TBD |
-| Bet placement | <2s | <2s |
-| Settlement | <60s | TBD |
-| Bot decision loop | 10s | 10s |
+| Metric              | Target | Current    |
+| ------------------- | ------ | ---------- |
+| Odds update latency | <1s    | <1s (mock) |
+| Oracle callback     | <30s   | TBD        |
+| Bet placement       | <2s    | <2s        |
+| Settlement          | <60s   | TBD        |
+| Bot decision loop   | 10s    | 10s        |
 
 ## Monitoring
 

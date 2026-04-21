@@ -3,6 +3,7 @@ import { lazy, Suspense, type ReactNode } from "react";
 import Layout from "./components/Layout";
 import LandingPage from "./pages/LandingPage";
 import ArchitecturePage from "./pages/ArchitecturePage";
+import ContactPage from "./pages/ContactPage";
 import { useAdminWallet } from "./hooks/useAdminWallet";
 
 // Lazy-load admin pages so public landing routes do not require Supabase env vars.
@@ -34,6 +35,9 @@ export default function App() {
   }
   if (location.pathname === "/architecture") {
     return <ArchitecturePage />;
+  }
+  if (location.pathname === "/contact") {
+    return <ContactPage />;
   }
 
   // ── Not connected ────────────────────────────────────────────────────────────
