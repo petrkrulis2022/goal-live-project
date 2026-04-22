@@ -38,7 +38,7 @@ export default function AdminLogin() {
         navigate("/admin/dashboard");
       } else {
         setError(
-          "Wallet not authorized. You must be the admin wallet to access this section."
+          "Wallet not authorized. You must be the admin wallet to access this section.",
         );
       }
     } catch (err) {

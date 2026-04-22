@@ -29,39 +29,73 @@ export default function ContactPage() {
     setError("");
 
     try {
-      // Send email via FormSubmit.co with activation token
-      const formData_encoded = new URLSearchParams();
-      formData_encoded.append("name", formData.name);
-      formData_encoded.append("email", formData.email);
-      formData_encoded.append("subject", formData.subject);
-      formData_encoded.append("message", formData.message);
-
-      const response = await fetch(
-        "https://formsubmit.co/cf106eb718324a806bf999eb8df04f36",
+      // Try edge function first
+      const edgeResponse = await fetch(
+        "https://weryswulejhjkrmervnf.supabase.co/functions/v1/send-contact-email",
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-Type": "application/json",
+            Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlcnlzd3VsZWpoamtybWVydm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjEyODEsImV4cCI6MjA4NzU5NzI4MX0.fxMn2LMdoFuYAln-34WUo1uUiWjSnlSzJlDS-sepdtc`,
           },
-          body: formData_encoded,
-        },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            subject: formData.subject,
+            message: formData.message,
+          }),
+        }
       );
 
-      console.log("FormSubmit response:", response.status, response.ok);
+      console.log("Edge function response:", edgeResponse.status, edgeResponse.ok);
 
-      if (response.ok) {
+      if (edgeResponse.ok) {
         setSubmitted(true);
         setFormData({ name: "", email: "", subject: "", message: "" });
         // Redirect after 3 seconds
         setTimeout(() => navigate("/"), 3000);
       } else {
-        const text = await response.text();
-        console.error("FormSubmit error:", text);
-        setError("Failed to send message. Please try again.");
+        const errorData = await edgeResponse.text();
+        console.error("Edge function error:", errorData);
+
+        // Fallback to FormSubmit.co if edge function fails
+        console.log("Falling back to FormSubmit.co...");
+        const fallbackResponse = await fetch(
+          "https://formsubmit.co/beer_sloth_coder@proton.me",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              name: formData.name,
+              email: formData.email,
+              subject: formData.subject,
+              message: formData.message,
+              _captcha: "false",
+              _next: "https://goal.live",
+            }).toString(),
+          }
+        );
+
+        console.log("FormSubmit fallback response:", fallbackResponse.status, fallbackResponse.ok);
+
+        if (fallbackResponse.ok) {
+          setSubmitted(true);
+          setFormData({ name: "", email: "", subject: "", message: "" });
+          // Redirect after 3 seconds
+          setTimeout(() => navigate("/"), 3000);
+        } else {
+          setError(
+            "Failed to send message. Please try again or contact us on Twitter @goalLiveApp"
+          );
+        }
       }
     } catch (err) {
       console.error("Error submitting form:", err);
-      setError("An error occurred. Please try again.");
+      setError(
+        "An error occurred. Please try again or contact us on Twitter @goalLiveApp"
+      );
     } finally {
       setLoading(false);
     }

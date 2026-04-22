@@ -61,7 +61,7 @@ export default function AdminDashboard() {
         // If table doesn't exist, show fallback message
         if (fetchError.message.includes("does not exist")) {
           setError(
-            "Beta testers table not yet created. Registrations are being logged to the edge function console."
+            "Beta testers table not yet created. Registrations are being logged to the edge function console.",
           );
           setRegistrations([]);
         } else {
@@ -102,7 +102,7 @@ export default function AdminDashboard() {
             discord: registration.discord,
             wallet: registration.solana_wallet,
           }),
-        }
+        },
       );
 
       if (response.ok) {
@@ -252,7 +252,13 @@ export default function AdminDashboard() {
             >
               {sentUsdc}
             </p>
-            <p style={{ fontSize: "0.75rem", color: "#999", margin: "0.5rem 0 0" }}>
+            <p
+              style={{
+                fontSize: "0.75rem",
+                color: "#999",
+                margin: "0.5rem 0 0",
+              }}
+            >
               {unsentUsdc} pending
             </p>
           </div>
@@ -283,7 +289,7 @@ export default function AdminDashboard() {
                 margin: 0,
               }}
             >
-              {((registrations.length * 1000) / 100000 * 100).toFixed(1)}%
+              {(((registrations.length * 1000) / 100000) * 100).toFixed(1)}%
             </p>
           </div>
         </div>
@@ -397,7 +403,12 @@ export default function AdminDashboard() {
                 }}
               >
                 <thead>
-                  <tr style={{ background: LIGHT_GRAY, borderBottom: `2px solid #ddd` }}>
+                  <tr
+                    style={{
+                      background: LIGHT_GRAY,
+                      borderBottom: `2px solid #ddd`,
+                    }}
+                  >
                     <th
                       style={{
                         padding: "1rem",
@@ -525,7 +536,9 @@ export default function AdminDashboard() {
                         }}
                       >
                         {reg.solana_wallet.substring(0, 8)}...
-                        {reg.solana_wallet.substring(reg.solana_wallet.length - 4)}
+                        {reg.solana_wallet.substring(
+                          reg.solana_wallet.length - 4,
+                        )}
                       </td>
                       <td style={{ padding: "1rem", textAlign: "center" }}>
                         <span

@@ -14,7 +14,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { registrationId, name, telegram, discord, wallet } = await req.json();
+    const { registrationId, name, telegram, discord, wallet } =
+      await req.json();
 
     // Validation
     if (!registrationId || !name) {
@@ -25,7 +26,7 @@ Deno.serve(async (req) => {
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        },
       );
     }
 
@@ -81,7 +82,7 @@ Deno.serve(async (req) => {
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      },
     );
   } catch (error) {
     console.error("Error:", error);
@@ -92,7 +93,7 @@ Deno.serve(async (req) => {
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      },
     );
   }
 });
