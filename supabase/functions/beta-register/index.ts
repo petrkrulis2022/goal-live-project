@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        },
       );
     }
 
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
           {
             status: 409,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          },
         );
       }
 
@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
         // Table doesn't exist - create it first
         if (error.message && error.message.includes("does not exist")) {
           console.log("Creating beta_testers table...");
-          
+
           // Create table via raw SQL
           const { error: createError } = await supabase.rpc("exec_sql", {
             sql: `
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
                 status TEXT DEFAULT 'registered',
                 testnet_usdc_sent BOOLEAN DEFAULT FALSE,
                 testnet_send_date TIMESTAMP WITH TIME ZONE,
-                testnet_amount_sent NUMERIC(20, 6) DEFAULT 50.0,
+                testnet_amount_sent NUMERIC(20, 6) DEFAULT 1000.0,
                 mainnet_winnings NUMERIC(20, 6) DEFAULT 0.0,
                 mainnet_winnings_date TIMESTAMP WITH TIME ZONE,
                 mainnet_tx_hash TEXT,
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
               ALTER TABLE beta_testers ENABLE ROW LEVEL SECURITY;
               CREATE POLICY allow_insert ON beta_testers FOR INSERT WITH CHECK (true);
               CREATE POLICY allow_select ON beta_testers FOR SELECT USING (true);
-            `
+            `,
           });
 
           if (createError) {
@@ -149,11 +149,11 @@ Deno.serve(async (req) => {
         {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        },
       );
     } catch (dbError) {
       console.error("Database error:", dbError);
-      
+
       // Fallback: Accept registration even if database fails
       // This allows the form to work during development
       console.log("Fallback: Accepting registration without database", {
@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
         {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        },
       );
     }
   } catch (error) {
@@ -185,7 +185,7 @@ Deno.serve(async (req) => {
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      },
     );
   }
 });

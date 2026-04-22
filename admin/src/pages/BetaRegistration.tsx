@@ -62,24 +62,25 @@ export default function BetaRegistration() {
     try {
       // Call Supabase edge function to save registration
       const supabaseUrl = "https://weryswulejhjkrmervnf.supabase.co";
-      const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlcnlzd3VsZWpoamtybWVydm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjEyODEsImV4cCI6MjA4NzU5NzI4MX0.fxMn2LMdoFuYAln-34WUo1uUiWjSnlSzJlDS-sepdtc"; // Supabase anon key
-      
+      const supabaseKey =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlcnlzd3VsZWpoamtybWVydm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjEyODEsImV4cCI6MjA4NzU5NzI4MX0.fxMn2LMdoFuYAln-34WUo1uUiWjSnlSzJlDS-sepdtc"; // Supabase anon key
+
       const response = await fetch(
         `${supabaseUrl}/functions/v1/beta-register`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${supabaseKey}`,
+            Authorization: `Bearer ${supabaseKey}`,
           },
           body: JSON.stringify(formData),
-        }
+        },
       );
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(
-          errorData.error || "Registration failed. Please try again."
+          errorData.error || "Registration failed. Please try again.",
         );
       }
 
@@ -89,7 +90,9 @@ export default function BetaRegistration() {
       }, 3000);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "An error occurred. Please try again."
+        err instanceof Error
+          ? err.message
+          : "An error occurred. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -171,7 +174,7 @@ export default function BetaRegistration() {
                   lineHeight: 1.6,
                 }}
               >
-                Get 50 USDC testnet to start. Win real mainnet USDC.
+                Get 1000 USDC testnet to start. Win real mainnet USDC.
               </p>
             </div>
 
@@ -195,7 +198,7 @@ export default function BetaRegistration() {
                   letterSpacing: "0.02em",
                 }}
               >
-                <strong>How it works:</strong> You'll receive 50 USDC on Solana
+                <strong>How it works:</strong> You'll receive 1000 USDC on Solana
                 devnet to test the MVP risk-free. All losses stay on testnet.
                 But if you win, those winnings convert to real USDC on Solana
                 mainnet. We're testing for 4 weeks and tracking all feedback.
@@ -382,7 +385,7 @@ export default function BetaRegistration() {
                     margin: "0.4rem 0 0",
                   }}
                 >
-                  We'll send your 50 USDC devnet here
+                  We'll send your 1000 USDC devnet here
                 </p>
               </div>
 
@@ -552,7 +555,7 @@ export default function BetaRegistration() {
               }}
             >
               Check your Telegram and Discord for welcome onboarding. We'll send
-              your 50 USDC devnet shortly.
+              your 1000 USDC devnet shortly.
             </p>
             <p
               style={{
