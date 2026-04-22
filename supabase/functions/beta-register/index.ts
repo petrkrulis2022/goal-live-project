@@ -29,18 +29,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Initialize Supabase client
+    // Initialize Supabase client - use anon key to allow public insertions
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
     // Check if wallet already registered
     const { data: existingUser } = await supabase
       .from("beta_testers")
       .select("id")
       .eq("solana_wallet", solanaWallet)
-      .single();
+      .maybeSingle();
 
     if (existingUser) {
       return new Response(
