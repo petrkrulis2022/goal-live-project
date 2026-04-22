@@ -85,24 +85,6 @@ const REAL_RECORDINGS = [
   },
 ];
 
-const DEPLOYMENTS = [
-  {
-    name: "GoalLiveBetting V1 (Solana Devnet)",
-    address: "TBD - Deploying to Solana devnet",
-    url: "https://solscan.io",
-  },
-  {
-    name: "SportsData Integration (Supabase)",
-    address: "https://weryswulejhjkrmervnf.supabase.co",
-    url: "https://supabase.com",
-  },
-  {
-    name: "USDC on Solana",
-    address: "EPjFWaJB7w4YrMDwWYCzLPfVVHjNvP7VjKPmvS9xKKCb",
-    url: "https://solscan.io/token/EPjFWaJB7w4YrMDwWYCzLPfVVHjNvP7VjKPmvS9xKKCb",
-  },
-];
-
 const STAT_TEXT =
   "Live in-game betting is already larger than pre-match betting in many markets. We are bringing that real-time behavior onchain with a mainstream-first UX.";
 
@@ -866,90 +848,6 @@ export default function LandingPage() {
                   Open Recording
                 </a>
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Credibility */}
-        <section
-          style={{
-            width: "min(980px, 92vw)",
-            background: "rgba(255,255,255,0.76)",
-            border: "1px solid rgba(46,197,224,0.24)",
-            borderRadius: 18,
-            padding: "1rem",
-            textAlign: "left",
-          }}
-        >
-          <h3
-            style={{
-              margin: "0 0 0.85rem",
-              fontFamily: "'DM Mono', monospace",
-              fontSize: "0.82rem",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-              color: "#0A7B95",
-            }}
-          >
-            Public Contracts And Trust Layer
-          </h3>
-          <p
-            style={{
-              margin: "0 0 0.85rem",
-              color: "rgba(12,40,64,0.78)",
-              fontFamily: "'Inter', sans-serif",
-              fontSize: "0.93rem",
-              lineHeight: 1.55,
-            }}
-          >
-            Core settlement logic is onchain. SportsData feeds real-time odds
-            while smart contracts handle decentralized settlement and instant
-            payouts in the app layer.
-          </p>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-              gap: "0.6rem",
-            }}
-          >
-            {DEPLOYMENTS.map((d) => (
-              <a
-                key={d.address}
-                href={d.url}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  textDecoration: "none",
-                  border: "1px solid rgba(12,40,64,0.12)",
-                  borderRadius: 12,
-                  background: "rgba(255,255,255,0.82)",
-                  padding: "0.7rem 0.75rem",
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: "'DM Mono', monospace",
-                    fontSize: "0.72rem",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    color: "#0A7B95",
-                    marginBottom: "0.34rem",
-                  }}
-                >
-                  {d.name}
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'DM Mono', monospace",
-                    fontSize: "0.78rem",
-                    color: NAVY,
-                    wordBreak: "break-all",
-                  }}
-                >
-                  {d.address}
-                </div>
-              </a>
             ))}
           </div>
         </section>
