@@ -51,23 +51,55 @@ export default function AdminDashboard() {
 
       const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-      // Use RPC function to bypass PostgREST schema cache issues
-      const { data, error: fetchError } = await supabase.rpc(
-        "get_beta_testers_list"
-      );
+      // Try multiple approaches to get data
+      let data = null;
+      let fetchError = null;
 
-      if (fetchError) {
+      // Approach 1: Try the direct table select (might fail due to schema cache)
+      try {
+        const result = await supabase
+          .from("beta_testers")
+          .select("*")
+          .order("created_at", { ascending: false });
+        
+        if (!result.error) {
+          data = result.data;
+        } else {
+          fetchError = result.error;
+        }
+      } catch (e) {
+        // Continue to next approach
+      }
+
+      // Approach 2: If direct select failed, try the RPC function
+      if (!data && fetchError) {
+        try {
+          const result = await supabase.rpc("get_beta_testers_list");
+          if (!result.error) {
+            data = result.data;
+            fetchError = null;
+          } else {
+            fetchError = result.error;
+          }
+        } catch (e) {
+          // Continue
+        }
+      }
+
+      if (fetchError || !data) {
         setError(
-          "Unable to fetch registrations. The database may still be initializing. Try refreshing in a moment.",
+          data === null
+            ? "Unable to fetch registrations. The beta_testers table may need to be created. Check the database in Supabase dashboard."
+            : "Registrations loaded but there may be a delay in the database sync.",
         );
-        console.error("RPC Error:", fetchError);
-        setRegistrations([]);
+        setRegistrations(data || []);
       } else {
-        setRegistrations((data as BetaTester[]) || []);
+        setRegistrations(data || []);
       }
     } catch (err) {
       setError("Failed to load registrations");
       console.error(err);
+      setRegistrations([]);
     } finally {
       setIsLoading(false);
     }
