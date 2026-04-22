@@ -433,10 +433,6 @@ export default function LandingPage() {
               text: "Users can place and change positions during the live match, not just before kickoff. It feels like a multiplayer game, while final settlement remains transparent and onchain on Solana.",
             },
             {
-              title: "Why Solana Is A Fit",
-              text: "Solana offers sub-second transaction confirmation and minimal costs. Real-time betting demands instant settlement, making Solana the ideal foundation for live sports prediction markets.",
-            },
-            {
               title: "Raising Funds on Futard.io",
               text: "We are currently fundraising to scale goal.live's infrastructure and expand to more sports and markets globally.",
             },
@@ -444,55 +440,40 @@ export default function LandingPage() {
               title: "Who It Is For",
               text: "Mainstream live-event fans and communities on any device. Wallet complexity is increasingly abstracted away so non-crypto users can participate.",
             },
-            {
-              title: "",
-              text: "",
-              isBlank: true,
-            },
           ].map((item) => (
             <div
-              key={item.title || "blank"}
+              key={item.title}
               style={{
-                background: item.isBlank
-                  ? "transparent"
-                  : "rgba(255,255,255,0.72)",
-                border: item.isBlank
-                  ? "none"
-                  : "1px solid rgba(46,197,224,0.28)",
+                background: "rgba(255,255,255,0.72)",
+                border: "1px solid rgba(46,197,224,0.28)",
                 borderRadius: 16,
                 padding: "1rem 1rem 1.05rem",
-                boxShadow: item.isBlank
-                  ? "none"
-                  : "0 8px 24px rgba(12,40,64,0.06)",
+                boxShadow: "0 8px 24px rgba(12,40,64,0.06)",
               }}
             >
-              {!item.isBlank && (
-                <>
-                  <h3
-                    style={{
-                      margin: "0 0 0.45rem",
-                      fontFamily: "'DM Mono', monospace",
-                      fontSize: "0.8rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.08em",
-                      color: "#0A7B95",
-                    }}
-                  >
-                    {item.title}
-                  </h3>
-                  <p
-                    style={{
-                      margin: 0,
-                      color: "rgba(12,40,64,0.8)",
-                      fontSize: "0.93rem",
-                      lineHeight: 1.55,
-                      fontFamily: "'Inter', sans-serif",
-                    }}
-                  >
-                    {item.text}
-                  </p>
-                </>
-              )}
+              <h3
+                style={{
+                  margin: "0 0 0.45rem",
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: "0.8rem",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  color: "#0A7B95",
+                }}
+              >
+                {item.title}
+              </h3>
+              <p
+                style={{
+                  margin: 0,
+                  color: "rgba(12,40,64,0.8)",
+                  fontSize: "0.93rem",
+                  lineHeight: 1.55,
+                  fontFamily: "'Inter', sans-serif",
+                }}
+              >
+                {item.text}
+              </p>
             </div>
           ))}
         </div>
