@@ -41,8 +41,8 @@ export default function BetaRegistration() {
       setError("Please enter your Solana devnet wallet address");
       return false;
     }
-    // Basic wallet validation (starts with valid Solana prefix)
-    if (!formData.solanaWallet.match(/^[1-9A-HJ-NP-Z]{32,44}$/)) {
+    // Basic wallet validation (Solana base58 address format)
+    if (!formData.solanaWallet.match(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/)) {
       setError("Please enter a valid Solana wallet address");
       return false;
     }
