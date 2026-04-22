@@ -1,0 +1,22 @@
+[build]
+  command = "npm run build:admin"
+  publish = "dist-admin"
+  base = "."
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_VERSION = "10"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[context.production]
+  environment = { VITE_MODE = "production" }
+
+[context.deploy-preview]
+  environment = { VITE_MODE = "preview" }
+
+[context.branch-deploy]
+  environment = { VITE_MODE = "preview" }

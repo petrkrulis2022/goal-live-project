@@ -30,13 +30,21 @@ export default function ContactPage() {
 
     try {
       // Try edge function first
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        setError("Supabase configuration missing");
+        return;
+      }
+
       const edgeResponse = await fetch(
-        "https://weryswulejhjkrmervnf.supabase.co/functions/v1/send-contact-email",
+        `${supabaseUrl}/functions/v1/send-contact-email`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlcnlzd3VsZWpoamtybWVydm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjEyODEsImV4cCI6MjA4NzU5NzI4MX0.fxMn2LMdoFuYAln-34WUo1uUiWjSnlSzJlDS-sepdtc`,
+            Authorization: `Bearer ${supabaseKey}`,
           },
           body: JSON.stringify({
             name: formData.name,

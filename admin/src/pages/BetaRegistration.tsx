@@ -61,9 +61,14 @@ export default function BetaRegistration() {
 
     try {
       // Call Supabase edge function to save registration
-      const supabaseUrl = "https://weryswulejhjkrmervnf.supabase.co";
-      const supabaseKey =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlcnlzd3VsZWpoamtybWVydm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjEyODEsImV4cCI6MjA4NzU5NzI4MX0.fxMn2LMdoFuYAln-34WUo1uUiWjSnlSzJlDS-sepdtc"; // Supabase anon key
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        setError("Supabase configuration missing");
+        setLoading(false);
+        return;
+      }
 
       const response = await fetch(
         `${supabaseUrl}/functions/v1/beta-register`,

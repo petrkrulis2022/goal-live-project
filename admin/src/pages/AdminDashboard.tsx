@@ -45,9 +45,16 @@ export default function AdminDashboard() {
       setIsLoading(true);
       setError("");
 
-      const supabaseUrl = "https://weryswulejhjkrmervnf.supabase.co";
-      const supabaseAnonKey =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlcnlzd3VsZWpoamtybWVydm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjEyODEsImV4cCI6MjA4NzU5NzI4MX0.fxMn2LMdoFuYAln-34WUo1uUiWjSnlSzJlDS-sepdtc";
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        setError(
+          "Supabase environment variables not configured. Please check Netlify settings.",
+        );
+        setIsLoading(false);
+        return;
+      }
 
       const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -113,14 +120,22 @@ export default function AdminDashboard() {
 
   const handleSendNotification = async (registration: BetaTester) => {
     try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        alert("Supabase configuration missing");
+        return;
+      }
+
       // Call edge function to send notification
       const response = await fetch(
-        "https://weryswulejhjkrmervnf.supabase.co/functions/v1/send-notification",
+        `${supabaseUrl}/functions/v1/send-notification`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlcnlzd3VsZWpoamtybWVydm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjEyODEsImV4cCI6MjA4NzU5NzI4MX0.fxMn2LMdoFuYAln-34WUo1uUiWjSnlSzJlDS-sepdtc`,
+            Authorization: `Bearer ${supabaseAnonKey}`,
           },
           body: JSON.stringify({
             registrationId: registration.id,

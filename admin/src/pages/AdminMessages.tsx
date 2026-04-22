@@ -30,9 +30,13 @@ export default function AdminMessages() {
   useEffect(() => {
     const loadMessages = async () => {
       try {
-        const supabaseUrl = "https://weryswulejhjkrmervnf.supabase.co";
-        const supabaseAnonKey =
-          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlcnlzd3VsZWpoamtybWVydm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjEyODEsImV4cCI6MjA4NzU5NzI4MX0.fxMn2LMdoFuYAln-34WUo1uUiWjSnlSzJlDS-sepdtc";
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        if (!supabaseUrl || !supabaseAnonKey) {
+          setError("Supabase configuration missing");
+          setLoading(false);
+          return;
+        }
         const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
         const { data, error: dbError } = await supabase
@@ -60,9 +64,12 @@ export default function AdminMessages() {
 
   const markAsRead = async (id: string) => {
     try {
-      const supabaseUrl = "https://weryswulejhjkrmervnf.supabase.co";
-      const supabaseAnonKey =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlcnlzd3VsZWpoamtybWVydm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjEyODEsImV4cCI6MjA4NzU5NzI4MX0.fxMn2LMdoFuYAln-34WUo1uUiWjSnlSzJlDS-sepdtc";
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (!supabaseUrl || !supabaseAnonKey) {
+        console.error("Supabase configuration missing");
+        return;
+      }
       const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
       await supabase

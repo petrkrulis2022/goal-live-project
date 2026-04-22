@@ -1,0 +1,16 @@
+{
+  "name": "goal-live",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real-time live betting on football matches",
+  "keywords": ["betting", "football", "live-betting", "solana", "web3"],
+  "homepage": "https://goal.live",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/petrkrulis2022/goal-live-project.git"
+  },
+  "buildCommand": "npm run build:admin",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
