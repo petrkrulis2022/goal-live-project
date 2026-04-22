@@ -61,7 +61,7 @@ export default function AdminDashboard() {
           .from("beta_testers")
           .select("*")
           .order("created_at", { ascending: false });
-        
+
         if (!result.error) {
           data = result.data;
         } else {
