@@ -51,24 +51,19 @@ export default function AdminDashboard() {
 
       const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-      // Try to fetch from beta_testers table
-      const { data, error: fetchError } = await supabase
-        .from("beta_testers")
-        .select("*")
-        .order("created_at", { ascending: false });
+      // Use RPC function to bypass PostgREST schema cache issues
+      const { data, error: fetchError } = await supabase.rpc(
+        "get_beta_testers_list"
+      );
 
       if (fetchError) {
-        // If table doesn't exist, show fallback message
-        if (fetchError.message.includes("does not exist")) {
-          setError(
-            "Beta testers table not yet created. Registrations are being logged to the edge function console.",
-          );
-          setRegistrations([]);
-        } else {
-          setError(fetchError.message);
-        }
+        setError(
+          "Unable to fetch registrations. The database may still be initializing. Try refreshing in a moment.",
+        );
+        console.error("RPC Error:", fetchError);
+        setRegistrations([]);
       } else {
-        setRegistrations(data || []);
+        setRegistrations((data as BetaTester[]) || []);
       }
     } catch (err) {
       setError("Failed to load registrations");
@@ -170,7 +165,7 @@ export default function AdminDashboard() {
           </div>
           <div style={{ display: "flex", gap: "0.75rem" }}>
             <button
-              onClick={() => window.location.href = "/dashboard"}
+              onClick={() => (window.location.href = "/dashboard")}
               style={{
                 padding: "0.5rem 1rem",
                 background: "#2EC5E0",
