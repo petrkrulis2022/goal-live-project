@@ -331,20 +331,35 @@ export default function LandingPage() {
           <span style={{ color: CYAN }}>Win Real Rewards.</span>
         </h1>
 
-        <p
+        <div
           style={{
             fontFamily: "'DM Serif Display', serif",
-            fontSize: "clamp(1.1rem, 2vw, 1.3rem)",
-            color: "rgba(12,40,64,0.75)",
+            fontSize: "clamp(1.15rem, 2.2vw, 1.4rem)",
             maxWidth: 700,
-            lineHeight: 1.5,
+            lineHeight: 1.8,
             margin: 0,
-            fontStyle: "italic",
           }}
         >
-          Join 100 beta testers. Play with Solana devnet USDC. Win real USDC on
-          Solana mainnet.
-        </p>
+          <p style={{ margin: "0 0 0.8rem 0", color: NAVY, fontWeight: 600 }}>
+            Join{" "}
+            <span style={{ color: CYAN, fontSize: "1.2em" }}>
+              100 beta testers
+            </span>
+          </p>
+          <p style={{ margin: "0 0 0.8rem 0", color: "rgba(12,40,64,0.85)" }}>
+            Play with{" "}
+            <span style={{ color: CYAN, fontWeight: 600 }}>
+              Solana devnet USDC
+            </span>{" "}
+            risk-free
+          </p>
+          <p style={{ margin: 0, color: NAVY, fontWeight: 600 }}>
+            Win real{" "}
+            <span style={{ color: CYAN, fontSize: "1.2em" }}>
+              USDC on Solana mainnet
+            </span>
+          </p>
+        </div>
 
         <p
           style={{
