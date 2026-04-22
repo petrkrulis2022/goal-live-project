@@ -415,47 +415,69 @@ export default function LandingPage() {
             {
               title: "Raising Funds on Futard.io",
               text: "We're fundraising to scale goal.live's stream-integrated betting infrastructure and expand our zero-latency overlay technology to more sports globally. Live in-game betting already exceeds pre-match betting in many markets.",
+              url: "https://www.futard.io/",
             },
             {
               title: "Who It's For",
               text: "Mobile-first football fans frustrated by traditional betting friction. Web3-curious viewers with Phantom/MetaMask wallets. Live bettors tired of slow odds and app-switching delays. Community followers who want to bet while watching together.",
             },
-          ].map((item) => (
-            <div
-              key={item.title}
-              style={{
-                background: "rgba(255,255,255,0.72)",
-                border: "1px solid rgba(46,197,224,0.28)",
-                borderRadius: 16,
-                padding: "1rem 1rem 1.05rem",
-                boxShadow: "0 8px 24px rgba(12,40,64,0.06)",
-              }}
-            >
-              <h3
+          ].map((item) => {
+            const tileContent = (
+              <div
                 style={{
-                  margin: "0 0 0.45rem",
-                  fontFamily: "'DM Mono', monospace",
-                  fontSize: "0.8rem",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                  color: "#0A7B95",
+                  background: "rgba(255,255,255,0.72)",
+                  border: "1px solid rgba(46,197,224,0.28)",
+                  borderRadius: 16,
+                  padding: "1rem 1rem 1.05rem",
+                  boxShadow: "0 8px 24px rgba(12,40,64,0.06)",
                 }}
               >
-                {item.title}
-              </h3>
-              <p
+                <h3
+                  style={{
+                    margin: "0 0 0.45rem",
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: "0.8rem",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "#0A7B95",
+                  }}
+                >
+                  {item.title}
+                </h3>
+                <p
+                  style={{
+                    margin: 0,
+                    color: "rgba(12,40,64,0.8)",
+                    fontSize: "0.93rem",
+                    lineHeight: 1.55,
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                >
+                  {item.text}
+                </p>
+              </div>
+            );
+            
+            return item.url ? (
+              <a
+                key={item.title}
+                href={item.url}
+                target="_blank"
+                rel="noreferrer"
                 style={{
-                  margin: 0,
-                  color: "rgba(12,40,64,0.8)",
-                  fontSize: "0.93rem",
-                  lineHeight: 1.55,
-                  fontFamily: "'Inter', sans-serif",
+                  textDecoration: "none",
+                  cursor: "pointer",
+                  transition: "transform 0.2s ease",
                 }}
               >
-                {item.text}
-              </p>
-            </div>
-          ))}
+                {tileContent}
+              </a>
+            ) : (
+              <div key={item.title}>
+                {tileContent}
+              </div>
+            );
+          })}
         </div>
 
         {/* How it works */}
