@@ -315,7 +315,7 @@ export default function LandingPage() {
           Solana · Devnet
         </div>
 
-        {/* Beta Testing Hero */}
+        {/* Hero Title */}
         <h1
           style={{
             fontFamily: "'DM Serif Display', serif",
@@ -327,54 +327,52 @@ export default function LandingPage() {
             fontWeight: 700,
           }}
         >
-          Test Live Betting.{" "}
-          <span style={{ color: CYAN }}>Win Real Rewards.</span>
+          Bet on the Match{" "}
+          <span style={{ color: CYAN }}>While You Watch It</span>
         </h1>
-
-        <div
-          style={{
-            fontFamily: "'DM Serif Display', serif",
-            fontSize: "clamp(1.15rem, 2.2vw, 1.4rem)",
-            maxWidth: 700,
-            lineHeight: 1.8,
-            margin: 0,
-          }}
-        >
-          <p style={{ margin: "0 0 0.8rem 0", color: NAVY, fontWeight: 600 }}>
-            Join{" "}
-            <span style={{ color: CYAN, fontSize: "1.2em" }}>
-              100 beta testers
-            </span>
-          </p>
-          <p style={{ margin: "0 0 0.8rem 0", color: "rgba(12,40,64,0.85)" }}>
-            Play with{" "}
-            <span style={{ color: CYAN, fontWeight: 600 }}>
-              Solana devnet USDC
-            </span>{" "}
-            risk-free
-          </p>
-          <p style={{ margin: 0, color: NAVY, fontWeight: 600 }}>
-            Win real{" "}
-            <span style={{ color: CYAN, fontSize: "1.2em" }}>
-              USDC on Solana mainnet
-            </span>
-          </p>
-        </div>
 
         <p
           style={{
             margin: 0,
             maxWidth: 760,
-            color: "rgba(12,40,64,0.78)",
+            color: "rgba(12,40,64,0.75)",
+            fontFamily: "'DM Serif Display', serif",
+            fontSize: "clamp(1rem, 1.8vw, 1.2rem)",
+            lineHeight: 1.7,
+            fontWeight: 500,
+          }}
+        >
+          Zero-latency betting inside video streams with instant onchain
+          settlement
+        </p>
+
+        <p
+          style={{
+            margin: 0,
+            maxWidth: 760,
+            color: "rgba(12,40,64,0.8)",
             fontFamily: "'Inter', sans-serif",
             fontSize: "clamp(0.95rem, 1.5vw, 1.05rem)",
             lineHeight: 1.7,
           }}
         >
-          We're inviting 100 early believers to test goal.live's live in-game
-          betting engine. You'll play with testnet funds risk-free, but every
-          win converts to real mainnet USDC. Help us shape the future of live
-          prediction markets while earning real value.
+          Transform how you watch football - never miss a betting moment again
+        </p>
+
+        <p
+          style={{
+            margin: 0,
+            maxWidth: 760,
+            color: "rgba(12,40,64,0.7)",
+            fontFamily: "'Inter', sans-serif",
+            fontSize: "0.95rem",
+            lineHeight: 1.6,
+          }}
+        >
+          We're eliminating the FOMO gap between seeing an opportunity and
+          acting on it. While traditional sportsbooks force you to leave the
+          stream and miss the action, goal.live puts contextual micro-betting
+          directly inside your viewing experience.
         </p>
 
         {/* CTA Button */}
@@ -430,15 +428,15 @@ export default function LandingPage() {
           {[
             {
               title: "What Makes It Different",
-              text: "Users can place and change positions during the live match, not just before kickoff. It feels like a multiplayer game, while final settlement remains transparent and onchain on Solana.",
+              text: "No App-Switching. No Delays. No Missed Moments. Place micro-bets on real-time events (next goal, scorer, throw-ins) without ever leaving the stream. Think it, bet it, win it - all while the action unfolds. Your funds stay in your wallet with instant USDC payouts on Solana.",
             },
             {
               title: "Raising Funds on Futard.io",
-              text: "We are currently fundraising to scale goal.live's infrastructure and expand to more sports and markets globally.",
+              text: "We're fundraising to scale goal.live's stream-integrated betting infrastructure and expand our zero-latency overlay technology to more sports globally. Live in-game betting already exceeds pre-match betting in many markets.",
             },
             {
-              title: "Who It Is For",
-              text: "Mainstream live-event fans and communities on any device. Wallet complexity is increasingly abstracted away so non-crypto users can participate.",
+              title: "Who It's For",
+              text: "Mobile-first football fans frustrated by traditional betting friction. Web3-curious viewers with Phantom/MetaMask wallets. Live bettors tired of slow odds and app-switching delays. Community followers who want to bet while watching together.",
             },
           ].map((item) => (
             <div
@@ -503,18 +501,25 @@ export default function LandingPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
               gap: "0.8rem",
               textAlign: "left",
             }}
           >
             {[
-              "1. Users place and adjust live bets instantly during match events.",
-              "2. Real-time SportsData API feeds live odds and match results to Solana.",
-              "3. Smart contract settlement triggers automated payouts based on final scores.",
-            ].map((step) => (
+              {
+                step: "Watch",
+                desc: "Stream plays with betting overlay active",
+              },
+              {
+                step: "Spot",
+                desc: "See opportunity developing (corner kick, counter-attack)",
+              },
+              { step: "Bet", desc: "Instant micro-bet without leaving stream" },
+              { step: "Win", desc: "Automatic USDC payout to your wallet" },
+            ].map((item) => (
               <div
-                key={step}
+                key={item.step}
                 style={{
                   border: "1px solid rgba(12,40,64,0.1)",
                   borderRadius: 12,
@@ -526,10 +531,35 @@ export default function LandingPage() {
                   color: "rgba(12,40,64,0.84)",
                 }}
               >
-                {step}
+                <div
+                  style={{
+                    fontWeight: 600,
+                    color: NAVY,
+                    marginBottom: "0.3rem",
+                    fontSize: "1rem",
+                  }}
+                >
+                  {item.step}
+                </div>
+                <div
+                  style={{ color: "rgba(12,40,64,0.7)", fontSize: "0.88rem" }}
+                >
+                  {item.desc}
+                </div>
               </div>
             ))}
           </div>
+          <p
+            style={{
+              margin: "0.8rem 0 0 0",
+              fontFamily: "'Inter', sans-serif",
+              fontSize: "0.9rem",
+              color: "rgba(12,40,64,0.7)",
+              lineHeight: 1.6,
+            }}
+          >
+            No separate apps. No withdrawal delays. No missed moments.
+          </p>
         </section>
 
         {/* Media section */}
