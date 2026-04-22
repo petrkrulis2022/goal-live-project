@@ -421,7 +421,7 @@ export default function LandingPage() {
               title: "Who It's For",
               text: "Mobile-first football fans frustrated by traditional betting friction. Web3-curious viewers with Phantom/MetaMask wallets. Live bettors tired of slow odds and app-switching delays. Community followers who want to bet while watching together.",
             },
-          ].map((item) => {
+          ].map((item, index) => {
             const baseTileStyle = {
               background: item.url
                 ? "rgba(46,197,224,0.08)"
@@ -437,16 +437,21 @@ export default function LandingPage() {
               transition: "all 0.3s ease",
             };
 
+            // Different colors for each tile headline
+            const headlineColors = ["#2EC5E0", "#00B8D4", "#1E9FB3"];
+            const headlineColor = headlineColors[index % headlineColors.length];
+
             const tileContent = (
               <div style={baseTileStyle}>
                 <h3
                   style={{
                     margin: "0 0 0.45rem",
                     fontFamily: "'DM Mono', monospace",
-                    fontSize: "0.8rem",
+                    fontSize: "0.85rem",
                     textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    color: "#0A7B95",
+                    letterSpacing: "0.1em",
+                    fontWeight: 700,
+                    color: headlineColor,
                   }}
                 >
                   {item.title}
