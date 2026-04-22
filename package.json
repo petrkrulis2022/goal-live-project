@@ -10,7 +10,7 @@
     "build:ext-hedera": "vite build --config vite.extension-hedera.config.ts",
     "build:ext:clickable": "vite build --config vite.extension-clickable.config.ts",
     "dev:admin": "CHOKIDAR_USEPOLLING=true vite --config vite.admin.config.ts",
-    "build:admin": "tsc -b && vite build --config vite.admin.config.ts",
+    "build:admin": "vite build --config vite.admin.config.ts",
     "dev:matchlive": "vite --config vite.matchlive.config.ts",
     "dev:matchlive2": "vite --config vite.matchlive2.config.ts",
     "preview": "vite preview",
