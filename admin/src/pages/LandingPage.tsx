@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const NAVY = "#0C2840";
 const CYAN = "#2EC5E0";
@@ -241,6 +242,8 @@ function PitchCanvas() {
 }
 
 export default function LandingPage() {
+  const navigate = useNavigate();
+
   return (
     <div
       className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center"
@@ -268,9 +271,9 @@ export default function LandingPage() {
         }}
       >
         <img
-          src="/logo jersay & text.png"
+          src="/logo jesrsey text square.png"
           alt=""
-          style={{ height: 150, width: "auto", display: "block" }}
+          style={{ height: 220, width: "auto", display: "block" }}
         />
       </div>
 
@@ -312,49 +315,82 @@ export default function LandingPage() {
           Solana · Devnet
         </div>
 
-        {/* Logo */}
-        <div style={{ lineHeight: 1 }}>
-          <img
-            src="/logo movement.png"
-            alt="goal.live"
-            style={{ maxWidth: 500, width: "80vw", display: "block" }}
-          />
-        </div>
+        {/* Beta Testing Hero */}
+        <h1
+          style={{
+            fontFamily: "'DM Serif Display', serif",
+            fontSize: "clamp(2.2rem, 4vw, 3.2rem)",
+            color: NAVY,
+            maxWidth: 800,
+            lineHeight: 1.2,
+            margin: 0,
+            fontWeight: 700,
+          }}
+        >
+          Test Live Betting.{" "}
+          <span style={{ color: CYAN }}>Win Real Rewards.</span>
+        </h1>
 
-        {/* Hero copy */}
         <p
           style={{
             fontFamily: "'DM Serif Display', serif",
-            fontSize: "clamp(1.05rem, 2.3vw, 1.45rem)",
-            color: "rgba(12,40,64,0.72)",
-            maxWidth: 760,
+            fontSize: "clamp(1.1rem, 2vw, 1.3rem)",
+            color: "rgba(12,40,64,0.75)",
+            maxWidth: 700,
             lineHeight: 1.5,
             margin: 0,
             fontStyle: "italic",
           }}
         >
-          Gamified live event prediction markets powered by{" "}
-          <span
-            style={{ color: "#0A7B95", fontStyle: "normal", fontWeight: 600 }}
-          >
-            real-time SportsData oracles
-          </span>
+          Join 100 beta testers. Play with Solana devnet USDC. Win real USDC on
+          Solana mainnet.
         </p>
 
         <p
           style={{
             margin: 0,
-            maxWidth: 820,
+            maxWidth: 760,
             color: "rgba(12,40,64,0.78)",
             fontFamily: "'Inter', sans-serif",
             fontSize: "clamp(0.95rem, 1.5vw, 1.05rem)",
-            lineHeight: 1.65,
+            lineHeight: 1.7,
           }}
         >
-          We built the MVP on Solana devnet for fastest integration and
-          iteration. The same betting engine and SportsData integration is being
-          prepared for Solana mainnet rollout.
+          We're inviting 100 early believers to test goal.live's live in-game
+          betting engine. You'll play with testnet funds risk-free, but every
+          win converts to real mainnet USDC. Help us shape the future of live
+          prediction markets while earning real value.
         </p>
+
+        {/* CTA Button */}
+        <button
+          onClick={() => navigate("/beta")}
+          style={{
+            padding: "0.75rem 2.2rem",
+            background: CYAN,
+            color: "#fff",
+            border: "none",
+            borderRadius: 12,
+            fontFamily: "'DM Mono', monospace",
+            fontSize: "0.9rem",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            cursor: "pointer",
+            boxShadow: `0 4px 20px rgba(46,197,224,0.4)`,
+            transition: "all 0.3s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-2px)";
+            e.currentTarget.style.boxShadow = `0 6px 28px rgba(46,197,224,0.55)`;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = `0 4px 20px rgba(46,197,224,0.4)`;
+          }}
+        >
+          Join Beta Testing (100 Spots Available)
+        </button>
 
         {/* Divider */}
         <div
