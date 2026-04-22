@@ -1,13 +1,20 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  connectPhantomWallet,
+  isPhantomInstalled,
+} from "../utils/phantomWallet";
 
 const NAVY = "#0C2840";
 const CYAN = "#2EC5E0";
 
-// Goal.Live Solana Devnet admin wallet - ONLY these addresses can access admin dashboard
-const ADMIN_SOLANA_WALLET = "Cr8j96N1RoCid1reWZRzpT4Z3jPb8oQ13H8DHtMZmtyh";
+// Authorized admin wallets (Goal.Live accounts)
+const AUTHORIZED_ADMIN_WALLETS = [
+  "cr8j96n1rocid1rezwzrzpt4z3jpb8oq13h8dhtmzqtyh", // Solana devnet original
+  "dn382arjfxjwyE12yck3mlsxtgemqdcSj7nr5wsqajd5", // Phantom wallet
+];
 
-// Goal.Live EVM address (associated with same account, also grants access)
+// Goal.Live EVM address (associated with same account)
 const ADMIN_ETH_WALLET = "0xcb443c2db4025128964397ccb5bc4f4e8ab6a665";
 
 export default function AdminLogin() {
@@ -16,33 +23,70 @@ export default function AdminLogin() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  const validateAndLogin = (address: string) => {
+    const normalizedInput = address.trim().toLowerCase();
+    const authorizedSolana = AUTHORIZED_ADMIN_WALLETS.map((w) => w.toLowerCase());
+    const normalizedEth = ADMIN_ETH_WALLET.toLowerCase();
+
+    if (
+      authorizedSolana.includes(normalizedInput) ||
+      normalizedInput === normalizedEth
+    ) {
+      // Store admin session
+      localStorage.setItem("adminWallet", normalizedInput);
+      localStorage.setItem("adminLoginTime", new Date().toISOString());
+
+      // Redirect to dashboard
+      navigate("/admin/dashboard");
+      return true;
+    } else {
+      setError(
+        "Wallet not authorized. You must be the admin wallet to access this section.",
+      );
+      return false;
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
     try {
-      const normalizedInput = walletAddress.trim().toLowerCase();
-      const normalizedSolana = ADMIN_SOLANA_WALLET.toLowerCase();
-      const normalizedEth = ADMIN_ETH_WALLET.toLowerCase();
-
-      if (
-        normalizedInput === normalizedSolana ||
-        normalizedInput === normalizedEth
-      ) {
-        // Store admin session
-        localStorage.setItem("adminWallet", normalizedInput);
-        localStorage.setItem("adminLoginTime", new Date().toISOString());
-
-        // Redirect to dashboard
-        navigate("/admin/dashboard");
-      } else {
-        setError(
-          "Wallet not authorized. You must be the admin wallet to access this section.",
-        );
-      }
+      validateAndLogin(walletAddress);
     } catch (err) {
       setError("Error processing wallet address. Please try again.");
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePhantomLogin = async () => {
+    setError("");
+    setIsLoading(true);
+
+    try {
+      if (!isPhantomInstalled()) {
+        setError(
+          "Phantom wallet not found. Please install it from https://phantom.app",
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      const address = await connectPhantomWallet();
+      if (address) {
+        setWalletAddress(address);
+        // Validate and login with the connected address
+        validateAndLogin(address);
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to connect Phantom wallet. Please try again.");
+      }
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -177,6 +221,53 @@ export default function AdminLogin() {
           </button>
         </form>
 
+        {/* Phantom Wallet Connection Section */}
+        <div style={{ marginTop: "2rem", paddingTop: "1.5rem", borderTop: "1px solid #eee" }}>
+          <p
+            style={{
+              fontSize: "0.8rem",
+              textAlign: "center",
+              color: "rgba(12,40,64,0.6)",
+              marginBottom: "1rem",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+            }}
+          >
+            Or Connect with Wallet
+          </p>
+
+          <button
+            type="button"
+            onClick={handlePhantomLogin}
+            disabled={isLoading}
+            style={{
+              width: "100%",
+              padding: "0.75rem",
+              background: !isLoading ? "#512DA8" : "#ccc",
+              color: "#fff",
+              border: "none",
+              borderRadius: 8,
+              fontFamily: "'DM Mono', monospace",
+              fontSize: "0.9rem",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              cursor: !isLoading ? "pointer" : "not-allowed",
+              transition: "all 0.2s ease",
+              boxShadow: !isLoading
+                ? "0 4px 15px rgba(81, 45, 168, 0.3)"
+                : "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5rem",
+            }}
+          >
+            <span>🅿️</span>
+            {isLoading ? "Connecting..." : "Connect Phantom"}
+          </button>
+        </div>
+
         <div
           style={{
             marginTop: "2rem",
@@ -188,23 +279,27 @@ export default function AdminLogin() {
           }}
         >
           <p style={{ margin: "0 0 0.5rem 0" }}>
-            <strong>Solana Branch:</strong>
+            <strong>Authorized Solana Wallets:</strong>
           </p>
-          <p
-            style={{
-              margin: 0,
-              wordBreak: "break-all",
-              fontSize: "0.75rem",
-              background: "#f5f5f5",
-              padding: "0.5rem",
-              borderRadius: 4,
-            }}
-          >
-            {ADMIN_SOLANA_WALLET}
-          </p>
+          {AUTHORIZED_ADMIN_WALLETS.map((wallet, idx) => (
+            <p
+              key={idx}
+              style={{
+                margin: idx === 0 ? "0 0 0.5rem 0" : "0.5rem 0",
+                wordBreak: "break-all",
+                fontSize: "0.75rem",
+                background: "#f5f5f5",
+                padding: "0.5rem",
+                borderRadius: 4,
+              }}
+            >
+              {wallet === AUTHORIZED_ADMIN_WALLETS[1] ? "🅿️ Phantom: " : ""}
+              {wallet}
+            </p>
+          ))}
 
           <p style={{ margin: "1rem 0 0.5rem 0" }}>
-            <strong>Sepolia/Hedera Branch:</strong>
+            <strong>EVM Address:</strong>
           </p>
           <p
             style={{
