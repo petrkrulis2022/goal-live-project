@@ -43,7 +43,7 @@ export default function AdminMessages() {
         if (dbError) {
           console.error("Error loading messages:", dbError);
           setError(
-            `Could not load messages: ${dbError.message}. Make sure the contact_messages table exists.`
+            `Could not load messages: ${dbError.message}. Make sure the contact_messages table exists.`,
           );
         } else if (data) {
           setMessages(data as ContactMessage[]);
@@ -71,7 +71,7 @@ export default function AdminMessages() {
         .eq("id", id);
 
       setMessages((prev) =>
-        prev.map((msg) => (msg.id === id ? { ...msg, is_read: true } : msg))
+        prev.map((msg) => (msg.id === id ? { ...msg, is_read: true } : msg)),
       );
     } catch (err) {
       console.error("Error marking as read:", err);
@@ -82,7 +82,9 @@ export default function AdminMessages() {
     return (
       <div className="p-8 bg-gradient-to-br from-gray-900 to-gray-800 min-h-screen">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold text-white mb-6">Contact Messages</h1>
+          <h1 className="text-3xl font-bold text-white mb-6">
+            Contact Messages
+          </h1>
           <div className="text-cyan-400">Loading messages...</div>
         </div>
       </div>
@@ -127,11 +129,12 @@ export default function AdminMessages() {
               >
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="text-xl font-bold text-white">{msg.subject}</h3>
+                    <h3 className="text-xl font-bold text-white">
+                      {msg.subject}
+                    </h3>
                     <p className="text-cyan-400">From: {msg.name}</p>
                     <p className="text-gray-400 text-sm">
-                      {msg.email} •{" "}
-                      {new Date(msg.created_at).toLocaleString()}
+                      {msg.email} • {new Date(msg.created_at).toLocaleString()}
                     </p>
                   </div>
                   <div className="flex gap-2">
