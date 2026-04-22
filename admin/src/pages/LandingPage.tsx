@@ -422,16 +422,23 @@ export default function LandingPage() {
               text: "Mobile-first football fans frustrated by traditional betting friction. Web3-curious viewers with Phantom/MetaMask wallets. Live bettors tired of slow odds and app-switching delays. Community followers who want to bet while watching together.",
             },
           ].map((item) => {
+            const baseTileStyle = {
+              background: item.url
+                ? "rgba(46,197,224,0.08)"
+                : "rgba(255,255,255,0.72)",
+              border: item.url
+                ? "1.5px solid rgba(46,197,224,0.45)"
+                : "1px solid rgba(46,197,224,0.28)",
+              borderRadius: 16,
+              padding: "1rem 1rem 1.05rem",
+              boxShadow: item.url
+                ? "0 12px 32px rgba(46,197,224,0.15)"
+                : "0 8px 24px rgba(12,40,64,0.06)",
+              transition: "all 0.3s ease",
+            };
+
             const tileContent = (
-              <div
-                style={{
-                  background: "rgba(255,255,255,0.72)",
-                  border: "1px solid rgba(46,197,224,0.28)",
-                  borderRadius: 16,
-                  padding: "1rem 1rem 1.05rem",
-                  boxShadow: "0 8px 24px rgba(12,40,64,0.06)",
-                }}
-              >
+              <div style={baseTileStyle}>
                 <h3
                   style={{
                     margin: "0 0 0.45rem",
@@ -443,10 +450,12 @@ export default function LandingPage() {
                   }}
                 >
                   {item.title}
+                  {item.url && " ↗"}
                 </h3>
                 <p
                   style={{
                     margin: 0,
+                    marginBottom: item.url ? "0.6rem" : 0,
                     color: "rgba(12,40,64,0.8)",
                     fontSize: "0.93rem",
                     lineHeight: 1.55,
@@ -455,9 +464,23 @@ export default function LandingPage() {
                 >
                   {item.text}
                 </p>
+                {item.url && (
+                  <p
+                    style={{
+                      margin: 0,
+                      color: CYAN,
+                      fontSize: "0.75rem",
+                      fontFamily: "'DM Mono', monospace",
+                      fontWeight: 600,
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    Click to visit →
+                  </p>
+                )}
               </div>
             );
-            
+
             return item.url ? (
               <a
                 key={item.title}
@@ -467,15 +490,30 @@ export default function LandingPage() {
                 style={{
                   textDecoration: "none",
                   cursor: "pointer",
-                  transition: "transform 0.2s ease",
+                  transition: "all 0.3s ease",
+                  display: "block",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-4px)";
+                  const div = e.currentTarget.querySelector("div");
+                  if (div) {
+                    div.style.boxShadow = "0 16px 40px rgba(46,197,224,0.25)";
+                    div.style.borderColor = "rgba(46,197,224,0.65)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  const div = e.currentTarget.querySelector("div");
+                  if (div) {
+                    div.style.boxShadow = "0 12px 32px rgba(46,197,224,0.15)";
+                    div.style.borderColor = "rgba(46,197,224,0.45)";
+                  }
                 }}
               >
                 {tileContent}
               </a>
             ) : (
-              <div key={item.title}>
-                {tileContent}
-              </div>
+              <div key={item.title}>{tileContent}</div>
             );
           })}
         </div>
