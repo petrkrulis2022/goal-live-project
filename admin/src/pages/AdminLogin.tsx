@@ -4,10 +4,10 @@ import { useNavigate } from "react-router-dom";
 const NAVY = "#0C2840";
 const CYAN = "#2EC5E0";
 
-// Solana branch admin wallet
-const ADMIN_SOLANA_WALLET = "6xkodiNnAzDtGofYhvKfdzuNrn2xS96CLms6MVRCgApG";
+// Solana Devnet admin wallet - ONLY this address can access admin dashboard
+const ADMIN_SOLANA_WALLET = "Cr8j96N1RoCid1reWZRzpT4Z3jPb8oQ13H8DHtMZmtyh";
 
-// Sepolia/Hedera branch admin wallet
+// Sepolia/Hedera branch admin wallet (optional backup)
 const ADMIN_ETH_WALLET = "0xcb443c2db4025128964397ccb5bc4f4e8ab6a665";
 
 export default function AdminLogin() {
