@@ -1033,32 +1033,6 @@ export default function LandingPage() {
           </a>
 
           <a
-            href={EXTENSION_BETA_URL}
-            target="_blank"
-            rel="noreferrer"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.65rem",
-              padding: "0.95rem 2.1rem",
-              background: `linear-gradient(135deg, ${LIGHT_BLUE} 0%, ${CYAN} 100%)`,
-              border: `1.5px solid rgba(255,255,255,0.35)`,
-              borderRadius: 14,
-              fontFamily: "'DM Mono', monospace",
-              fontSize: "0.9rem",
-              letterSpacing: "0.07em",
-              fontWeight: 500,
-              color: "#fff",
-              textDecoration: "none",
-              transition: "all 0.2s ease",
-              boxShadow: `0 4px 22px rgba(46,197,224,0.35)`,
-              textShadow: "0 1px 2px rgba(0,0,0,0.15)",
-            }}
-          >
-            Try Extension Beta
-          </a>
-
-          <a
             href={CONTACT_URL}
             style={{
               display: "inline-flex",
