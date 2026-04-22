@@ -198,10 +198,64 @@ export default function BetaRegistration() {
                   letterSpacing: "0.02em",
                 }}
               >
-                <strong>How it works:</strong> You'll receive 1000 USDC on Solana
-                devnet to test the MVP risk-free. All losses stay on testnet.
-                But if you win, those winnings convert to real USDC on Solana
-                mainnet. We're testing for 4 weeks and tracking all feedback.
+                <strong>How it works:</strong> You'll receive 1000 USDC on
+                Solana devnet to test the MVP risk-free. All losses stay on
+                testnet. But if you win, those winnings convert to real USDC on
+                Solana mainnet. We're testing for 4 weeks and tracking all
+                feedback.
+              </p>
+            </div>
+
+            {/* Betting Events Info Box */}
+            <div
+              style={{
+                background: `rgba(46,197,224,0.1)`,
+                border: `1px solid ${CYAN}`,
+                borderRadius: 12,
+                padding: "1rem",
+                marginBottom: "2rem",
+              }}
+            >
+              <p
+                style={{
+                  margin: "0 0 0.75rem 0",
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: "0.85rem",
+                  color: NAVY,
+                  lineHeight: 1.6,
+                  letterSpacing: "0.02em",
+                }}
+              >
+                <strong>What you can bet on:</strong> During the 4-week testing
+                period, bet on any supported game with events including goal
+                scorers, corners, match outcome, and number of goals.
+              </p>
+              <p
+                style={{
+                  margin: 0,
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: "0.85rem",
+                  color: NAVY,
+                  lineHeight: 1.6,
+                  letterSpacing: "0.02em",
+                }}
+              >
+                <strong>Game updates:</strong> Follow{" "}
+                <a
+                  href="https://twitter.com/goalLiveApp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: CYAN,
+                    textDecoration: "none",
+                    fontWeight: 600,
+                    borderBottom: `1px solid ${CYAN}`,
+                  }}
+                >
+                  @goalLiveApp
+                </a>{" "}
+                on Twitter for updates on available games and features during
+                beta.
               </p>
             </div>
 
