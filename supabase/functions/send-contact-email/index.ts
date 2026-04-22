@@ -31,54 +31,38 @@ serve(async (req) => {
       );
     }
 
-    console.log(`📧 Contact form submission from ${name} (${email})`);
-    console.log(`Subject: ${subject}`);
-    console.log(`Message: ${message.substring(0, 100)}...`);
+    console.log(`📧 Contact: ${name} (${email}) - ${subject}`);
 
-    // Store in database
+    // Try to store in database (best effort, not required for email)
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    const { data, error } = await supabase
-      .from("contact_messages")
-      .insert([
+    let storedInDb = false;
+    try {
+      const { error } = await supabase.from("contact_messages").insert([
         {
           name: name.trim(),
           email: email.trim(),
           subject: subject.trim(),
           message: message.trim(),
         },
-      ])
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Database error:", error);
-      // Even if database fails, return success to user
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: "✓ Message received! We'll review it shortly.",
-          logged: true,
-        }),
-        {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        },
-      );
+      ]);
+      if (!error) {
+        storedInDb = true;
+        console.log("✓ Stored in database");
+      }
+    } catch (err) {
+      console.log("Could not store in database (continuing anyway):", err);
     }
 
-    console.log("✓ Message stored in database:", data.id);
-
-    // Try to send admin notification email
+    // Send email via Resend (MAIN PRIORITY)
     const resendKey = Deno.env.get("RESEND_API_KEY");
+    let emailSent = false;
+
     if (resendKey) {
       try {
-        console.log("Sending admin notification email...");
+        console.log("Sending email via Resend...");
         const response = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
@@ -86,42 +70,38 @@ serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "Goal.Live <noreply@goal.live>",
-            to: "beer_sloth_coder@proton.me",
-            subject: `📧 New Contact: ${subject}`,
+            from: "onboarding@resend.dev",
+            to: "eddieanderson@protonmail.com",
+            subject: `📧 ${subject}`,
             html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f5f5f5; padding: 20px; border-radius: 8px;">
-                <h2 style="color: #0C2840; margin-top: 0;">New Contact Form Submission</h2>
-                <div style="background: white; padding: 20px; border-radius: 6px; margin: 20px 0;">
+              <div style="font-family: Arial, sans-serif; background: #f9f9f9; padding: 20px;">
+                <h2 style="color: #0C2840;">New Contact Submission</h2>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin: 15px 0;">
                   <p><strong>From:</strong> ${escapeHtml(name)}</p>
                   <p><strong>Email:</strong> <a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></p>
                   <p><strong>Subject:</strong> ${escapeHtml(subject)}</p>
                 </div>
-                <div style="background: white; padding: 20px; border-left: 4px solid #2EC5E0; border-radius: 6px; margin: 20px 0;">
-                  <h3 style="margin-top: 0; color: #0C2840;">Message:</h3>
-                  <p style="white-space: pre-wrap; line-height: 1.6; margin: 0;">${escapeHtml(message)}</p>
+                <div style="background: white; padding: 15px; border-left: 4px solid #2EC5E0; border-radius: 6px;">
+                  <p>${escapeHtml(message).replace(/\n/g, "<br>")}</p>
                 </div>
-                <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
-                  <a href="http://localhost:5174/admin/messages" style="color: #2EC5E0; text-decoration: none;">View in Admin Panel</a>
-                </p>
               </div>
             `,
             reply_to: email,
           }),
         });
 
-        if (response.ok) {
-          console.log("✓ Admin notification sent via Resend");
+        const data = await response.json();
+        if (response.ok && data.id) {
+          console.log(`✓ Email sent! ID: ${data.id}`);
+          emailSent = true;
         } else {
-          console.log("Admin email failed:", response.status);
+          console.log(`✗ Resend error: ${response.status}`, data);
         }
       } catch (err) {
-        console.log("Could not send admin email:", err);
+        console.error(`✗ Resend error:`, err);
       }
     } else {
-      console.log(
-        "RESEND_API_KEY not configured - admin email notifications disabled",
-      );
+      console.log("⚠️ RESEND_API_KEY not configured!");
     }
 
     // Return success
@@ -129,7 +109,8 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         message: "✓ Message received! We'll review it shortly.",
-        id: data.id,
+        emailSent: emailSent,
+        storedInDb: storedInDb,
       }),
       {
         status: 200,
@@ -140,11 +121,12 @@ serve(async (req) => {
       },
     );
   } catch (error) {
-    console.error("❌ Error:", error);
+    console.error("Fatal error:", error);
     return new Response(
       JSON.stringify({
         success: true,
         message: "✓ Message received! We'll review it shortly.",
+        error: String(error),
       }),
       {
         status: 200,
