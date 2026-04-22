@@ -7,6 +7,7 @@ import ContactPage from "./pages/ContactPage";
 import BetaRegistration from "./pages/BetaRegistration";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminMessages from "./pages/AdminMessages";
 import { useAdminWallet } from "./hooks/useAdminWallet";
 
 // Lazy-load admin pages so public landing routes do not require Supabase env vars.
@@ -50,6 +51,9 @@ export default function App() {
   }
   if (location.pathname === "/admin/dashboard") {
     return <AdminDashboard />;
+  }
+  if (location.pathname === "/admin/messages") {
+    return <AdminMessages />;
   }
 
   // ── Not connected ────────────────────────────────────────────────────────────

@@ -168,21 +168,40 @@ export default function AdminDashboard() {
               Manage and track beta tester registrations
             </p>
           </div>
-          <button
-            onClick={handleLogout}
-            style={{
-              padding: "0.5rem 1rem",
-              background: "#f0f0f0",
-              border: `1px solid #ddd`,
-              borderRadius: 6,
-              fontSize: "0.85rem",
-              fontFamily: "'DM Mono', monospace",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-            }}
-          >
-            Logout
-          </button>
+          <div style={{ display: "flex", gap: "0.75rem" }}>
+            <button
+              onClick={() => navigate("/admin/messages")}
+              style={{
+                padding: "0.5rem 1rem",
+                background: CYAN,
+                color: NAVY,
+                border: "none",
+                borderRadius: 6,
+                fontSize: "0.85rem",
+                fontFamily: "'DM Mono', monospace",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+            >
+              📧 Messages
+            </button>
+            <button
+              onClick={handleLogout}
+              style={{
+                padding: "0.5rem 1rem",
+                background: "#f0f0f0",
+                border: `1px solid #ddd`,
+                borderRadius: 6,
+                fontSize: "0.85rem",
+                fontFamily: "'DM Mono', monospace",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+            >
+              Logout
+            </button>
+          </div>
         </div>
 
         {/* Stats */}

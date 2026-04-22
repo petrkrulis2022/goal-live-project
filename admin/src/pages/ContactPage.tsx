@@ -44,10 +44,14 @@ export default function ContactPage() {
             subject: formData.subject,
             message: formData.message,
           }),
-        }
+        },
       );
 
-      console.log("Edge function response:", edgeResponse.status, edgeResponse.ok);
+      console.log(
+        "Edge function response:",
+        edgeResponse.status,
+        edgeResponse.ok,
+      );
 
       if (edgeResponse.ok) {
         setSubmitted(true);
@@ -75,10 +79,14 @@ export default function ContactPage() {
               _captcha: "false",
               _next: "https://goal.live",
             }).toString(),
-          }
+          },
         );
 
-        console.log("FormSubmit fallback response:", fallbackResponse.status, fallbackResponse.ok);
+        console.log(
+          "FormSubmit fallback response:",
+          fallbackResponse.status,
+          fallbackResponse.ok,
+        );
 
         if (fallbackResponse.ok) {
           setSubmitted(true);
@@ -87,14 +95,14 @@ export default function ContactPage() {
           setTimeout(() => navigate("/"), 3000);
         } else {
           setError(
-            "Failed to send message. Please try again or contact us on Twitter @goalLiveApp"
+            "Failed to send message. Please try again or contact us on Twitter @goalLiveApp",
           );
         }
       }
     } catch (err) {
       console.error("Error submitting form:", err);
       setError(
-        "An error occurred. Please try again or contact us on Twitter @goalLiveApp"
+        "An error occurred. Please try again or contact us on Twitter @goalLiveApp",
       );
     } finally {
       setLoading(false);
