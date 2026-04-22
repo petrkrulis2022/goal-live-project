@@ -17,7 +17,7 @@ export const isPhantomInstalled = (): boolean => {
 export const connectPhantomWallet = async (): Promise<string | null> => {
   try {
     const window = globalThis as unknown as PhantomWindow;
-    
+
     if (!window.solana) {
       throw new Error("Phantom wallet not found. Please install it first.");
     }
@@ -40,7 +40,7 @@ export const connectPhantomWallet = async (): Promise<string | null> => {
 export const disconnectPhantomWallet = async (): Promise<void> => {
   try {
     const window = globalThis as unknown as PhantomWindow;
-    
+
     if (window.solana && window.solana.disconnect) {
       await window.solana.disconnect();
     }
@@ -52,7 +52,7 @@ export const disconnectPhantomWallet = async (): Promise<void> => {
 export const getPhantomWalletAddress = (): string | null => {
   try {
     const window = globalThis as unknown as PhantomWindow;
-    
+
     if (window.solana && window.solana.publicKey) {
       return window.solana.publicKey.toString();
     }

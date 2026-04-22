@@ -1056,6 +1056,28 @@ export default function LandingPage() {
           >
             Admin Platform
           </a>
+
+          <a
+            href="/admin"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.65rem",
+              padding: "0.95rem 2.2rem",
+              background: "rgba(255,255,255,0.7)",
+              border: `1.5px solid rgba(46,197,224,0.38)`,
+              borderRadius: 14,
+              fontFamily: "'DM Mono', monospace",
+              fontSize: "0.9rem",
+              letterSpacing: "0.07em",
+              fontWeight: 500,
+              color: NAVY,
+              textDecoration: "none",
+              transition: "all 0.2s ease",
+            }}
+          >
+            Beta Testing Dashboard
+          </a>
         </div>
 
         {/* Footer note */}

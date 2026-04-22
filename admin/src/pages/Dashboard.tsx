@@ -142,13 +142,21 @@ export default function Dashboard() {
             {matches.length} match{matches.length !== 1 ? "es" : ""} on record
           </p>
         </div>
-        <Link
-          to="/events/new"
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-500 text-black text-sm font-bold hover:bg-green-400 active:scale-[0.98] transition-all shadow-lg shadow-green-500/20"
-        >
-          <span className="text-base leading-none">＋</span>
-          Create Event
-        </Link>
+        <div className="flex items-center gap-2">
+          <a
+            href="/admin/dashboard"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-cyan-500 text-black text-sm font-bold hover:bg-cyan-400 active:scale-[0.98] transition-all shadow-lg shadow-cyan-500/20"
+          >
+            👥 Beta Testing
+          </a>
+          <Link
+            to="/events/new"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-500 text-black text-sm font-bold hover:bg-green-400 active:scale-[0.98] transition-all shadow-lg shadow-green-500/20"
+          >
+            <span className="text-base leading-none">＋</span>
+            Create Event
+          </Link>
+        </div>
       </div>
 
       {loading && (

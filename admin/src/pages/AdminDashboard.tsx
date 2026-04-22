@@ -170,6 +170,23 @@ export default function AdminDashboard() {
           </div>
           <div style={{ display: "flex", gap: "0.75rem" }}>
             <button
+              onClick={() => window.location.href = "/dashboard"}
+              style={{
+                padding: "0.5rem 1rem",
+                background: "#2EC5E0",
+                color: NAVY,
+                border: "none",
+                borderRadius: 6,
+                fontSize: "0.85rem",
+                fontFamily: "'DM Mono', monospace",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+            >
+              🎮 Game Admin Platform
+            </button>
+            <button
               onClick={() => navigate("/admin/messages")}
               style={{
                 padding: "0.5rem 1rem",

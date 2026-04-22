@@ -25,7 +25,9 @@ export default function AdminLogin() {
 
   const validateAndLogin = (address: string) => {
     const normalizedInput = address.trim().toLowerCase();
-    const authorizedSolana = AUTHORIZED_ADMIN_WALLETS.map((w) => w.toLowerCase());
+    const authorizedSolana = AUTHORIZED_ADMIN_WALLETS.map((w) =>
+      w.toLowerCase(),
+    );
     const normalizedEth = ADMIN_ETH_WALLET.toLowerCase();
 
     if (
@@ -222,7 +224,13 @@ export default function AdminLogin() {
         </form>
 
         {/* Phantom Wallet Connection Section */}
-        <div style={{ marginTop: "2rem", paddingTop: "1.5rem", borderTop: "1px solid #eee" }}>
+        <div
+          style={{
+            marginTop: "2rem",
+            paddingTop: "1.5rem",
+            borderTop: "1px solid #eee",
+          }}
+        >
           <p
             style={{
               fontSize: "0.8rem",
