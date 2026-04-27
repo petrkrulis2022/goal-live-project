@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { services } from "../services";
+import { services } from "@/services";
 import { realDataService } from "../services/real/dataService";
 import type { Match, Player, MatchWinnerOdds } from "../types";
 import type { MatchWinnerOutcome } from "../types";

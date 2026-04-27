@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { services } from "../services";
+import { services } from "@/services";
 import type { WalletState } from "../types/services.types";
 
 export function useWallet() {

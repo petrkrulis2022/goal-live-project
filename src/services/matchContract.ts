@@ -21,7 +21,7 @@ const USDC_ABI = [
   "function allowance(address owner, address spender) view returns (uint256)",
 ];
 
-const USDC_SEPOLIA = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
+import { USDC_ADDRESS } from "@/config/network";
 
 // ── postMessage bridge (mirrors walletBridgeService) ─────────────────────────
 let _reqCounter = 0;
@@ -121,7 +121,7 @@ export const matchContractService = {
     const userAddress = await signer.getAddress();
     const amount = ethers.parseUnits(amountUsdc.toString(), 6);
 
-    const usdc = new ethers.Contract(USDC_SEPOLIA, USDC_ABI, signer);
+    const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, signer);
     const allowance: bigint = await usdc.allowance(
       userAddress,
       contractAddress,
