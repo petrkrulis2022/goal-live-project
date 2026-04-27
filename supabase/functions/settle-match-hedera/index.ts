@@ -40,6 +40,11 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ethers } from "https://esm.sh/ethers@6.13.2";
+import {
+  getSpToken,
+  getSpMatchLive,
+  getSpMatchEvents,
+} from "../_shared/statsperform.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -120,7 +125,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const { match_id, force } = body;
     // winner / home_goals / away_goals / goal_scorer_player_ids are optional
-    // — omit all three to trigger Goalserve auto-fetch mode.
+      // — omit all three to trigger StatsPerform auto-fetch mode.
     let winner: string | undefined = body.winner;
     let home_goals: number | undefined = body.home_goals;
     let away_goals: number | undefined = body.away_goals;
@@ -134,7 +139,7 @@ Deno.serve(async (req: Request) => {
     const { data: match, error: matchErr } = await supabase
       .from("matches")
       .select(
-        "id, status, home_team, away_team, contract_address, external_match_id, goalserve_static_id, odds_api_config",
+        "id, status, home_team, away_team, contract_address, external_match_id, statsperform_match_id, odds_api_config",
       )
       .eq("id", match_id)
       .single();
@@ -150,250 +155,67 @@ Deno.serve(async (req: Request) => {
       home_goals === undefined ||
       away_goals === undefined;
     if (autoFetch) {
-      const staticId: string | null = match.goalserve_static_id ?? null;
-      if (!staticId) {
+      const spMatchId: string | null = match.statsperform_match_id ?? null;
+      if (!spMatchId) {
         return json(
           {
             error:
-              "Cannot auto-fetch: match has no goalserve_static_id. Pass winner + home_goals + away_goals explicitly.",
+              "Cannot auto-fetch: match has no statsperform_match_id. Pass winner + home_goals + away_goals explicitly.",
           },
           422,
         );
       }
 
-      const gsKey =
-        Deno.env.get("GOALSERVE_API_KEY") ?? "5dc9cf20aca34682682708de71344f52";
-      const gsBase = `https://www.goalserve.com/getfeed/${gsKey}`;
+      // ── StatsPerform OAuth token ─────────────────────────────────────────
+      let spToken: string;
+      try {
+        spToken = await getSpToken();
+      } catch (tokenErr) {
+        return json({ error: `StatsPerform OAuth failed: ${tokenErr}` }, 502);
+      }
 
-      // Fetch livescores/results feed
-      const liveRes = await fetch(`${gsBase}/soccernew/home?json=1`);
-      if (!liveRes.ok) {
+      // ── MA1: verify FullTime and get final score ────────────────────────
+      const spMatch = await getSpMatchLive(spMatchId, spToken);
+      if (!spMatch) {
         return json(
-          { error: `Goalserve livescores fetch failed: ${liveRes.status}` },
+          { error: `StatsPerform MA1 fetch failed for match ${spMatchId}` },
           502,
         );
       }
-      // deno-lint-ignore no-explicit-any
-      const liveData: any = await liveRes.json();
-      // deno-lint-ignore no-explicit-any
-      const categories: any[] = Array.isArray(liveData?.scores?.category)
-        ? liveData.scores.category
-        : liveData?.scores?.category
-          ? [liveData.scores.category]
-          : [];
 
-      // deno-lint-ignore no-explicit-any
-      let foundMatch: any = null;
-      let foundLeagueId = "";
-      outer: for (const cat of categories) {
-        // deno-lint-ignore no-explicit-any
-        const catMatches: any[] = Array.isArray(cat?.matches?.match)
-          ? cat.matches.match
-          : cat?.matches?.match
-            ? [cat.matches.match]
-            : [];
-        for (const m of catMatches) {
-          if (String(m["@static_id"]) === String(staticId)) {
-            foundMatch = m;
-            foundLeagueId = cat["@id"] ?? "";
-            break outer;
-          }
-        }
-      }
-
-      // ── Fallback: if match not in livescores, try commentary feed directly ──
-      // The /home livescores feed only covers today. For yesterday's or older
-      // finished matches, the commentary feed is the source of truth.
-      if (!foundMatch) {
-        // deno-lint-ignore no-explicit-any
-        const cfg = (match.odds_api_config ?? {}) as Record<string, any>;
-        const leagueFromConfig: string = cfg?.goalserve_league ?? "";
-        if (!leagueFromConfig) {
-          return json(
-            {
-              error: `Match ${staticId} not found in today's Goalserve feed and no goalserve_league in odds_api_config to fall back to commentary. Pass winner + home_goals + away_goals explicitly.`,
-            },
-            422,
-          );
-        }
-        foundLeagueId = leagueFromConfig;
-        try {
-          const commRes = await fetch(
-            `${gsBase}/commentaries/match?id=${staticId}&league=${foundLeagueId}&json=1`,
-          );
-          if (!commRes.ok) {
-            return json(
-              {
-                error: `Match ${staticId} not found in Goalserve feed and commentary fetch failed (${commRes.status}).`,
-              },
-              422,
-            );
-          }
-          // deno-lint-ignore no-explicit-any
-          const commData: any = await commRes.json();
-          const rawMatch =
-            commData?.commentaries?.tournament?.match ??
-            commData?.commentaries?.match ??
-            null;
-          // deno-lint-ignore no-explicit-any
-          const matchNode: any = Array.isArray(rawMatch)
-            ? rawMatch[0]
-            : rawMatch;
-          if (!matchNode) {
-            return json(
-              {
-                error: `Match ${staticId} not found in Goalserve livescores or commentary feed.`,
-              },
-              422,
-            );
-          }
-          const commStatus: string = matchNode["@status"] ?? "";
-          const FT_STATUSES = [
-            "FT",
-            "AET",
-            "After ET",
-            "Full-time",
-            "full-time",
-          ];
-          if (!FT_STATUSES.includes(commStatus)) {
-            return json(
-              {
-                error: `Match is not finished on Goalserve yet. Commentary status: "${commStatus}". Settle only at FT.`,
-              },
-              422,
-            );
-          }
-          home_goals =
-            parseInt(matchNode?.localteam?.["@goals"] ?? "0", 10) || 0;
-          away_goals =
-            parseInt(matchNode?.visitorteam?.["@goals"] ?? "0", 10) || 0;
-          winner =
-            home_goals > away_goals
-              ? "home"
-              : away_goals > home_goals
-                ? "away"
-                : "draw";
-          // Extract scorers from this same commentary node
-          const gs = matchNode?.goalscorer ?? {};
-          // deno-lint-ignore no-explicit-any
-          const extractIdsComm = (node: any): string[] => {
-            const players = Array.isArray(node?.player)
-              ? node.player
-              : node?.player
-                ? [node.player]
-                : [];
-            return (
-              players
-                // deno-lint-ignore no-explicit-any
-                .filter((p: any) => (p["@type"] ?? "").toLowerCase() !== "own")
-                // deno-lint-ignore no-explicit-any
-                .map((p: any) => p["@id"] ?? p["@player_id"] ?? "")
-                .filter(Boolean)
-            );
-          };
-          goal_scorer_player_ids = [
-            ...extractIdsComm(gs?.localteam),
-            ...extractIdsComm(gs?.visitorteam),
-          ];
-          console.log(
-            `[settle-match] commentary fallback: ${match.home_team} ${home_goals}-${away_goals} ${match.away_team}, ` +
-              `winner=${winner}, scorers=[${goal_scorer_player_ids.join(",")}]`,
-          );
-          // Skip the second commentary fetch below since we already have scorers
-          foundLeagueId = ""; // sentinel: already fetched
-        } catch (commErr) {
-          return json(
-            {
-              error: `Match ${staticId} not in today's feed and commentary fetch threw: ${commErr}`,
-            },
-            422,
-          );
-        }
-      }
-
-      // ── If found in livescores, validate status and get score ─────────────
-      if (foundMatch) {
-        const gsStatus: string = foundMatch["@status"] ?? "";
-        const FT_STATUSES = ["FT", "AET", "After ET", "Full-time", "full-time"];
-        if (!FT_STATUSES.includes(gsStatus)) {
-          return json(
-            {
-              error: `Match is not finished on Goalserve yet. Current status: "${gsStatus}". Settle only at FT.`,
-            },
-            422,
-          );
-        }
-        home_goals =
-          parseInt(foundMatch?.localteam?.["@goals"] ?? "0", 10) || 0;
-        away_goals =
-          parseInt(foundMatch?.visitorteam?.["@goals"] ?? "0", 10) || 0;
-        winner =
-          home_goals > away_goals
-            ? "home"
-            : away_goals > home_goals
-              ? "away"
-              : "draw";
-      }
-
-      // Fetch goal scorers from commentary feed (only if not already done in fallback path)
-      goal_scorer_player_ids = goal_scorer_player_ids ?? [];
-      if (foundLeagueId) {
-        try {
-          const commRes = await fetch(
-            `${gsBase}/commentaries/match?id=${staticId}&league=${foundLeagueId}&json=1`,
-          );
-          if (commRes.ok) {
-            // deno-lint-ignore no-explicit-any
-            const commData: any = await commRes.json();
-            const rawMatch =
-              commData?.commentaries?.tournament?.match ??
-              commData?.commentaries?.match ??
-              null;
-            // deno-lint-ignore no-explicit-any
-            const matchNode: any = Array.isArray(rawMatch)
-              ? rawMatch[0]
-              : rawMatch;
-            if (matchNode) {
-              const gs = matchNode?.goalscorer ?? {};
-              // deno-lint-ignore no-explicit-any
-              const extractIds = (node: any): string[] => {
-                const players = Array.isArray(node?.player)
-                  ? node.player
-                  : node?.player
-                    ? [node.player]
-                    : [];
-                return (
-                  players
-                    // deno-lint-ignore no-explicit-any
-                    .filter(
-                      (p: any) => (p["@type"] ?? "").toLowerCase() !== "own",
-                    )
-                    // deno-lint-ignore no-explicit-any
-                    .map((p: any) => p["@id"] ?? p["@player_id"] ?? "")
-                    .filter(Boolean)
-                );
-              };
-              goal_scorer_player_ids = [
-                ...extractIds(gs?.localteam),
-                ...extractIds(gs?.visitorteam),
-              ];
-            }
-          }
-        } catch (commErr) {
-          console.warn(
-            "[settle-match] commentary fetch failed (non-fatal):",
-            commErr,
-          );
-        }
-      }
-
-      if (foundLeagueId !== "") {
-        // Only log here if livescores path was used (commentary path logs its own line)
-        console.log(
-          `[settle-match] auto-fetch (livescores): ${match.home_team} ${home_goals}-${away_goals} ${match.away_team}, ` +
-            `winner=${winner}, scorers=[${(goal_scorer_player_ids ?? []).join(",")}]`,
+      if (!spMatch.isFullTime) {
+        return json(
+          {
+            error: `Match is not FullTime yet on StatsPerform. Current status: "${spMatch.status}". Settle only at FullTime.`,
+          },
+          422,
         );
       }
+
+      home_goals = spMatch.scoreHome ?? 0;
+      away_goals = spMatch.scoreAway ?? 0;
+      winner =
+        home_goals > away_goals
+          ? "home"
+          : away_goals > home_goals
+            ? "away"
+            : "draw";
+
+      // ── MA3: get goal scorer IDs ────────────────────────────────────────
+      const spEvents = await getSpMatchEvents(
+        spMatchId,
+        spToken,
+        spMatch.homeContestantId,
+      );
+      // Own goals are excluded — credit goes to the opposing team, not the scorer
+      goal_scorer_player_ids = spEvents.goals
+        .filter((g) => !g.isOwnGoal)
+        .map((g) => g.playerId);
+
+      console.log(
+        `[settle-match-hedera] auto-fetch (StatsPerform): ${match.home_team} ${home_goals}-${away_goals} ${match.away_team}, ` +
+          `winner=${winner}, scorers=[${goal_scorer_player_ids.join(",")}]`,
+      );
     }
 
     // ── At this point winner / home_goals / away_goals are always set ─────
