@@ -5,6 +5,9 @@ import type { IDataService, MatchCallbacks } from "../../types/services.types";
 import type { Match, Player, MatchWinnerOdds } from "../../types";
 import { supabase, type DbMatch, type DbPlayer } from "../../lib/supabase";
 
+// Sepolia singleton — used as fallback for any match that has no contract_address in DB
+const SEPOLIA_SINGLETON = "0x0ac469B0DE6C5d67fb904C54A1f7cA8c8bf347Bc";
+
 // ── helpers ────────────────────────────────────────────────────────────────
 
 function dbMatchToMatch(row: DbMatch): Match {
@@ -17,7 +20,7 @@ function dbMatchToMatch(row: DbMatch): Match {
     currentMinute: row.current_minute,
     score: { home: row.score_home, away: row.score_away },
     half: row.half as 1 | 2,
-    contractAddress: row.contract_address ?? null,
+    contractAddress: row.contract_address ?? SEPOLIA_SINGLETON,
     cornersHome: row.corners_home ?? 0,
     cornersAway: row.corners_away ?? 0,
   };

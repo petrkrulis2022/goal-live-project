@@ -1,6 +1,67 @@
 import React, { useState } from "react";
 import { matchContractService } from "../services/matchContract";
 
+// ── postMessage bridge (same pattern as walletBridgeServiceHedera) ────────────
+let _reqCounter = 0;
+const _pending = new Map<
+  number,
+  { resolve: (v: unknown) => void; reject: (e: Error) => void }
+>();
+if (typeof window !== "undefined") {
+  window.addEventListener("message", (event) => {
+    if (event.source !== window || !event.data) return;
+    if (event.data.type === "GL_ETH_RESPONSE") {
+      const { reqId, result, error, code } = event.data as {
+        reqId: number;
+        result?: unknown;
+        error?: string;
+        code?: number;
+      };
+      const p = _pending.get(reqId);
+      if (!p) return;
+      _pending.delete(reqId);
+      if (error) {
+        const err = new Error(error) as Error & { code?: number };
+        if (code !== undefined) err.code = code;
+        p.reject(err);
+      } else {
+        p.resolve(result);
+      }
+    }
+  });
+}
+function _bridgeRequest(method: string, params?: unknown[]): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const reqId = ++_reqCounter;
+    _pending.set(reqId, { resolve, reject });
+    window.postMessage({ type: "GL_ETH_REQUEST", reqId, method, params }, "*");
+    setTimeout(() => {
+      if (_pending.has(reqId)) {
+        _pending.delete(reqId);
+        reject(new Error(`MetaMask request timed out: ${method}`));
+      }
+    }, 30_000);
+  });
+}
+
+/** Send native HBAR (in whole HBAR units) from connected wallet to `to`. */
+async function sendHbar(
+  from: string,
+  to: string,
+  hbarAmount: number,
+): Promise<string> {
+  // 1 HBAR = 10^18 weibars on Hedera EVM
+  const weiHex = "0x" + BigInt(Math.round(hbarAmount * 1e18)).toString(16);
+  const txHash = await _bridgeRequest("eth_sendTransaction", [
+    { from, to, value: weiHex },
+  ]);
+  return txHash as string;
+}
+
+// Hedera testnet match-pool treasury (placeholder for demo)
+// Replace with your deployed match contract address once available.
+const DEMO_MATCH_POOL = "0x0000000000000000000000000000000000000100";
+
 interface FundMatchModalProps {
   contractAddress: string;
   matchId: string;
@@ -19,11 +80,14 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
   onFunded,
 }) => {
   const [amount, setAmount] = useState("");
-  const [step, setStep] = useState<
-    "idle" | "approving" | "funding" | "done" | "error"
-  >("idle");
+  const [step, setStep] = useState<"idle" | "sending" | "done" | "error">(
+    "idle",
+  );
   const [errorMsg, setErrorMsg] = useState("");
   const [txHash, setTxHash] = useState("");
+
+  // True when no smart contract has been deployed for this match yet
+  const hbarMode = !contractAddress;
 
   const parsed = parseFloat(amount);
   const valid = !isNaN(parsed) && parsed > 0;
@@ -32,13 +96,23 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
     if (!valid) return;
     setErrorMsg("");
     try {
-      setStep("approving");
-      const hash = await matchContractService.fundMatch(
-        contractAddress,
-        matchId,
-        parsed,
-      );
-      setTxHash(hash);
+      setStep("sending");
+      if (hbarMode) {
+        // HBAR mode: send native HBAR to match pool treasury via MetaMask
+        const accounts = (await _bridgeRequest("eth_accounts")) as string[];
+        const from = accounts[0];
+        if (!from) throw new Error("No wallet connected");
+        const hash = await sendHbar(from, DEMO_MATCH_POOL, parsed);
+        setTxHash(hash);
+      } else {
+        // USDC mode: approve + fundMatch on smart contract
+        const hash = await matchContractService.fundMatch(
+          contractAddress,
+          matchId,
+          parsed,
+        );
+        setTxHash(hash);
+      }
       setStep("done");
       onFunded(parsed);
       setTimeout(() => {
@@ -47,7 +121,6 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
       }, 2500);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      // Show friendly message for user rejection
       if (msg.includes("user rejected") || msg.includes("ACTION_REJECTED")) {
         setErrorMsg("Transaction cancelled.");
       } else {
@@ -57,7 +130,7 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
     }
   }
 
-  const busy = step === "approving" || step === "funding";
+  const busy = step === "sending";
 
   return (
     <div
@@ -88,48 +161,61 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
             </div>
             <p className="text-white font-bold text-base mb-1">Funded!</p>
             <p className="text-gray-400 text-xs mb-2">
-              Your USDC is locked in the match pool.
+              {hbarMode
+                ? "Your HBAR has been sent to the match pool."
+                : "Your HBAR is locked in the match pool."}
             </p>
-            <a
-              href={`https://sepolia.etherscan.io/tx/${txHash}`}
-              target="_blank"
-              rel="noreferrer"
-              className="text-indigo-400 text-[11px] hover:text-indigo-200"
-            >
-              View tx ↗
-            </a>
+            {txHash && (
+              <a
+                href={`https://hashscan.io/testnet/transaction/${txHash}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-indigo-400 text-[11px] hover:text-indigo-200"
+              >
+                View on HashScan ↗
+              </a>
+            )}
           </div>
         ) : (
           <>
             {/* Match escrow info */}
             <div className="bg-indigo-950/40 border border-indigo-500/30 rounded-xl px-4 py-3 mb-4">
-              <p className="text-indigo-300 text-[10px] font-semibold uppercase tracking-wide mb-1">
-                Match Escrow Contract
-              </p>
-              <p className="text-white font-mono text-xs break-all">
-                {contractAddress}
-              </p>
-              <a
-                href={`https://sepolia.etherscan.io/address/${contractAddress}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-indigo-400 text-[10px] hover:text-indigo-200 mt-1 inline-block"
-              >
-                View on Etherscan ↗
-              </a>
+              {hbarMode ? (
+                <>
+                  <p className="text-indigo-300 text-[10px] font-semibold uppercase tracking-wide mb-1">
+                    HBAR Match Pool
+                  </p>
+                  <p className="text-gray-400 text-xs">
+                    Fund this match with HBAR. Contract deploys on Hedera
+                    Testnet.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-indigo-300 text-[10px] font-semibold uppercase tracking-wide mb-1">
+                    Match Escrow Contract
+                  </p>
+                  <p className="text-white font-mono text-xs break-all">
+                    {contractAddress}
+                  </p>
+                  <a
+                    href={`https://hashscan.io/testnet/address/${contractAddress}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-indigo-400 text-[10px] hover:text-indigo-200 mt-1 inline-block"
+                  >
+                    View on HashScan ↗
+                  </a>
+                </>
+              )}
             </div>
-
-            {/* Balance hint */}
 
             {/* Amount input */}
             <div className="relative mb-3">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">
-                $
-              </span>
               <input
                 type="number"
                 min="0"
-                step="1"
+                step="0.1"
                 placeholder="0.00"
                 value={amount}
                 onChange={(e) => {
@@ -138,10 +224,10 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
                   setErrorMsg("");
                 }}
                 disabled={busy}
-                className="w-full bg-gray-900 border border-white/15 rounded-xl pl-7 pr-16 py-3 text-white text-sm font-bold focus:outline-none focus:border-emerald-500/60 disabled:opacity-50"
+                className="w-full bg-gray-900 border border-white/15 rounded-xl pl-4 pr-16 py-3 text-white text-sm font-bold focus:outline-none focus:border-emerald-500/60 disabled:opacity-50"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
-                USDC
+                HBAR
               </span>
             </div>
 

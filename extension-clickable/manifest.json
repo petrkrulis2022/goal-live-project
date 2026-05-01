@@ -6,7 +6,8 @@
   "permissions": ["activeTab"],
   "host_permissions": [
     "https://www.youtube.com/*",
-    "https://tvgo.t-mobile.cz/*"
+    "https://tvgo.t-mobile.cz/*",
+    "https://generativelanguage.googleapis.com/*"
   ],
   "content_scripts": [
     {

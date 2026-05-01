@@ -8,6 +8,10 @@ import { MockPlayerMarkers, type MockTrackedPlayer } from "./MockPlayerMarkers";
 import { VideoOverlayDebugGrid } from "./VideoOverlayDebugGrid";
 import { useVideoCurrentTime } from "../hooks/useVideoCurrentTime";
 import { useVideoOverlayBounds } from "../hooks/useVideoOverlayBounds";
+import { useGeminiTracking } from "../hooks/useGeminiTracking";
+
+// NOTE: API key stored here for local-dev use only.
+const GEMINI_API_KEY = "AIzaSyDttRwiY2CeKSC7riZJQWDmQNKDTvhjQfI";
 
 const DEMO_STAKES = [5, 10, 20, 50];
 const TRACK_LOOP_SECONDS = 12;
@@ -302,6 +306,9 @@ export const ClickablePlayersLab: React.FC = () => {
   const [showGrid, setShowGrid] = useState(false);
   const [showMarkers, setShowMarkers] = useState(true);
   const [editTracks, setEditTracks] = useState(false);
+  const [pinMode, setPinMode] = useState(false);
+  const [aiTracking, setAiTracking] = useState(false);
+  const [aiTargetIds, setAiTargetIds] = useState<Set<string>>(new Set());
   const [probe, setProbe] = useState<{
     row: number;
     col: number;
@@ -378,9 +385,30 @@ export const ClickablePlayersLab: React.FC = () => {
     [markerTracks, playback.currentTime, playersById],
   );
 
+  const aiTargetMarkers = useMemo(
+    () => markers.filter((m) => aiTargetIds.has(m.id)),
+    [markers, aiTargetIds],
+  );
+
+  const gemini = useGeminiTracking(aiTargetMarkers, {
+    enabled: aiTracking && aiTargetIds.size > 0,
+    apiKey: GEMINI_API_KEY,
+    intervalMs: 10_000,
+  });
+
+  // Apply Gemini position overrides when AI tracking is active
+  const finalMarkers = useMemo(() => {
+    return markers.map((m) => {
+      const override = aiTracking ? gemini.overrides.get(m.id) : undefined;
+      return override
+        ? { ...m, xPct: override.xPct, yPct: override.yPct, aiTracked: true }
+        : { ...m, aiTracked: aiTracking && aiTargetIds.has(m.id) };
+    });
+  }, [markers, gemini.overrides, aiTracking, aiTargetIds]);
+
   const selectedMarker = useMemo(
-    () => markers.find((marker) => marker.id === selectedMarkerId) ?? null,
-    [markers, selectedMarkerId],
+    () => finalMarkers.find((marker) => marker.id === selectedMarkerId) ?? null,
+    [finalMarkers, selectedMarkerId],
   );
 
   const activeLoopTime = useMemo(
@@ -451,6 +479,11 @@ export const ClickablePlayersLab: React.FC = () => {
     }
   };
 
+  const handlePinAt = (position: { xPct: number; yPct: number }) => {
+    if (!selectedMarkerId) return;
+    handleUpdateMarkerPosition(selectedMarkerId, position);
+  };
+
   return (
     <>
       <div
@@ -495,17 +528,98 @@ export const ClickablePlayersLab: React.FC = () => {
             </div>
             {effectiveMatch && (
               <div style={{ color: "#94a3b8", fontSize: 11, marginTop: 2 }}>
-                {markers.length} moving demo markers
+                {finalMarkers.length} moving demo markers
                 {isReplayFallback ? " · fallback lineup" : ""}
                 {showMarkers ? " · synced to replay time" : ""}
                 {editTracks ? " · drag selected marker to save keyframe" : ""}
+                {pinMode ? " · click pitch to pin selected player" : ""}
+                {aiTracking
+                  ? gemini.status === "detecting"
+                    ? ` · AI detecting ${aiTargetIds.size} player(s)…`
+                    : gemini.status === "ok"
+                      ? ` · AI tracking ${aiTargetIds.size} player(s) · ${gemini.lastCount} found`
+                      : gemini.status === "error"
+                        ? " · AI error (see console)"
+                        : gemini.status === "no-video"
+                          ? " · AI: no video"
+                          : aiTargetIds.size > 0
+                            ? ` · AI on · ${aiTargetIds.size} selected`
+                            : " · AI on · select players to track"
+                  : ""}
               </div>
             )}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button
               type="button"
-              onClick={() => setEditTracks((value) => !value)}
+              onClick={() => {
+                setAiTracking((v) => {
+                  if (!v) {
+                    setEditTracks(false);
+                    setPinMode(false);
+                  }
+                  return !v;
+                });
+              }}
+              disabled={!bounds || !showMarkers}
+              style={{
+                background: aiTracking
+                  ? gemini.status === "error"
+                    ? "#ef4444"
+                    : gemini.status === "detecting"
+                      ? "#a855f7"
+                      : "#22c55e"
+                  : "rgba(15,23,42,0.95)",
+                border: "1px solid rgba(148,163,184,0.28)",
+                borderRadius: 8,
+                color: aiTracking ? "#fff" : bounds ? "#e5e7eb" : "#64748b",
+                cursor: bounds && showMarkers ? "pointer" : "not-allowed",
+                fontSize: 12,
+                fontWeight: 800,
+                padding: "8px 10px",
+              }}
+            >
+              {aiTracking
+                ? gemini.status === "detecting"
+                  ? "AI…"
+                  : gemini.status === "error"
+                    ? "AI ✕"
+                    : `AI ✓ ${gemini.lastCount}`
+                : "AI Track"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPinMode((v) => !v);
+                setEditTracks(false);
+              }}
+              disabled={!bounds || !showMarkers || !selectedMarkerId}
+              style={{
+                background: pinMode ? "#38bdf8" : "rgba(15,23,42,0.95)",
+                border: "1px solid rgba(148,163,184,0.28)",
+                borderRadius: 8,
+                color: pinMode
+                  ? "#03121a"
+                  : bounds && selectedMarkerId
+                    ? "#e5e7eb"
+                    : "#64748b",
+                cursor:
+                  bounds && showMarkers && selectedMarkerId
+                    ? "pointer"
+                    : "not-allowed",
+                fontSize: 12,
+                fontWeight: 800,
+                padding: "8px 10px",
+              }}
+            >
+              {pinMode ? "Pinning ✕" : "Pin Player"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditTracks((value) => !value);
+                setPinMode(false);
+              }}
               disabled={!bounds || !showMarkers}
               style={{
                 background: editTracks ? "#f59e0b" : "rgba(15,23,42,0.95)",
@@ -559,14 +673,16 @@ export const ClickablePlayersLab: React.FC = () => {
         </div>
       </div>
 
-      {showMarkers && bounds && markers.length > 0 && (
+      {showMarkers && bounds && finalMarkers.length > 0 && (
         <MockPlayerMarkers
           bounds={bounds}
-          markers={markers}
+          markers={finalMarkers}
           selectedId={selectedMarkerId}
           editMode={editTracks}
+          pinMode={pinMode}
           onSelect={handleSelectMarker}
           onUpdatePosition={handleUpdateMarkerPosition}
+          onPinAt={handlePinAt}
         />
       )}
 
@@ -622,6 +738,104 @@ export const ClickablePlayersLab: React.FC = () => {
           >
             Reset Saved Tracks
           </button>
+        </div>
+      )}
+
+      {showMarkers && pinMode && bounds && selectedMarker && (
+        <div
+          style={{
+            position: "fixed",
+            left: 12,
+            top: 72,
+            zIndex: 2147483646,
+            background: "rgba(2,6,23,0.94)",
+            border: "1px solid rgba(56,189,248,0.42)",
+            borderRadius: 10,
+            padding: "9px 10px",
+            color: "#e5e7eb",
+            fontFamily: "system-ui,sans-serif",
+            boxShadow: "0 10px 28px rgba(0,0,0,0.45)",
+            maxWidth: 280,
+          }}
+        >
+          <div
+            style={{
+              color: "#38bdf8",
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}
+          >
+            Pin Mode
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 700, marginTop: 2 }}>
+            #{selectedMarker.player.number} {selectedMarker.player.name}
+          </div>
+          <div style={{ color: "#94a3b8", fontSize: 11, marginTop: 3 }}>
+            Click anywhere on the pitch to move this marker there. Saves a
+            keyframe at t={activeLoopTime.toFixed(1)}s.
+          </div>
+          <button
+            type="button"
+            onClick={() => setPinMode(false)}
+            style={{
+              marginTop: 8,
+              background: "transparent",
+              border: "1px solid rgba(148,163,184,0.28)",
+              borderRadius: 8,
+              color: "#e5e7eb",
+              cursor: "pointer",
+              fontSize: 11,
+              fontWeight: 700,
+              padding: "6px 8px",
+            }}
+          >
+            Done Pinning
+          </button>
+        </div>
+      )}
+
+      {aiTracking && gemini.status === "error" && gemini.lastError && (
+        <div
+          style={{
+            position: "fixed",
+            left: 12,
+            top: 72,
+            zIndex: 2147483646,
+            background: "rgba(2,6,23,0.94)",
+            border: "1px solid rgba(239,68,68,0.42)",
+            borderRadius: 10,
+            padding: "9px 10px",
+            color: "#e5e7eb",
+            fontFamily: "system-ui,sans-serif",
+            boxShadow: "0 10px 28px rgba(0,0,0,0.45)",
+            maxWidth: 320,
+          }}
+        >
+          <div
+            style={{
+              color: "#ef4444",
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}
+          >
+            AI Tracking Error
+          </div>
+          <div
+            style={{
+              color: "#94a3b8",
+              fontSize: 11,
+              marginTop: 4,
+              wordBreak: "break-all",
+            }}
+          >
+            {gemini.lastError?.includes("429")
+              ? "Rate limit hit (429). Retrying automatically with backoff — no action needed."
+              : gemini.lastError}
+          </div>
         </div>
       )}
 
@@ -820,6 +1034,45 @@ export const ClickablePlayersLab: React.FC = () => {
               Edit mode active: drag this marker on the pitch to store a
               keyframe.
             </div>
+          )}
+          {aiTracking && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!selectedMarkerId) return;
+                setAiTargetIds((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(selectedMarkerId)) {
+                    next.delete(selectedMarkerId);
+                  } else {
+                    next.add(selectedMarkerId);
+                  }
+                  return next;
+                });
+              }}
+              style={{
+                marginTop: 10,
+                width: "100%",
+                background:
+                  selectedMarkerId && aiTargetIds.has(selectedMarkerId)
+                    ? "rgba(245,158,11,0.15)"
+                    : "rgba(15,23,42,0.95)",
+                border: `1px solid ${selectedMarkerId && aiTargetIds.has(selectedMarkerId) ? "#f59e0b" : "rgba(148,163,184,0.28)"}`,
+                borderRadius: 8,
+                color:
+                  selectedMarkerId && aiTargetIds.has(selectedMarkerId)
+                    ? "#f59e0b"
+                    : "#e5e7eb",
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: 700,
+                padding: "8px 10px",
+              }}
+            >
+              {selectedMarkerId && aiTargetIds.has(selectedMarkerId)
+                ? "AI Tracking ✓ (click to stop)"
+                : "Track with AI"}
+            </button>
           )}
           <button
             type="button"

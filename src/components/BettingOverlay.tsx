@@ -527,7 +527,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
         return;
       }
       if (!isMatchFunded) {
-        if (match?.contractAddress) setModal({ type: "fundmatch" });
+        if (wallet) setModal({ type: "fundmatch" });
         return;
       }
       if (!activeNgsBet) {
@@ -669,7 +669,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
       matchId: string;
     }) => {
       if (!isMatchFunded) {
-        if (wallet && match?.contractAddress) setModal({ type: "fundmatch" });
+        if (wallet) setModal({ type: "fundmatch" });
         return {
           success: false,
           error: "Fund this match first before placing bets.",
@@ -1101,9 +1101,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             onConnect={connect}
             onTopUp={wallet ? () => setModal({ type: "topup" }) : undefined}
             onFundMatch={
-              wallet && match?.contractAddress
-                ? () => setModal({ type: "fundmatch" })
-                : undefined
+              wallet ? () => setModal({ type: "fundmatch" }) : undefined
             }
             onWithdraw={
               wallet ? () => setModal({ type: "withdraw" }) : undefined
@@ -1506,9 +1504,9 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           onClose={() => setModal(null)}
         />
       )}
-      {modal?.type === "fundmatch" && wallet && match?.contractAddress && (
+      {modal?.type === "fundmatch" && wallet && (
         <FundMatchModal
-          contractAddress={match.contractAddress}
+          contractAddress={match?.contractAddress ?? ""}
           matchId={matchKey ?? match.id ?? match.dbId}
           matchLabel={`${match.homeTeam} vs ${match.awayTeam}`}
           onClose={() => setModal(null)}
