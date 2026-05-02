@@ -89,7 +89,8 @@ function PlayersTab({
   setPlayers: React.Dispatch<React.SetStateAction<DbPlayer[]>>;
 }) {
   const [side, setSide] = useState<"home" | "away">("home");
-  const [toggling, setToggling] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkMoving, setBulkMoving] = useState(false);
   const homeLabel = match?.home_team ?? "Home";
   const awayLabel = match?.away_team ?? "Away";
 
@@ -97,24 +98,53 @@ function PlayersTab({
   const homeCount = players.filter((p) => p.team === "home").length;
   const awayCount = players.filter((p) => p.team === "away").length;
 
-  async function toggleTeam(p: DbPlayer) {
-    const newTeam: "home" | "away" = p.team === "home" ? "away" : "home";
-    setToggling((prev) => new Set(prev).add(p.id));
-    await supabase.from("players").update({ team: newTeam }).eq("id", p.id);
-    setPlayers((prev) =>
-      prev.map((pl) => (pl.id === p.id ? { ...pl, team: newTeam } : pl)),
-    );
-    setToggling((prev) => {
+  const allSelected =
+    sidePlayers.length > 0 &&
+    sidePlayers.every((p) => selected.has(p.id));
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
       const next = new Set(prev);
-      next.delete(p.id);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   }
 
+  function toggleSelectAll() {
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(sidePlayers.map((p) => p.id)));
+    }
+  }
+
+  async function moveSelected() {
+    const ids = [...selected].filter((id) =>
+      sidePlayers.some((p) => p.id === id),
+    );
+    if (ids.length === 0) return;
+    const newTeam: "home" | "away" = side === "home" ? "away" : "home";
+    setBulkMoving(true);
+    await supabase.from("players").update({ team: newTeam }).in("id", ids);
+    setPlayers((prev) =>
+      prev.map((p) => (ids.includes(p.id) ? { ...p, team: newTeam } : p)),
+    );
+    setSelected(new Set());
+    setBulkMoving(false);
+  }
+
+  // Clear selection when switching tabs
+  function switchSide(s: "home" | "away") {
+    setSide(s);
+    setSelected(new Set());
+  }
+
+  const destLabel = side === "home" ? awayLabel : homeLabel;
+
   return (
     <div className="space-y-3">
       {/* Sub-tabs */}
-      <div className="flex gap-2 items-center">
+      <div className="flex gap-2 items-center flex-wrap">
         {(["home", "away"] as const).map((s) => {
           const label = s === "home" ? homeLabel : awayLabel;
           const count = s === "home" ? homeCount : awayCount;
@@ -122,7 +152,7 @@ function PlayersTab({
           return (
             <button
               key={s}
-              onClick={() => setSide(s)}
+              onClick={() => switchSide(s)}
               className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors border ${
                 active
                   ? s === "home"
@@ -136,9 +166,18 @@ function PlayersTab({
             </button>
           );
         })}
-        <span className="text-[10px] text-gray-600 ml-2">
-          ← click team badge to move player
-        </span>
+
+        {selected.size > 0 && (
+          <button
+            onClick={moveSelected}
+            disabled={bulkMoving}
+            className="ml-auto px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 transition-colors disabled:opacity-40"
+          >
+            {bulkMoving
+              ? "Moving…"
+              : `Move ${selected.size} → ${destLabel.split(" ")[0]}`}
+          </button>
+        )}
       </div>
 
       {sidePlayers.length > 0 ? (
@@ -146,50 +185,74 @@ function PlayersTab({
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-[10px] text-gray-600 uppercase tracking-wider border-b border-white/5">
-                <th className="px-4 py-2 font-medium">Name</th>
-                <th className="px-4 py-2 font-medium">Odds</th>
-                <th className="px-4 py-2 font-medium text-right">Team ⇄</th>
+                <th className="px-3 py-2 w-8">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleSelectAll}
+                    className="accent-amber-400 cursor-pointer"
+                  />
+                </th>
+                <th className="px-3 py-2 font-medium">Name</th>
+                <th className="px-3 py-2 font-medium">Odds</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/4">
               {sidePlayers.map((p) => (
-                <tr key={p.id} className="hover:bg-white/2 transition-colors">
-                  <td className="px-4 py-2.5 font-medium text-gray-200">
+                <tr
+                  key={p.id}
+                  onClick={() => toggleSelect(p.id)}
+                  className={`cursor-pointer transition-colors ${
+                    selected.has(p.id)
+                      ? "bg-amber-500/10"
+                      : "hover:bg-white/2"
+                  }`}
+                >
+                  <td className="px-3 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(p.id)}
+                      onChange={() => toggleSelect(p.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="accent-amber-400 cursor-pointer"
+                    />
+                  </td>
+                  <td className="px-3 py-2.5 font-medium text-gray-200">
                     {p.name}
                   </td>
-                  <td className="px-4 py-2.5 font-mono font-bold text-green-400">
+                  <td className="px-3 py-2.5 font-mono font-bold text-green-400">
                     {p.odds > 1 ? (
                       `${p.odds}×`
                     ) : (
                       <span className="text-gray-700">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-right">
-                    <button
-                      onClick={() => toggleTeam(p)}
-                      disabled={toggling.has(p.id)}
-                      title={`Move to ${p.team === "home" ? awayLabel : homeLabel}`}
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border transition-all ${
-                        p.team === "home"
-                          ? "bg-blue-500/20 text-blue-300 border-blue-500/30 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/30"
-                          : "bg-red-500/20 text-red-300 border-red-500/30 hover:bg-blue-500/20 hover:text-blue-300 hover:border-blue-500/30"
-                      } ${toggling.has(p.id) ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
-                    >
-                      {p.team === "home"
-                        ? homeLabel.split(" ")[0]
-                        : awayLabel.split(" ")[0]}
-                    </button>
-                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {selected.size > 0 && (
+            <div className="px-4 py-2 border-t border-white/5 bg-amber-500/5 flex items-center justify-between">
+              <span className="text-[11px] text-amber-400">
+                {selected.size} selected
+              </span>
+              <button
+                onClick={moveSelected}
+                disabled={bulkMoving}
+                className="px-3 py-1 rounded text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 transition-colors disabled:opacity-40"
+              >
+                {bulkMoving
+                  ? "Moving…"
+                  : `Move to ${destLabel}`}
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-gray-900/60 border border-white/5 rounded-xl px-4 py-4 text-gray-600 text-xs text-center">
           {players.length === 0
             ? 'No players seeded yet — use "Re-seed Players" to load from Odds API scorer market'
-            : `All players are on ${side === "home" ? awayLabel : homeLabel} side — click their badge to move them here`}
+            : `All players are on ${side === "home" ? awayLabel : homeLabel} side — select them above to move here`}
         </div>
       )}
     </div>
