@@ -453,18 +453,26 @@ export default function EventDetail() {
           const surname = n.split(/\s+/).pop() ?? "";
           if (surname.length >= 4) {
             for (const [oddsNorm, side] of normTeamMap) {
-              if (oddsNorm.includes(surname) || n.includes(oddsNorm.split(/\s+/).pop() ?? ""))
+              if (
+                oddsNorm.includes(surname) ||
+                n.includes(oddsNorm.split(/\s+/).pop() ?? "")
+              )
                 return side;
             }
           }
           return null;
         }
 
-        const toUpdate: { id: string; price: number; team?: "home" | "away" }[] = [];
+        const toUpdate: {
+          id: string;
+          price: number;
+          team?: "home" | "away";
+        }[] = [];
         for (const pl of p) {
           const price = findOddsForPlayer(pl.name);
           const team = findTeamForPlayer(pl.name);
-          if (price !== null) toUpdate.push({ id: pl.id, price, team: team ?? undefined });
+          if (price !== null)
+            toUpdate.push({ id: pl.id, price, team: team ?? undefined });
         }
         if (toUpdate.length === 0) {
           showToast(
@@ -495,6 +503,33 @@ export default function EventDetail() {
         );
         return;
       }
+
+      // ── Fresh seed: INSERT new player rows ───────────────────────────────
+      if (priceMap.size === 0) {
+        showToast("Odds API: no scorer market open for this event yet", "red");
+        return;
+      }
+      const rows = [...priceMap.entries()].map(([playerName, price]) => ({
+        match_id: m.id,
+        external_player_id:
+          "odds_" + norm(playerName).replace(/[^a-z0-9]/g, "_"),
+        name: playerName,
+        team: teamMap.get(playerName) ?? "home",
+        jersey_number: null,
+        position: null,
+        is_starter: true,
+        odds: price,
+      }));
+      await supabase
+        .from("players")
+        .upsert(rows, { onConflict: "match_id,external_player_id" });
+      const { data: fresh } = await supabase
+        .from("players")
+        .select("*")
+        .eq("match_id", m.id)
+        .order("odds");
+      if (fresh) setPlayers(fresh as DbPlayer[]);
+      showToast(`Seeded ${rows.length} players from Odds API`, "green");
     } catch {
       // silent fail
     }
