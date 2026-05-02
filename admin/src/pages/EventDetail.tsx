@@ -78,6 +78,32 @@ function toArr<T>(x: T | T[] | null | undefined): T[] {
   return Array.isArray(x) ? x : [x];
 }
 
+// ── Lineup types ──────────────────────────────────────────────────────────────
+export interface LineupPlayer {
+  num: string;
+  name: string;
+  pos: string;
+}
+export interface TeamLineup {
+  starters: LineupPlayer[];
+  subs: LineupPlayer[];
+}
+export interface MatchLineup {
+  home: TeamLineup;
+  away: TeamLineup;
+}
+
+function parseLineupPlayers(teamNode: any): LineupPlayer[] {
+  if (!teamNode) return [];
+  return toArr(teamNode.player as any)
+    .filter((p: any) => p && p["@name"])
+    .map((p: any) => ({
+      num: p["@number"] ?? p["@num"] ?? "",
+      name: p["@name"] ?? "",
+      pos: p["@pos"] ?? "",
+    }));
+}
+
 // ── Players tab: two sub-tabs (home / away), scorer odds ─────────────────────
 function PlayersTab({
   players,
@@ -99,8 +125,7 @@ function PlayersTab({
   const awayCount = players.filter((p) => p.team === "away").length;
 
   const allSelected =
-    sidePlayers.length > 0 &&
-    sidePlayers.every((p) => selected.has(p.id));
+    sidePlayers.length > 0 && sidePlayers.every((p) => selected.has(p.id));
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -203,9 +228,7 @@ function PlayersTab({
                   key={p.id}
                   onClick={() => toggleSelect(p.id)}
                   className={`cursor-pointer transition-colors ${
-                    selected.has(p.id)
-                      ? "bg-amber-500/10"
-                      : "hover:bg-white/2"
+                    selected.has(p.id) ? "bg-amber-500/10" : "hover:bg-white/2"
                   }`}
                 >
                   <td className="px-3 py-2.5">
@@ -241,9 +264,7 @@ function PlayersTab({
                 disabled={bulkMoving}
                 className="px-3 py-1 rounded text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 transition-colors disabled:opacity-40"
               >
-                {bulkMoving
-                  ? "Moving…"
-                  : `Move to ${destLabel}`}
+                {bulkMoving ? "Moving…" : `Move to ${destLabel}`}
               </button>
             </div>
           )}
@@ -269,6 +290,8 @@ export default function EventDetail() {
   const [goals, setGoals] = useState<DbGoalEvent[]>([]);
   const [tab, setTab] = useState<Tab>("overview");
   const [loading, setLoading] = useState(true);
+  const [lineup, setLineup] = useState<MatchLineup | null>(null);
+  const goalserveDiscoveredId = useRef<string>("0");
 
   // Oracle panel state
   const [goalForm, setGoalForm] = useState({
@@ -384,16 +407,132 @@ export default function EventDetail() {
   async function reseedPlayers(m: DbMatch) {
     if (
       !window.confirm(
-        "Delete all players for this match and re-seed from Odds API?",
+        "Delete all players for this match and re-seed from Goalserve lineup + Odds API?",
       )
     )
       return;
     await supabase.from("players").delete().eq("match_id", m.id);
     setPlayers([]);
-    await fetchNGSOdds(m, []);
+    const lu = await fetchGoalserveLineup(m);
+    await fetchNGSOdds(m, [], lu);
   }
 
-  async function fetchNGSOdds(m: DbMatch, p: DbPlayer[]) {
+  async function fetchGoalserveLineup(m: DbMatch): Promise<MatchLineup | null> {
+    try {
+      const cfg = Object.values(MATCH_REGISTRY).find(
+        (c) => c.matchId === m.external_match_id,
+      );
+      const SPORT_TO_GS_LEAGUE: Record<string, string> = {
+        soccer_epl: "1204",
+        soccer_spain_la_liga: "1399",
+        soccer_italy_serie_a: "1269",
+        soccer_france_ligue_one: "1221",
+        soccer_uefa_champs_league: "1005",
+        soccer_uefa_europa_league: "1007",
+        soccer_uefa_europa_conference_league: "18853",
+      };
+      const STATIC_ID_TO_LEAGUE: Record<string, string> = {
+        "3693262": "1399",
+      };
+      const sport = (m.odds_api_config as Record<string, string>)?.sport ?? "";
+      const gsLeagueFromDb = (m.odds_api_config as Record<string, string>)?.goalserve_league;
+      const staticIdForLeague = m.goalserve_static_id ?? cfg?.goalserveStaticId ?? "0";
+      const league =
+        cfg?.goalserveLeague ??
+        gsLeagueFromDb ??
+        SPORT_TO_GS_LEAGUE[sport] ??
+        STATIC_ID_TO_LEAGUE[staticIdForLeague] ??
+        "1204";
+      let staticId = m.goalserve_static_id ?? cfg?.goalserveStaticId ?? "0";
+
+      if (staticId === "0") {
+        if (goalserveDiscoveredId.current !== "0") {
+          staticId = goalserveDiscoveredId.current;
+        } else {
+          const liveRes = await fetch(`/api/goalserve/soccernew/home?json=1`);
+          if (!liveRes.ok) return null;
+          const liveData = await liveRes.json();
+          const homeWord = m.home_team.split(" ")[0].toLowerCase();
+          const awayWord = m.away_team.split(" ")[0].toLowerCase();
+          const cats: any[] =
+            liveData?.newscores?.category ??
+            liveData?.scores?.category ??
+            (Array.isArray(liveData?.scores) ? liveData.scores : []);
+          let foundMatch: any = null;
+          for (const cat of cats) {
+            const matches: any[] = Array.isArray(cat.match)
+              ? cat.match
+              : cat.match
+                ? [cat.match]
+                : [];
+            foundMatch = matches.find((mm: any) => {
+              const lt = (mm.localteam?.["@name"] ?? mm["@localteam"] ?? "").toLowerCase();
+              const vt = (mm.visitorteam?.["@name"] ?? mm["@visitorteam"] ?? "").toLowerCase();
+              return lt.includes(homeWord) || vt.includes(awayWord);
+            });
+            if (foundMatch) break;
+          }
+          if (!foundMatch) {
+            try {
+              const comRes = await fetch(`/api/goalserve/commentaries/${league}.xml?json=1`);
+              if (comRes.ok) {
+                const comData = await comRes.json();
+                const tourney = comData?.commentaries?.tournament;
+                const comMatches: any[] = tourney
+                  ? Array.isArray(tourney.match) ? tourney.match : tourney.match ? [tourney.match] : []
+                  : [];
+                foundMatch = comMatches.find((mm: any) => {
+                  const lt = (mm.localteam?.["@name"] ?? mm["@localteam"] ?? "").toLowerCase();
+                  const vt = (mm.visitorteam?.["@name"] ?? mm["@visitorteam"] ?? "").toLowerCase();
+                  return lt.includes(homeWord) || vt.includes(awayWord);
+                });
+              }
+            } catch { /* ignore */ }
+          }
+          if (!foundMatch) return null;
+          const sid = foundMatch["@static_id"] ?? foundMatch["@id"] ?? "";
+          if (!sid) return null;
+          goalserveDiscoveredId.current = sid;
+          staticId = sid;
+          supabase.from("matches").update({ goalserve_static_id: sid }).eq("id", m.id).then(() => {});
+        }
+      }
+
+      const res = await fetch(`/api/goalserve/commentaries/match?id=${staticId}&league=${league}&json=1`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const raw: any = data?.commentaries?.tournament?.match ?? data?.commentaries?.match ?? null;
+      if (!raw) return null;
+      const matchNode = Array.isArray(raw) ? raw[0] : raw;
+      const teamsNode = matchNode.lineup ?? matchNode.teams ?? {};
+      const subsNode = matchNode.substitutes ?? {};
+      const statsNode = matchNode.player_stats ?? {};
+      const hasTeams = teamsNode.localteam?.player || teamsNode.visitorteam?.player;
+      let homeStarters: LineupPlayer[], awayStarters: LineupPlayer[], homeSubs: LineupPlayer[], awaySubs: LineupPlayer[];
+      if (hasTeams) {
+        homeStarters = parseLineupPlayers(teamsNode.localteam);
+        awayStarters = parseLineupPlayers(teamsNode.visitorteam);
+        homeSubs = parseLineupPlayers(subsNode.localteam);
+        awaySubs = parseLineupPlayers(subsNode.visitorteam);
+      } else if (statsNode?.localteam?.player) {
+        const allHome = toArr(statsNode.localteam.player).filter((p: any) => p?.["@name"]).map((p: any) => ({ num: p["@number"] ?? "", name: p["@name"] ?? "", pos: p["@pos"] ?? "", isSubst: p["@isSubst"] === "True" }));
+        const allAway = toArr(statsNode.visitorteam?.player).filter((p: any) => p?.["@name"]).map((p: any) => ({ num: p["@number"] ?? "", name: p["@name"] ?? "", pos: p["@pos"] ?? "", isSubst: p["@isSubst"] === "True" }));
+        homeStarters = allHome.filter((p) => !p.isSubst).map(({ num, name, pos }) => ({ num, name, pos }));
+        homeSubs = allHome.filter((p) => p.isSubst).map(({ num, name, pos }) => ({ num, name, pos }));
+        awayStarters = allAway.filter((p) => !p.isSubst).map(({ num, name, pos }) => ({ num, name, pos }));
+        awaySubs = allAway.filter((p) => p.isSubst).map(({ num, name, pos }) => ({ num, name, pos }));
+      } else {
+        homeStarters = []; awayStarters = []; homeSubs = []; awaySubs = [];
+      }
+      const result: MatchLineup = { home: { starters: homeStarters, subs: homeSubs }, away: { starters: awayStarters, subs: awaySubs } };
+      setLineup(result);
+      return result;
+    } catch {
+      return null;
+    }
+  }
+
+  async function fetchNGSOdds(m: DbMatch, p: DbPlayer[], lineupData?: MatchLineup | null) {
     try {
       const sport = resolveOddsApiSport(m);
       const eventId = m.external_match_id;
@@ -560,9 +699,56 @@ export default function EventDetail() {
         return;
       }
 
-      // ── Fresh seed: INSERT new player rows ───────────────────────────────
+      // ── Fresh seed: Goalserve lineup first, then Odds API prices ───────────
+      const lu = lineupData ?? lineup;
+      const hasLineup =
+        lu &&
+        (lu.home.starters.length > 0 || lu.away.starters.length > 0 ||
+          lu.home.subs.length > 0 || lu.away.subs.length > 0);
+
+      if (hasLineup && lu) {
+        // Goalserve is source of truth for team assignment
+        function norm2(s: string): string {
+          return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        }
+        const normPriceMap = new Map<string, number>();
+        for (const [n, price] of priceMap) normPriceMap.set(norm2(n), price);
+        function findOddsForPlayer(name: string): number {
+          const n = norm2(name);
+          if (normPriceMap.has(n)) return normPriceMap.get(n)!;
+          const surname = n.split(/\s+/).pop() ?? "";
+          if (surname.length >= 4) {
+            for (const [oddsNorm, price] of normPriceMap) {
+              if (oddsNorm.includes(surname) || n.includes(oddsNorm.split(/\s+/).pop() ?? "")) return price;
+            }
+          }
+          return 1;
+        }
+        const rows: any[] = [];
+        for (const [side, players] of [["home", [...lu.home.starters, ...lu.home.subs]], ["away", [...lu.away.starters, ...lu.away.subs]]] as [string, LineupPlayer[]][]) {
+          for (const p of players) {
+            rows.push({
+              match_id: m.id,
+              external_player_id: "odds_" + norm2(p.name).replace(/[^a-z0-9]/g, "_"),
+              name: p.name,
+              team: side,
+              jersey_number: p.num || null,
+              position: p.pos || null,
+              is_starter: lu[side as "home" | "away"].starters.includes(p),
+              odds: findOddsForPlayer(p.name),
+            });
+          }
+        }
+        await supabase.from("players").upsert(rows, { onConflict: "match_id,external_player_id" });
+        const { data: fresh } = await supabase.from("players").select("*").eq("match_id", m.id).order("odds");
+        if (fresh) setPlayers(fresh as DbPlayer[]);
+        showToast(`Seeded ${rows.length} players from Goalserve lineup (${rows.filter(r=>r.team==="home").length} home, ${rows.filter(r=>r.team==="away").length} away)`, "green");
+        return;
+      }
+
+      // ── Odds-API-only fallback (no Goalserve lineup available) ───────────
       if (priceMap.size === 0) {
-        showToast("Odds API: no scorer market open for this event yet", "red");
+        showToast("No Goalserve lineup + no Odds API scorer market — cannot seed players", "red");
         return;
       }
       const rows = [...priceMap.entries()].map(([playerName, price]) => ({
@@ -585,7 +771,7 @@ export default function EventDetail() {
         .eq("match_id", m.id)
         .order("odds");
       if (fresh) setPlayers(fresh as DbPlayer[]);
-      showToast(`Seeded ${rows.length} players from Odds API`, "green");
+      showToast(`Seeded ${rows.length} players from Odds API (no lineup — teams may need manual assignment)`, "green");
     } catch {
       // silent fail
     }
