@@ -256,12 +256,12 @@ export default function CreateEvent() {
         for (const mkt of bm.markets ?? []) {
           if (mkt.key !== "player_first_goal_scorer") continue;
           for (const o of mkt.outcomes ?? []) {
-            const pName: string = (o.description ?? o.name ?? "").trim();
+            // Odds API: o.name = player name, o.description = team name (when provided)
+            const pName: string = (o.name ?? "").trim();
             if (!pName || pName.toLowerCase() === "no scorer") continue;
             if (!priceMap.has(pName)) priceMap.set(pName, o.price);
-            // outcome.name ≠ player name → it carries the team name
-            if (!teamMap.has(pName) && o.name && o.name !== pName) {
-              const tNorm = normAccent(o.name as string);
+            if (!teamMap.has(pName) && o.description) {
+              const tNorm = normAccent(o.description as string);
               if (normHome && tNorm.includes(normHome.split(" ")[0]))
                 teamMap.set(pName, "home");
               else if (normAway && tNorm.includes(normAway.split(" ")[0]))

@@ -362,8 +362,7 @@ export default function EventDetail() {
       const data = res.ok ? await res.json() : { bookmakers: [] };
 
       // Collect best price per player across all bookmakers.
-      // Also capture team assignment: some bookmakers set outcome.name = team name
-      // and outcome.description = player name. When they differ we can infer team.
+      // Odds API: o.name = player name, o.description = team name (when provided by bookmaker)
       const priceMap = new Map<string, number>();
       const teamMap = new Map<string, "home" | "away">();
       const normHome = (m.home_team ?? "").toLowerCase();
@@ -374,12 +373,12 @@ export default function EventDetail() {
         );
         if (!mkt) continue;
         for (const o of mkt.outcomes ?? []) {
-          const pName: string = (o.description ?? o.name ?? "").trim();
+          const pName: string = (o.name ?? "").trim();
           if (pName && o.price && pName.toLowerCase() !== "no scorer") {
             if (!priceMap.has(pName)) priceMap.set(pName, o.price);
-            // outcome.name ≠ player name → it's the team name
-            if (!teamMap.has(pName) && o.name && o.name !== pName) {
-              const tNorm = (o.name as string).toLowerCase();
+            // o.description carries the team name when the bookmaker provides it
+            if (!teamMap.has(pName) && o.description) {
+              const tNorm = (o.description as string).toLowerCase();
               if (normHome && tNorm.includes(normHome.split(" ")[0]))
                 teamMap.set(pName, "home");
               else if (normAway && tNorm.includes(normAway.split(" ")[0]))
@@ -445,10 +444,27 @@ export default function EventDetail() {
           return null;
         }
 
-        const toUpdate: { id: string; price: number }[] = [];
+        // Build normalised teamMap for fast lookup
+        const normTeamMap = new Map<string, "home" | "away">();
+        for (const [n, side] of teamMap) normTeamMap.set(norm(n), side);
+        function findTeamForPlayer(dbName: string): "home" | "away" | null {
+          const n = norm(dbName);
+          if (normTeamMap.has(n)) return normTeamMap.get(n)!;
+          const surname = n.split(/\s+/).pop() ?? "";
+          if (surname.length >= 4) {
+            for (const [oddsNorm, side] of normTeamMap) {
+              if (oddsNorm.includes(surname) || n.includes(oddsNorm.split(/\s+/).pop() ?? ""))
+                return side;
+            }
+          }
+          return null;
+        }
+
+        const toUpdate: { id: string; price: number; team?: "home" | "away" }[] = [];
         for (const pl of p) {
           const price = findOddsForPlayer(pl.name);
-          if (price !== null) toUpdate.push({ id: pl.id, price });
+          const team = findTeamForPlayer(pl.name);
+          if (price !== null) toUpdate.push({ id: pl.id, price, team: team ?? undefined });
         }
         if (toUpdate.length === 0) {
           showToast(
@@ -458,8 +474,11 @@ export default function EventDetail() {
           return;
         }
         await Promise.all(
-          toUpdate.map(({ id, price }) =>
-            supabase.from("players").update({ odds: price }).eq("id", id),
+          toUpdate.map(({ id, price, team }) =>
+            supabase
+              .from("players")
+              .update(team ? { odds: price, team } : { odds: price })
+              .eq("id", id),
           ),
         );
         const { data: fresh } = await supabase
@@ -468,8 +487,10 @@ export default function EventDetail() {
           .eq("match_id", m.id)
           .order("odds");
         if (fresh) setPlayers(fresh as DbPlayer[]);
+        const teamFixed = toUpdate.filter((u) => u.team).length;
         showToast(
-          `NGS odds synced — ${toUpdate.length} / ${p.length} players updated`,
+          `NGS odds synced — ${toUpdate.length}/${p.length} players updated` +
+            (teamFixed > 0 ? `, ${teamFixed} teams fixed` : ""),
           "green",
         );
         return;
