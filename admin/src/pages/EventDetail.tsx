@@ -82,22 +82,42 @@ function toArr<T>(x: T | T[] | null | undefined): T[] {
 function PlayersTab({
   players,
   match,
+  setPlayers,
 }: {
   players: DbPlayer[];
   match: DbMatch | null;
+  setPlayers: React.Dispatch<React.SetStateAction<DbPlayer[]>>;
 }) {
   const [side, setSide] = useState<"home" | "away">("home");
+  const [toggling, setToggling] = useState<Set<string>>(new Set());
   const homeLabel = match?.home_team ?? "Home";
   const awayLabel = match?.away_team ?? "Away";
 
-  const oddsPlayers = players.filter((p) => p.team === side);
+  const sidePlayers = players.filter((p) => p.team === side);
+  const homeCount = players.filter((p) => p.team === "home").length;
+  const awayCount = players.filter((p) => p.team === "away").length;
+
+  async function toggleTeam(p: DbPlayer) {
+    const newTeam: "home" | "away" = p.team === "home" ? "away" : "home";
+    setToggling((prev) => new Set(prev).add(p.id));
+    await supabase.from("players").update({ team: newTeam }).eq("id", p.id);
+    setPlayers((prev) =>
+      prev.map((pl) => (pl.id === p.id ? { ...pl, team: newTeam } : pl)),
+    );
+    setToggling((prev) => {
+      const next = new Set(prev);
+      next.delete(p.id);
+      return next;
+    });
+  }
 
   return (
     <div className="space-y-3">
       {/* Sub-tabs */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center">
         {(["home", "away"] as const).map((s) => {
           const label = s === "home" ? homeLabel : awayLabel;
+          const count = s === "home" ? homeCount : awayCount;
           const active = side === s;
           return (
             <button
@@ -111,38 +131,31 @@ function PlayersTab({
                   : "bg-gray-900/40 text-gray-500 border-white/5 hover:text-gray-300"
               }`}
             >
-              {label}
+              {label}{" "}
+              <span className="opacity-50 text-xs font-normal">({count})</span>
             </button>
           );
         })}
+        <span className="text-[10px] text-gray-600 ml-2">
+          ← click team badge to move player
+        </span>
       </div>
 
-      {/* Players table */}
-      {oddsPlayers.length > 0 ? (
+      {sidePlayers.length > 0 ? (
         <div className="bg-gray-900/60 border border-white/5 rounded-xl overflow-hidden">
-          <div className="px-4 py-2 text-[10px] text-gray-500 uppercase tracking-wider border-b border-white/5 bg-gray-950/40 font-semibold">
-            Squad (Odds API)
-          </div>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-[10px] text-gray-600 uppercase tracking-wider border-b border-white/5">
-                <th className="px-4 py-2 font-medium">#</th>
                 <th className="px-4 py-2 font-medium">Name</th>
-                <th className="px-4 py-2 font-medium">Pos</th>
                 <th className="px-4 py-2 font-medium">Odds</th>
+                <th className="px-4 py-2 font-medium text-right">Team ⇄</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/4">
-              {oddsPlayers.map((p) => (
+              {sidePlayers.map((p) => (
                 <tr key={p.id} className="hover:bg-white/2 transition-colors">
-                  <td className="px-4 py-2.5 text-gray-500 font-mono text-xs w-10">
-                    {p.jersey_number ?? "—"}
-                  </td>
                   <td className="px-4 py-2.5 font-medium text-gray-200">
                     {p.name}
-                  </td>
-                  <td className="px-4 py-2.5 text-gray-500 text-xs">
-                    {p.position ?? "—"}
                   </td>
                   <td className="px-4 py-2.5 font-mono font-bold text-green-400">
                     {p.odds > 1 ? (
@@ -151,6 +164,22 @@ function PlayersTab({
                       <span className="text-gray-700">—</span>
                     )}
                   </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <button
+                      onClick={() => toggleTeam(p)}
+                      disabled={toggling.has(p.id)}
+                      title={`Move to ${p.team === "home" ? awayLabel : homeLabel}`}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border transition-all ${
+                        p.team === "home"
+                          ? "bg-blue-500/20 text-blue-300 border-blue-500/30 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/30"
+                          : "bg-red-500/20 text-red-300 border-red-500/30 hover:bg-blue-500/20 hover:text-blue-300 hover:border-blue-500/30"
+                      } ${toggling.has(p.id) ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+                    >
+                      {p.team === "home"
+                        ? homeLabel.split(" ")[0]
+                        : awayLabel.split(" ")[0]}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -158,61 +187,11 @@ function PlayersTab({
         </div>
       ) : (
         <div className="bg-gray-900/60 border border-white/5 rounded-xl px-4 py-4 text-gray-600 text-xs text-center">
-          No players seeded yet — use “Re-seed Players” to load from Odds API
-          scorer market
+          {players.length === 0
+            ? 'No players seeded yet — use "Re-seed Players" to load from Odds API scorer market'
+            : `All players are on ${side === "home" ? awayLabel : homeLabel} side — click their badge to move them here`}
         </div>
       )}
-
-      {/* Scorer odds from Odds API */}
-      {oddsPlayers.length > 0 &&
-        (() => {
-          const withOdds = oddsPlayers.filter((p) => p.odds > 1);
-          return (
-            <div className="bg-gray-900/60 border border-white/5 rounded-xl overflow-hidden">
-              <div className="px-4 py-2 text-[10px] text-gray-500 uppercase tracking-wider border-b border-white/5 bg-gray-950/40 font-semibold">
-                Scorer Odds (Odds API) — {withOdds.length} players
-              </div>
-              {withOdds.length === 0 ? (
-                <div className="px-4 py-4 text-gray-600 text-xs text-center">
-                  No scorer odds available from Odds API (market may not be open
-                  yet)
-                </div>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-[10px] text-gray-600 uppercase tracking-wider border-b border-white/5">
-                      <th className="px-4 py-2 font-medium">#</th>
-                      <th className="px-4 py-2 font-medium">Name</th>
-                      <th className="px-4 py-2 font-medium">Pos</th>
-                      <th className="px-4 py-2 font-medium">Odds</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/4">
-                    {withOdds.map((p) => (
-                      <tr
-                        key={p.id}
-                        className="hover:bg-white/2 transition-colors"
-                      >
-                        <td className="px-4 py-2.5 text-gray-500 font-mono text-xs w-10">
-                          {p.jersey_number ?? "—"}
-                        </td>
-                        <td className="px-4 py-2.5 font-medium text-gray-200">
-                          {p.name}
-                        </td>
-                        <td className="px-4 py-2.5 text-gray-500 text-xs">
-                          {p.position ?? "—"}
-                        </td>
-                        <td className="px-4 py-2.5 font-mono font-bold text-green-400">
-                          {p.odds}×
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          );
-        })()}
     </div>
   );
 }
@@ -1247,7 +1226,7 @@ export default function EventDetail() {
               ↺ Re-seed Players
             </button>
           </div>
-          <PlayersTab players={players} match={match} />
+          <PlayersTab players={players} match={match} setPlayers={setPlayers} />
         </div>
       )}
 
