@@ -362,28 +362,42 @@ export default function EventDetail() {
       const data = res.ok ? await res.json() : { bookmakers: [] };
 
       // Collect best price per player across all bookmakers.
-      // Odds API: o.name = player name, o.description = team name (when provided by bookmaker)
+      // Odds API bookmakers use different formats:
+      //   Format A: o.description = player name, o.name = team name (or "Yes")
+      //   Format B: o.name = player name, o.description = team name
+      // Detect which field is the player name by checking what looks like a team/generic label.
       const priceMap = new Map<string, number>();
       const teamMap = new Map<string, "home" | "away">();
       const normHome = (m.home_team ?? "").toLowerCase();
       const normAway = (m.away_team ?? "").toLowerCase();
+      const genericWords = new Set(["yes", "no", "no scorer"]);
+      function isTeamOrGeneric(s: string): boolean {
+        const lower = s.toLowerCase();
+        if (genericWords.has(lower)) return true;
+        if (normHome && lower.includes(normHome.split(" ")[0])) return true;
+        if (normAway && lower.includes(normAway.split(" ")[0])) return true;
+        return false;
+      }
       for (const bm of data.bookmakers ?? []) {
         const mkt = (bm.markets ?? []).find(
           (mk: { key: string }) => mk.key === "player_first_goal_scorer",
         );
         if (!mkt) continue;
         for (const o of mkt.outcomes ?? []) {
-          const pName: string = (o.name ?? "").trim();
-          if (pName && o.price && pName.toLowerCase() !== "no scorer") {
-            if (!priceMap.has(pName)) priceMap.set(pName, o.price);
-            // o.description carries the team name when the bookmaker provides it
-            if (!teamMap.has(pName) && o.description) {
-              const tNorm = (o.description as string).toLowerCase();
-              if (normHome && tNorm.includes(normHome.split(" ")[0]))
-                teamMap.set(pName, "home");
-              else if (normAway && tNorm.includes(normAway.split(" ")[0]))
-                teamMap.set(pName, "away");
-            }
+          const oName: string = (o.name ?? "").trim();
+          const oDesc: string = (o.description ?? "").trim();
+          // Determine which field is the player name
+          const nameIsGeneric = isTeamOrGeneric(oName);
+          const pName = nameIsGeneric ? oDesc : oName;
+          const teamHint = nameIsGeneric ? oName : oDesc;
+          if (!pName || pName.toLowerCase() === "no scorer") continue;
+          if (!priceMap.has(pName) && o.price) priceMap.set(pName, o.price);
+          if (!teamMap.has(pName) && teamHint && !isTeamOrGeneric(pName)) {
+            const tNorm = teamHint.toLowerCase();
+            if (normHome && tNorm.includes(normHome.split(" ")[0]))
+              teamMap.set(pName, "home");
+            else if (normAway && tNorm.includes(normAway.split(" ")[0]))
+              teamMap.set(pName, "away");
           }
         }
       }

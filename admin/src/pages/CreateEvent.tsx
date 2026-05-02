@@ -256,12 +256,26 @@ export default function CreateEvent() {
         for (const mkt of bm.markets ?? []) {
           if (mkt.key !== "player_first_goal_scorer") continue;
           for (const o of mkt.outcomes ?? []) {
-            // Odds API: o.name = player name, o.description = team name (when provided)
-            const pName: string = (o.name ?? "").trim();
+            // Bookmakers use different formats:
+            //   Format A: o.description = player, o.name = team or "Yes"
+            //   Format B: o.name = player, o.description = team
+            const oName: string = (o.name ?? "").trim();
+            const oDesc: string = (o.description ?? "").trim();
+            const genericWords = new Set(["yes", "no", "no scorer"]);
+            function isTeamOrGeneric(s: string): boolean {
+              const lower = s.toLowerCase();
+              if (genericWords.has(lower)) return true;
+              if (normHome && lower.includes(normHome.split(" ")[0])) return true;
+              if (normAway && lower.includes(normAway.split(" ")[0])) return true;
+              return false;
+            }
+            const nameIsGeneric = isTeamOrGeneric(oName);
+            const pName = nameIsGeneric ? oDesc : oName;
+            const teamHint = nameIsGeneric ? oName : oDesc;
             if (!pName || pName.toLowerCase() === "no scorer") continue;
-            if (!priceMap.has(pName)) priceMap.set(pName, o.price);
-            if (!teamMap.has(pName) && o.description) {
-              const tNorm = normAccent(o.description as string);
+            if (!priceMap.has(pName) && o.price) priceMap.set(pName, o.price);
+            if (!teamMap.has(pName) && teamHint) {
+              const tNorm = normAccent(teamHint);
               if (normHome && tNorm.includes(normHome.split(" ")[0]))
                 teamMap.set(pName, "home");
               else if (normAway && tNorm.includes(normAway.split(" ")[0]))
