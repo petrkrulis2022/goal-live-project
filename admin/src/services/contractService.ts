@@ -42,6 +42,38 @@ const ERC20_ABI = [
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+const SEPOLIA_CHAIN_ID = "0xaa36a7"; // 11155111
+
+async function ensureSepolia(): Promise<void> {
+  if (!window.ethereum) throw new Error("MetaMask not detected.");
+  const chainId = await window.ethereum.request({ method: "eth_chainId" });
+  if (chainId === SEPOLIA_CHAIN_ID) return;
+  try {
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: SEPOLIA_CHAIN_ID }],
+    });
+  } catch (err: unknown) {
+    // 4902 = chain not added yet
+    if ((err as { code?: number }).code === 4902) {
+      await window.ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [
+          {
+            chainId: SEPOLIA_CHAIN_ID,
+            chainName: "Sepolia Testnet",
+            nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+            rpcUrls: ["https://sepolia.drpc.org"],
+            blockExplorerUrls: ["https://sepolia.etherscan.io"],
+          },
+        ],
+      });
+    } else {
+      throw err;
+    }
+  }
+}
+
 function getProvider(): ethers.BrowserProvider {
   if (!window.ethereum)
     throw new Error("MetaMask not detected. Please install MetaMask.");
@@ -49,6 +81,7 @@ function getProvider(): ethers.BrowserProvider {
 }
 
 async function getSigner(): Promise<ethers.JsonRpcSigner> {
+  await ensureSepolia();
   return getProvider().getSigner();
 }
 

@@ -65,7 +65,7 @@ interface BetRow {
   id: string;
   bettor_wallet: string;
   bet_type: "NEXT_GOAL_SCORER" | "MATCH_WINNER" | "EXACT_GOALS" | "NEXT_CORNER";
-  current_player_id: string; // Goalserve integer string for NGS; numeric string for EXACT_GOALS (goal count target)
+  current_player_id: string; // For NGS: odds_xxx synthetic ID (from Odds API seeding); for EXACT_GOALS: numeric goal count target
   outcome: "home" | "away" | "draw" | null; // for MATCH_WINNER
   current_amount: string | number;
   total_penalties: string | number;
@@ -204,9 +204,21 @@ Deno.serve(async (req: Request) => {
         spMatch.homeContestantId,
       );
       // Own goals are excluded — credit goes to the opposing team, not the scorer
+      // Each scorer gets TWO IDs in the set:
+      //   1. SP opaque ID  (e.g. "5aw3p3wnz93mshc3ivspwfgxs") — for on-chain
+      //   2. Synthetic odds_xxx ID derived from SP playerName — matches the
+      //      external_player_id format used when players are seeded from Odds API
+      function normForId(s: string): string {
+        return s
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]/g, "_");
+      }
       goal_scorer_player_ids = spEvents.goals
         .filter((g) => !g.isOwnGoal)
-        .map((g) => g.playerId);
+        .flatMap((g) => [g.playerId, `odds_${normForId(g.playerName)}`]);
 
       console.log(
         `[settle-match] auto-fetch (StatsPerform): ${match.home_team} ${home_goals}-${away_goals} ${match.away_team}, ` +
@@ -228,8 +240,8 @@ Deno.serve(async (req: Request) => {
       : [];
 
     // Reject UUID-like IDs (those cause on-chain BigInt issues) but allow:
-    //  - Numeric Goalserve IDs (e.g. "123456")    → on-chain + Supabase matching
-    //  - Synthetic gs_xxx IDs (e.g. "gs_budimir") → Supabase matching only
+    //  - Numeric SP IDs (opaque alphanum, no dashes)  → on-chain + Supabase matching
+    //  - Synthetic odds_xxx IDs (e.g. "odds_erling_haaland") → Supabase matching only
     for (const id of scorerIds) {
       if (id.includes("-")) {
         return json(
@@ -239,9 +251,10 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // On-chain: only send numeric IDs (contract expects uint256)
+    // On-chain: only send purely numeric IDs (contract expects uint256).
+    // SP IDs are opaque alphanumeric strings → excluded. odds_xxx IDs → excluded.
     const onChainScorerIds = scorerIds.filter((id) => /^\d+$/.test(id));
-    // Supabase matching: use all IDs (numeric + gs_xxx synthetic IDs)
+    // Supabase matching: use all IDs (SP opaque + odds_xxx synthetic)
     const scorerSet = new Set<string>(scorerIds);
     const totalGoals = home_goals + away_goals;
 

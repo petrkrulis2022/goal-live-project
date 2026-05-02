@@ -6,26 +6,6 @@ import { contractService } from "../services/contractService";
 // ─── Odds API helpers ─────────────────────────────────────────────────────────
 const ODDS_API_KEY = "8d90e1a5fa443922e69844377834c0ab";
 
-/** Goalserve league ID for each Odds API sport_key */
-const SPORT_TO_GS_LEAGUE: Record<string, string> = {
-  soccer_epl: "1204",
-  soccer_spain_la_liga: "1399",
-  soccer_italy_serie_a: "1269",
-  soccer_france_ligue_one: "1221",
-  soccer_uefa_champs_league: "1005",
-  soccer_uefa_europa_league: "1007",
-  soccer_uefa_europa_conference_league: "18853",
-};
-
-const GOALSERVE_LIVE_LINEUPS_SUPPORTED = new Set<string>([
-  "soccer_epl",
-  "soccer_spain_la_liga",
-  "soccer_italy_serie_a",
-  "soccer_france_ligue_one",
-  "soccer_uefa_champs_league",
-  "soccer_uefa_europa_league",
-]);
-
 const SPORT_LABELS: Record<string, string> = {
   soccer_epl: "Premier League",
   soccer_spain_la_liga: "La Liga",
@@ -90,8 +70,6 @@ function kickoffLabel(utcIso: string): string {
 
 function buildViewerUrl(evt: OddsEvent): string {
   const p = new URLSearchParams({
-    goalserveLeague: SPORT_TO_GS_LEAGUE[evt.sport_key] ?? "0",
-    goalserveStaticId: "0",
     oddsEventId: evt.id,
     sport: evt.sport_key,
     home: evt.home_team,
@@ -128,7 +106,7 @@ const EMPTY: FormState = {
 type Step =
   | { id: "idle" }
   | { id: "db"; label: "Saving event to database…" }
-  | { id: "seed"; label: "Fetching lineup & seeding players…" }
+  | { id: "seed"; label: "Seeding players from Odds API…" }
   | { id: "deploy"; label: "Deploying pool contract… (confirm in MetaMask)" }
   | { id: "fund"; label: "Funding pool… (confirm in MetaMask)" }
   | { id: "done"; contractAddress: string; txHash: string };
@@ -245,288 +223,119 @@ export default function CreateEvent() {
     }));
   }
 
-  // ── Auto-seed players: Goalserve lineup + Odds API odds ──────────────────
-  async function autoSeedPlayers(
+  // ── Seed players from Odds API scorer market (primary path) ──────────────
+  async function seedPlayersFromOddsApi(
     matchDbId: string,
     homeTeam: string,
     awayTeam: string,
     sportKey: string,
-  ): Promise<string> {
-    const gsLeague = SPORT_TO_GS_LEAGUE[sportKey] ?? "1204";
-
-    // 1. Discover Goalserve static_id from live feed
-    let staticId = "";
+    externalMatchId: string,
+  ): Promise<number> {
     try {
-      const liveRes = await fetch(`/api/goalserve/soccernew/home?json=1`);
-      if (liveRes.ok) {
-        const liveData = await liveRes.json();
-        const homeWord = homeTeam.split(" ")[0].toLowerCase();
-        const awayWord = awayTeam.split(" ")[0].toLowerCase();
-        const cats: any[] =
-          liveData?.newscores?.category ??
-          liveData?.scores?.category ??
-          (Array.isArray(liveData?.scores) ? liveData.scores : []);
-        for (const cat of cats) {
-          const matches: any[] = Array.isArray(cat.match)
-            ? cat.match
-            : cat.match
-              ? [cat.match]
-              : [];
-          const found = matches.find((mm: any) => {
-            const lt = (
-              mm.localteam?.["@name"] ??
-              mm["@localteam"] ??
-              ""
-            ).toLowerCase();
-            const vt = (
-              mm.visitorteam?.["@name"] ??
-              mm["@visitorteam"] ??
-              ""
-            ).toLowerCase();
-            return lt.includes(homeWord) || vt.includes(awayWord);
-          });
-          if (found) {
-            staticId = found["@static_id"] ?? found["@id"] ?? "";
-            break;
-          }
-        }
+      const res = await fetch(
+        `/api/odds/sports/${sportKey}/events/${externalMatchId}/odds?apiKey=${ODDS_API_KEY}&markets=player_first_goal_scorer&regions=us,uk,eu&oddsFormat=decimal`,
+      );
+      if (!res.ok) return 0;
+      const data = await res.json();
+      if (data.message) return 0; // quota / API error
+
+      function normAccent(s: string): string {
+        return s
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .trim();
       }
-    } catch {
-      // continue — will try commentaries feed
-    }
 
-    // 2. If not found in live feed, try commentaries league feed
-    if (!staticId) {
-      try {
-        const comRes = await fetch(
-          `/api/goalserve/commentaries/${gsLeague}.xml?json=1`,
-        );
-        if (comRes.ok) {
-          const comData = await comRes.json();
-          const homeWord = homeTeam.split(" ")[0].toLowerCase();
-          const awayWord = awayTeam.split(" ")[0].toLowerCase();
-          const tourney = comData?.commentaries?.tournament;
-          const matchList: any[] = tourney
-            ? Array.isArray(tourney.match)
-              ? tourney.match
-              : tourney.match
-                ? [tourney.match]
-                : []
-            : [];
-          const found = matchList.find((mm: any) => {
-            const lt = (
-              mm.localteam?.["@name"] ??
-              mm["@localteam"] ??
-              ""
-            ).toLowerCase();
-            const vt = (
-              mm.visitorteam?.["@name"] ??
-              mm["@visitorteam"] ??
-              ""
-            ).toLowerCase();
-            return lt.includes(homeWord) || vt.includes(awayWord);
-          });
-          if (found) {
-            staticId = found["@static_id"] ?? found["@id"] ?? "";
-          }
-        }
-      } catch {
-        // ignore
-      }
-    }
+      const priceMap = new Map<string, number>();
+      const teamMap = new Map<string, "home" | "away">();
+      const normHome = normAccent(homeTeam);
+      const normAway = normAccent(awayTeam);
 
-    if (!staticId) return ""; // can't seed without lineup
-
-    // 3. Fetch full lineup
-    const lineupRes = await fetch(
-      `/api/goalserve/commentaries/match?id=${staticId}&league=${gsLeague}&json=1`,
-    );
-    if (!lineupRes.ok) return "";
-    const lineupData = await lineupRes.json();
-    const raw =
-      lineupData?.commentaries?.tournament?.match ??
-      lineupData?.commentaries?.match ??
-      null;
-    if (!raw) return "";
-    const matchNode = Array.isArray(raw) ? raw[0] : raw;
-
-    const teamsNode = matchNode.lineup ?? matchNode.teams ?? {};
-    const subsNode = matchNode.substitutes ?? {};
-
-    function normAccent(s: string): string {
-      return s
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase()
-        .trim();
-    }
-
-    function parsePlayers(
-      node: any,
-    ): { num: string; name: string; pos: string }[] {
-      if (!node?.player) return [];
-      const arr = Array.isArray(node.player) ? node.player : [node.player];
-      return arr
-        .filter((p: any) => p?.["@name"])
-        .map((p: any) => ({
-          num: p["@number"] ?? "",
-          name: p["@name"] ?? "",
-          pos: p["@pos"] ?? "",
-        }));
-    }
-
-    type SquadEntry = {
-      name: string;
-      num: string;
-      pos: string;
-      team: "home" | "away";
-      isStarter: boolean;
-    };
-
-    const squad: SquadEntry[] = [
-      ...parsePlayers(teamsNode.localteam).map((p) => ({
-        ...p,
-        team: "home" as const,
-        isStarter: true,
-      })),
-      ...parsePlayers(subsNode.localteam).map((p) => ({
-        ...p,
-        team: "home" as const,
-        isStarter: false,
-      })),
-      ...parsePlayers(teamsNode.visitorteam).map((p) => ({
-        ...p,
-        team: "away" as const,
-        isStarter: true,
-      })),
-      ...parsePlayers(subsNode.visitorteam).map((p) => ({
-        ...p,
-        team: "away" as const,
-        isStarter: false,
-      })),
-    ];
-
-    if (squad.length === 0) {
-      // ── Odds-API-direct fallback ──────────────────────────────────────────
-      // Goalserve has no lineup (e.g. UECL league 18853 has live_lineups=False).
-      // Seed players directly from the Odds API scorer market so the match has
-      // at least odds data. Names match exactly — no fuzzy matching needed.
-      if (priceMap.size === 0) return "";
-
-      // Try to figure out team from outcome.name (some bookmakers set it to team name)
-      const teamMapCreate = new Map<string, "home" | "away">();
-      const normHC = normAccent(homeName);
-      const normAC = normAccent(awayName);
-      for (const bm of (oddsRaw as any)?.bookmakers ?? []) {
+      for (const bm of data.bookmakers ?? []) {
         for (const mkt of bm.markets ?? []) {
           if (mkt.key !== "player_first_goal_scorer") continue;
           for (const o of mkt.outcomes ?? []) {
             const pName: string = (o.description ?? o.name ?? "").trim();
             if (!pName || pName.toLowerCase() === "no scorer") continue;
-            if (teamMapCreate.has(pName)) continue;
-            if (o.name && o.name !== pName) {
-              const tNorm = normAccent(o.name);
-              if (normHC && tNorm.includes(normHC.split(" ")[0]))
-                teamMapCreate.set(pName, "home");
-              else if (normAC && tNorm.includes(normAC.split(" ")[0]))
-                teamMapCreate.set(pName, "away");
+            if (!priceMap.has(pName)) priceMap.set(pName, o.price);
+            // outcome.name ≠ player name → it carries the team name
+            if (!teamMap.has(pName) && o.name && o.name !== pName) {
+              const tNorm = normAccent(o.name as string);
+              if (normHome && tNorm.includes(normHome.split(" ")[0]))
+                teamMap.set(pName, "home");
+              else if (normAway && tNorm.includes(normAway.split(" ")[0]))
+                teamMap.set(pName, "away");
             }
           }
         }
       }
-      const oddsRows = [...priceMap.entries()].map(([playerName, price]) => ({
+
+      if (priceMap.size === 0) return 0;
+
+      const rows = [...priceMap.entries()].map(([playerName, price]) => ({
         match_id: matchDbId,
         external_player_id:
           "odds_" + normAccent(playerName).replace(/[^a-z0-9]/g, "_"),
         name: playerName,
-        team: teamMapCreate.get(playerName) ?? "home",
+        team: teamMap.get(playerName) ?? "home",
         jersey_number: null,
         position: null,
         is_starter: true,
         odds: price,
       }));
+
       await supabase
         .from("players")
-        .upsert(oddsRows, { onConflict: "match_id,external_player_id" });
-      // No static_id from Goalserve — return a sentinel so the caller
-      // knows seeding happened but GS discovery failed.
-      return "odds_seeded";
-    }
-
-    // 4. Fetch Odds API scorer odds
-    const priceMap = new Map<string, number>();
-    try {
-      const oddsRes = await fetch(
-        `/api/odds/sports/${sportKey}/events/${form.externalMatchId}/odds?apiKey=${ODDS_API_KEY}&markets=player_first_goal_scorer&regions=us,uk,eu&oddsFormat=decimal`,
-      );
-      if (oddsRes.ok) {
-        const oddsData = await oddsRes.json();
-        for (const bm of oddsData.bookmakers ?? []) {
-          for (const mkt of bm.markets ?? []) {
-            if (mkt.key !== "player_first_goal_scorer") continue;
-            for (const o of mkt.outcomes ?? []) {
-              const n = (o.description ?? o.name ?? "").trim();
-              if (n && o.price && n.toLowerCase() !== "no scorer") {
-                if (!priceMap.has(n)) priceMap.set(n, o.price);
-              }
-            }
-          }
-        }
-      }
+        .upsert(rows, { onConflict: "match_id,external_player_id" });
+      return rows.length;
     } catch {
-      // odds optional — seed without them
+      return 0;
     }
+  }
 
-    // Match odds to each Goalserve player by normalised name/surname
-    function oddsFor(gsName: string): number {
-      const n = normAccent(gsName);
-      const words = n.split(/\s+/);
-      const surname = words[words.length - 1];
-      const firstName = words[0];
-      // 1. exact normalised full name
-      for (const [oddsName, price] of priceMap) {
-        const on = normAccent(oddsName);
-        if (on === n) return price;
+  // ── Look up StatsPerform match ID by fuzzy team-name matching ─────────────
+  async function lookupSpMatchId(
+    homeTeam: string,
+    awayTeam: string,
+  ): Promise<string | null> {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+      const res = await fetch(`${supabaseUrl}/functions/v1/sp-fixtures`, {
+        headers: { Authorization: `Bearer ${anonKey}` },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!res.ok) return null;
+      const fixtures: Array<{ id: string; home: string; away: string }> =
+        await res.json();
+      if (!Array.isArray(fixtures)) return null;
+
+      function normName(s: string): string {
+        return s
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .trim();
       }
-      // 2. surname match
-      if (surname.length >= 4) {
-        for (const [oddsName, price] of priceMap) {
-          const on = normAccent(oddsName);
-          const os = on.split(/\s+/).pop() ?? "";
-          if (os === surname) return price;
-          if (on.includes(surname) || n.includes(os)) return price;
-        }
-      }
-      // 3. first-name prefix match (handles nicknames: Savinho ↔ Savio…)
-      if (firstName.length >= 4) {
-        for (const [oddsName, price] of priceMap) {
-          const oddsFirst = normAccent(oddsName).split(/\s+/)[0];
-          if (
-            oddsFirst.startsWith(firstName.slice(0, 5)) ||
-            firstName.startsWith(oddsFirst.slice(0, 5))
-          )
-            return price;
-        }
-      }
-      return 1; // NOT NULL DEFAULT 1 sentinel
+
+      const normHome = normName(homeTeam);
+      const normAway = normName(awayTeam);
+
+      const match = fixtures.find((f) => {
+        const fHome = normName(f.home);
+        const fAway = normName(f.away);
+        if (fHome === normHome && fAway === normAway) return true;
+        // first-word match handles "Manchester City" ↔ "Man City" partially
+        const homeWord = normHome.split(" ")[0];
+        const awayWord = normAway.split(" ")[0];
+        return fHome.startsWith(homeWord) && fAway.startsWith(awayWord);
+      });
+
+      return match?.id ?? null;
+    } catch {
+      return null;
     }
-
-    // 5. Upsert all squad players
-    const rows = squad.map(({ name, num, pos, team, isStarter }) => ({
-      match_id: matchDbId,
-      external_player_id: "gs_" + name.toLowerCase().replace(/[^a-z0-9]/g, "_"),
-      name,
-      team,
-      jersey_number: num ? parseInt(num, 10) || null : null,
-      position: pos || null,
-      is_starter: isStarter,
-      odds: oddsFor(name),
-    }));
-
-    await supabase
-      .from("players")
-      .upsert(rows, { onConflict: "match_id,external_player_id" });
-    return staticId;
   }
 
   const set = (k: keyof FormState, v: string | boolean) =>
@@ -549,7 +358,6 @@ export default function CreateEvent() {
       // ── Step 1: Save event to Supabase ─────────────────────────────────────
       setStep({ id: "db", label: "Saving event to database…" });
       const sportKey = selectedEvent?.sport_key ?? "soccer_epl";
-      const gsLeague = SPORT_TO_GS_LEAGUE[sportKey] ?? "1204";
       const { error: dbErr, data: match } = await supabase
         .from("matches")
         .insert({
@@ -565,43 +373,38 @@ export default function CreateEvent() {
           score_home: 0,
           score_away: 0,
           half: 1,
-          odds_api_config: { sport: sportKey, goalserve_league: gsLeague },
+          odds_api_config: { sport: sportKey },
         })
         .select()
         .single();
 
       if (dbErr) throw new Error(dbErr.message);
 
-      // ── Step 1.5: Auto-seed players from Goalserve + Odds API ─────────────
-      setStep({ id: "seed", label: "Fetching lineup & seeding players…" });
-      const gsStaticId = await autoSeedPlayers(
+      // ── Step 1.5: Seed players from Odds API scorer market ─────────────────
+      setStep({ id: "seed", label: "Seeding players from Odds API…" });
+      const seededCount = await seedPlayersFromOddsApi(
         match.id,
         form.homeTeam,
         form.awayTeam,
-        selectedEvent?.sport_key ?? "soccer_epl",
-      ).catch(() => "");
+        sportKey,
+        form.externalMatchId,
+      ).catch(() => 0);
 
-      if (!gsStaticId) {
-        const selectedSport = selectedEvent?.sport_key ?? "soccer_epl";
-        if (!GOALSERVE_LIVE_LINEUPS_SUPPORTED.has(selectedSport)) {
-          setSeedWarning(
-            "Goalserve does not currently expose live lineups/stats for this competition, so players could not be auto-seeded before kickoff.",
-          );
-        } else {
-          setSeedWarning(
-            "Goalserve lineup discovery failed for this match, so players were not auto-seeded. The event was still created and you can retry seeding later.",
-          );
-        }
+      if (seededCount === 0) {
+        setSeedWarning(
+          'No scorer odds found yet for this match. Players can be seeded later using "Re-seed Players" on the match page once the market opens.',
+        );
       }
 
-      // Persist the discovered Goalserve static_id (and ensure odds_api_config is current)
-      if (gsStaticId) {
+      // ── Step 1.6: Look up StatsPerform match ID (needed for live tracking) ─
+      const spMatchId = await lookupSpMatchId(
+        form.homeTeam,
+        form.awayTeam,
+      ).catch(() => null);
+      if (spMatchId) {
         await supabase
           .from("matches")
-          .update({
-            goalserve_static_id: gsStaticId,
-            odds_api_config: { sport: sportKey, goalserve_league: gsLeague },
-          })
+          .update({ statsperform_match_id: spMatchId })
           .eq("id", match.id);
       }
 
