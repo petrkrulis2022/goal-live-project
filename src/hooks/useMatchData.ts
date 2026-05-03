@@ -89,6 +89,7 @@ export function useMatchData(matchKey?: string) {
           playerId,
           minute,
           gw,
+          playerName,
         );
         window.dispatchEvent(
           new CustomEvent("gl:goalScored", {

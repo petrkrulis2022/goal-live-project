@@ -222,7 +222,11 @@ export const GoalWinCelebration: React.FC<GoalWinCelebrationProps> = ({
                   className="text-5xl font-black text-white mb-2"
                   style={{ textShadow: "0 4px 12px rgba(0,0,0,0.5)" }}
                 >
-                  {betType === "goal" ? `GOAL! ${icon}` : `CORNER! ${icon}`}
+                  {noBet
+                    ? betType === "goal"
+                      ? `GOAL! ${icon}`
+                      : `CORNER! ${icon}`
+                    : "YOU LOST!!!"}
                 </p>
                 <p
                   className="text-lg font-bold mt-4"
@@ -238,13 +242,14 @@ export const GoalWinCelebration: React.FC<GoalWinCelebrationProps> = ({
                       className="text-base font-semibold mt-3"
                       style={{ color: "rgba(252,165,165,0.95)" }}
                     >
-                      Your <strong>{betPlayerName}</strong> bet is locked 🔒
+                      Your <strong>{betPlayerName}</strong> stake is forfeited
+                      to the pool
                     </p>
                     <p
                       className="text-sm mt-2"
                       style={{ color: "rgba(254,202,202,0.65)" }}
                     >
-                      Place a new bet to stay in the game
+                      Place a new bet with a new amount for the next goal
                     </p>
                   </>
                 )}

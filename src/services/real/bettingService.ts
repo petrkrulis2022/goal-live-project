@@ -269,12 +269,9 @@ class SupabaseBettingService implements IBettingService {
     const provisional = bets
       .filter((b) => b.status === "provisional_win")
       .reduce((s, b) => s + b.current_amount * b.odds, 0);
-    // Locked = active bets + provisional_loss bets (stake stays locked until end-of-game settlement)
-    const provisionalLoss = bets.filter((b) => b.status === "provisional_loss");
-    const locked = [...active, ...provisionalLoss].reduce(
-      (s, b) => s + b.current_amount,
-      0,
-    );
+    // Immediate UX-forfeit: once a bet is provisional_loss, stake is no longer
+    // considered locked funds for this game, even though FT settlement still finalizes statuses.
+    const locked = active.reduce((s, b) => s + b.current_amount, 0);
     // bets are already filtered per-match, so lockedThisGame === locked
     const lockedThisGame = locked;
     const slashedThisGame = bets.reduce((s, b) => s + b.total_penalties, 0);
@@ -306,6 +303,7 @@ class SupabaseBettingService implements IBettingService {
     scoringPlayerId: string,
     minute: number,
     goalWindow: number,
+    scoringPlayerName?: string,
   ): Promise<void> {
     // Resolve match uuid
     const { data: match } = await supabase
@@ -314,6 +312,26 @@ class SupabaseBettingService implements IBettingService {
       .eq("external_match_id", matchId)
       .single();
     if (!match) return;
+
+    // Build all candidate IDs for this scorer so we match regardless of seeding source:
+    //   raw SP ID            e.g. "5aw3p3wnz93mshc3ivspwfgxs"  (goal_events.player_id)
+    //   sp_xxx               e.g. "sp_5aw3p3wnz93mshc3ivspwfgxs" (SP lineup seeded)
+    //   odds_xxx             e.g. "odds_matheus_cunha"            (Odds API seeded)
+    function normForId(s: string): string {
+      return s
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]/g, "_");
+    }
+    const candidateIds = new Set<string>([
+      scoringPlayerId,
+      `sp_${scoringPlayerId}`,
+    ]);
+    if (scoringPlayerName) {
+      candidateIds.add(`odds_${normForId(scoringPlayerName)}`);
+    }
 
     // Get all active NGS bets for this match
     const { data: bets } = await supabase
@@ -328,7 +346,7 @@ class SupabaseBettingService implements IBettingService {
       const inWindow =
         (bet.goal_window_at_placement ?? 0) <= minute &&
         minute <= (bet.goal_window_at_placement ?? 0) + goalWindow;
-      const isWinner = bet.current_player_id === scoringPlayerId && inWindow;
+      const isWinner = candidateIds.has(bet.current_player_id) && inWindow;
       await supabase
         .from("bets")
         .update({ status: isWinner ? "provisional_win" : "provisional_loss" })

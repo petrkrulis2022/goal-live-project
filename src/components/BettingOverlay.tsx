@@ -295,27 +295,6 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     return () => window.removeEventListener("gl:goalScored", handler);
   }, []);
 
-  // Show goal notification immediately — regardless of whether user has a bet.
-  // If the user DOES have an active NGS bet, the bet-transition effect below
-  // will overwrite this modal with the proper won/lost result ~1s later.
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const { scorerPlayerName } = (
-        e as CustomEvent<{ scorerPlayerId: string; scorerPlayerName: string }>
-      ).detail;
-      setModal({
-        type: "goalResult",
-        won: false,
-        noBet: true,
-        scorerName: scorerPlayerName ?? "A player",
-        betPlayerName: "",
-        betType: "goal",
-      });
-    };
-    window.addEventListener("gl:goalScored", handler);
-    return () => window.removeEventListener("gl:goalScored", handler);
-  }, []);
-
   // Show corner notification immediately — regardless of whether user has a bet.
   // If the user DOES have an active NEXT_CORNER bet, the bet-transition effect
   // will overwrite this modal with the proper won/lost result ~1s later.

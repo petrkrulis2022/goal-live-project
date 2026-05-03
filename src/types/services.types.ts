@@ -97,6 +97,7 @@ export interface IBettingService {
     scoringPlayerId: string,
     minute: number,
     goalWindow: number,
+    scoringPlayerName?: string,
   ): Promise<void>;
   /** Called at match end: converts provisional → final, settles MATCH_WINNER */
   settleBets(
