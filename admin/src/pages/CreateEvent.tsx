@@ -53,6 +53,24 @@ interface OddsEvent {
   commence_time: string;
 }
 
+interface SpFixture {
+  id: string;
+  home: string;
+  away: string;
+  date: string;
+  time: string;
+  competition: string;
+  competitionCode: string;
+}
+
+function normName(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
 function formatLocalDateTime(utcIso: string): string {
   const d = new Date(utcIso);
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -63,9 +81,7 @@ function kickoffLabel(utcIso: string): string {
   const d = new Date(utcIso);
   const pad = (n: number) => String(n).padStart(2, "0");
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  // CET = UTC+1 (valid for Feb/March)
-  const cetH = (d.getUTCHours() + 1) % 24;
-  return `${days[d.getDay()]} ${pad(d.getDate())}/${pad(d.getMonth() + 1)} · ${pad(cetH)}:${pad(d.getUTCMinutes())} CET`;
+  return `${days[d.getDay()]} ${pad(d.getDate())}/${pad(d.getMonth() + 1)} · ${pad(d.getHours())}:${pad(d.getMinutes())} local`;
 }
 
 function buildViewerUrl(evt: OddsEvent): string {
@@ -118,7 +134,7 @@ export default function CreateEvent() {
   const [error, setError] = useState<string | null>(null);
   const [seedWarning, setSeedWarning] = useState<string | null>(null);
 
-  // ── Tonight's Europa matches ───────────────────────────────────────────────
+  // ── Premier League fixtures picker ────────────────────────────────────────
   const [tonightEvents, setTonightEvents] = useState<OddsEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [eventsError, setEventsError] = useState<string | null>(null);
@@ -154,45 +170,41 @@ export default function CreateEvent() {
         return;
       }
       try {
-        const sports = [
-          "soccer_epl",
-          "soccer_spain_la_liga",
-          "soccer_italy_serie_a",
-          "soccer_france_ligue_one",
-          "soccer_uefa_champs_league",
-          "soccer_uefa_europa_league",
-          "soccer_uefa_europa_conference_league",
-        ];
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+        const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+        const res = await fetch(`${supabaseUrl}/functions/v1/sp-fixtures`, {
+          headers: { Authorization: `Bearer ${anonKey}` },
+          signal: AbortSignal.timeout(20_000),
+        });
+        if (!res.ok) {
+          throw new Error(`sp-fixtures failed (${res.status})`);
+        }
+
+        const fixtures: SpFixture[] = await res.json();
+        if (!Array.isArray(fixtures)) {
+          throw new Error("sp-fixtures returned non-array response");
+        }
+
         const now = Date.now();
         // show games starting from now up to 7 days ahead
         const windowEnd = now + 7 * 24 * 60 * 60 * 1000;
 
-        // Fetch sequentially to avoid hitting The Odds API rate limit
-        // (parallel requests cause most to be throttled, returning only 1 league)
-        const results: OddsEvent[][] = [];
-        for (const sport of sports) {
-          try {
-            const r = await fetch(
-              `/api/odds/sports/${sport}/events?apiKey=${ODDS_API_KEY}&dateFormat=iso`,
-            );
-            const data = await r.json();
-            if (Array.isArray(data)) {
-              results.push(data);
-            } else {
-              console.warn(`[CreateEvent] ${sport} returned non-array:`, data);
-            }
-          } catch (e) {
-            console.warn(`[CreateEvent] ${sport} fetch failed:`, e);
-          }
-        }
-
-        const all: OddsEvent[] = results
-          .flat()
-          .filter((e: any) => {
-            if (!e?.commence_time) return false;
+        const all: OddsEvent[] = fixtures
+          .map((f) => ({
+            id: f.id,
+            sport_key: "soccer_epl",
+            home_team: f.home,
+            away_team: f.away,
+            commence_time: `${f.date}T${f.time}`,
+          }))
+          .filter((e) => {
             const t = new Date(e.commence_time).getTime();
             // upcoming: starts from now (allow 2hr grace for live games) to +7 days
-            return t >= now - 2 * 60 * 60 * 1000 && t <= windowEnd;
+            return (
+              Number.isFinite(t) &&
+              t >= now - 2 * 60 * 60 * 1000 &&
+              t <= windowEnd
+            );
           })
           .sort(
             (a: OddsEvent, b: OddsEvent) =>
@@ -204,7 +216,7 @@ export default function CreateEvent() {
         _eventsCacheAt = Date.now();
         setTonightEvents(all);
       } catch (e: any) {
-        setEventsError("Failed to fetch upcoming games: " + e.message);
+        setEventsError("Failed to fetch Premier League fixtures: " + e.message);
       } finally {
         setEventsLoading(false);
       }
@@ -223,63 +235,220 @@ export default function CreateEvent() {
     }));
   }
 
+  // ── Resolve The Odds API event id for this fixture (team + kickoff match) ─
+  async function lookupOddsEventId(
+    sportKey: string,
+    homeTeam: string,
+    awayTeam: string,
+    kickoffIso: string,
+  ): Promise<string | null> {
+    try {
+      const res = await fetch(
+        `/api/odds/sports/${sportKey}/events?apiKey=${ODDS_API_KEY}&dateFormat=iso`,
+      );
+      if (!res.ok) return null;
+      const events: OddsEvent[] = await res.json();
+      if (!Array.isArray(events)) return null;
+
+      const targetHome = normName(homeTeam);
+      const targetAway = normName(awayTeam);
+      const kickoffTs = new Date(kickoffIso).getTime();
+
+      // Prefer same teams + kickoff within 12h window.
+      const candidates = events.filter((e) => {
+        const homeOk = normName(e.home_team) === targetHome;
+        const awayOk = normName(e.away_team) === targetAway;
+        if (!homeOk || !awayOk) return false;
+        const t = new Date(e.commence_time).getTime();
+        return (
+          Number.isFinite(t) && Math.abs(t - kickoffTs) <= 12 * 60 * 60 * 1000
+        );
+      });
+
+      if (candidates.length > 0) {
+        candidates.sort(
+          (a, b) =>
+            Math.abs(new Date(a.commence_time).getTime() - kickoffTs) -
+            Math.abs(new Date(b.commence_time).getTime() - kickoffTs),
+        );
+        return candidates[0].id;
+      }
+
+      // Final fallback: exact team names regardless of kickoff.
+      const byTeams = events.find(
+        (e) =>
+          normName(e.home_team) === targetHome &&
+          normName(e.away_team) === targetAway,
+      );
+      return byTeams?.id ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function seedMatchWinnerOdds(
+    matchDbId: string,
+    sportKey: string,
+    oddsEventId: string | null,
+  ): Promise<boolean> {
+    if (!oddsEventId) return false;
+
+    try {
+      const res = await fetch(
+        `/api/odds/sports/${sportKey}/events/${oddsEventId}/odds?apiKey=${ODDS_API_KEY}&markets=h2h&bookmakers=betfair_ex_eu&oddsFormat=decimal`,
+      );
+      if (!res.ok) return false;
+
+      const data = await res.json();
+      if (data?.message) return false;
+
+      const bm = data?.bookmakers?.[0];
+      const market = (bm?.markets ?? []).find(
+        (m: { key: string }) => m.key === "h2h",
+      );
+      if (!market) return false;
+
+      const home =
+        market.outcomes?.find(
+          (o: { name: string; price: number }) => o.name === data.home_team,
+        )?.price ?? null;
+      const draw =
+        market.outcomes?.find(
+          (o: { name: string; price: number }) => o.name === "Draw",
+        )?.price ?? null;
+      const away =
+        market.outcomes?.find(
+          (o: { name: string; price: number }) => o.name === data.away_team,
+        )?.price ?? null;
+
+      const { data: existing } = await supabase
+        .from("matches")
+        .select("odds_api_config")
+        .eq("id", matchDbId)
+        .single();
+
+      const cfg =
+        (existing?.odds_api_config as Record<string, unknown> | null) ?? {};
+      const mergedCfg = {
+        ...cfg,
+        sport: sportKey,
+        event_id: oddsEventId,
+        match_winner_odds: {
+          home: home ?? 0,
+          draw: draw ?? 0,
+          away: away ?? 0,
+        },
+      };
+
+      await supabase
+        .from("matches")
+        .update({
+          odds_api_config: mergedCfg,
+          odds_home: home,
+          odds_draw: draw,
+          odds_away: away,
+        })
+        .eq("id", matchDbId);
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function seedPlayersFromSpLineup(
+    matchDbId: string,
+    spMatchId: string,
+  ): Promise<number> {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+      const res = await fetch(
+        `${supabaseUrl}/functions/v1/sp-lineup?matchId=${encodeURIComponent(spMatchId)}`,
+        {
+          headers: { Authorization: `Bearer ${anonKey}` },
+          signal: AbortSignal.timeout(10_000),
+        },
+      );
+      if (!res.ok) return 0;
+
+      const lineup: Array<{
+        id: string;
+        name: string;
+        team: "home" | "away";
+        jersey: number | null;
+        position: string | null;
+        isStarter: boolean;
+      }> = await res.json();
+
+      if (!Array.isArray(lineup) || lineup.length === 0) return 0;
+
+      const rows = lineup
+        .filter((p) => p.id && p.name)
+        .map((p) => ({
+          match_id: matchDbId,
+          external_player_id: `sp_${p.id}`,
+          name: p.name,
+          team: p.team,
+          jersey_number: p.jersey,
+          position: p.position,
+          is_starter: !!p.isStarter,
+          // Placeholder until scorer market opens; sync-odds/re-seed will overwrite.
+          odds: p.isStarter ? 6.5 : 12,
+        }));
+
+      if (rows.length === 0) return 0;
+
+      const { error } = await supabase
+        .from("players")
+        .upsert(rows, { onConflict: "match_id,external_player_id" });
+      if (error) return 0;
+
+      return rows.length;
+    } catch {
+      return 0;
+    }
+  }
+
   // ── Seed players from Odds API scorer market (primary path) ──────────────
   async function seedPlayersFromOddsApi(
     matchDbId: string,
     homeTeam: string,
     awayTeam: string,
     sportKey: string,
-    externalMatchId: string,
+    oddsEventId: string | null,
+    spMatchId?: string | null,
   ): Promise<number> {
     try {
+      if (!oddsEventId) return 0;
+
       const res = await fetch(
-        `/api/odds/sports/${sportKey}/events/${externalMatchId}/odds?apiKey=${ODDS_API_KEY}&markets=player_first_goal_scorer&regions=us,uk,eu&oddsFormat=decimal`,
+        `/api/odds/sports/${sportKey}/events/${oddsEventId}/odds?apiKey=${ODDS_API_KEY}&markets=player_first_goal_scorer&regions=us,uk,eu&oddsFormat=decimal`,
       );
       if (!res.ok) return 0;
       const data = await res.json();
       if (data.message) return 0; // quota / API error
 
-      function normAccent(s: string): string {
-        return s
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toLowerCase()
-          .trim();
-      }
-
-      const priceMap = new Map<string, number>();
-      const teamMap = new Map<string, "home" | "away">();
-      const normHome = normAccent(homeTeam);
-      const normAway = normAccent(awayTeam);
+      const homeWord = normName(homeTeam).split(" ")[0] ?? "";
+      const awayWord = normName(awayTeam).split(" ")[0] ?? "";
+      const priceMap = new Map<
+        string,
+        { price: number; teamHint: "home" | "away" | null }
+      >();
 
       for (const bm of data.bookmakers ?? []) {
         for (const mkt of bm.markets ?? []) {
           if (mkt.key !== "player_first_goal_scorer") continue;
           for (const o of mkt.outcomes ?? []) {
-            // Bookmakers use different formats:
-            //   Format A: o.description = player, o.name = team or "Yes"
-            //   Format B: o.name = player, o.description = team
-            const oName: string = (o.name ?? "").trim();
-            const oDesc: string = (o.description ?? "").trim();
-            const genericWords = new Set(["yes", "no", "no scorer"]);
-            function isTeamOrGeneric(s: string): boolean {
-              const lower = s.toLowerCase();
-              if (genericWords.has(lower)) return true;
-              if (normHome && lower.includes(normHome.split(" ")[0])) return true;
-              if (normAway && lower.includes(normAway.split(" ")[0])) return true;
-              return false;
-            }
-            const nameIsGeneric = isTeamOrGeneric(oName);
-            const pName = nameIsGeneric ? oDesc : oName;
-            const teamHint = nameIsGeneric ? oName : oDesc;
+            const pName: string = (o.description ?? o.name ?? "").trim();
             if (!pName || pName.toLowerCase() === "no scorer") continue;
-            if (!priceMap.has(pName) && o.price) priceMap.set(pName, o.price);
-            if (!teamMap.has(pName) && teamHint) {
-              const tNorm = normAccent(teamHint);
-              if (normHome && tNorm.includes(normHome.split(" ")[0]))
-                teamMap.set(pName, "home");
-              else if (normAway && tNorm.includes(normAway.split(" ")[0]))
-                teamMap.set(pName, "away");
+            let teamHint: "home" | "away" | null = null;
+            const outName = normName(String(o.name ?? ""));
+            if (homeWord && outName.includes(homeWord)) teamHint = "home";
+            else if (awayWord && outName.includes(awayWord)) teamHint = "away";
+
+            if (!priceMap.has(pName)) {
+              priceMap.set(pName, { price: o.price, teamHint });
             }
           }
         }
@@ -287,17 +456,70 @@ export default function CreateEvent() {
 
       if (priceMap.size === 0) return 0;
 
-      const rows = [...priceMap.entries()].map(([playerName, price]) => ({
-        match_id: matchDbId,
-        external_player_id:
-          "odds_" + normAccent(playerName).replace(/[^a-z0-9]/g, "_"),
-        name: playerName,
-        team: teamMap.get(playerName) ?? "home",
-        jersey_number: null,
-        position: null,
-        is_starter: true,
-        odds: price,
-      }));
+      // ── Team assignment: fetch SP lineup and only keep resolved players ─
+      const teamMap = new Map<string, "home" | "away">();
+      const spId = spMatchId ?? null;
+      if (spId) {
+        try {
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+          const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+          const luRes = await fetch(
+            `${supabaseUrl}/functions/v1/sp-lineup?matchId=${encodeURIComponent(spId)}`,
+            {
+              headers: { Authorization: `Bearer ${anonKey}` },
+              signal: AbortSignal.timeout(8_000),
+            },
+          );
+          if (luRes.ok) {
+            const lineup: Array<{ name: string; team: "home" | "away" }> =
+              await luRes.json();
+            for (const pl of lineup) {
+              const n = normName(pl.name);
+              // map by normalised name and also by surname for fuzzy matching
+              teamMap.set(n, pl.team);
+              const surname = n.split(" ").pop() ?? "";
+              if (surname.length >= 4 && !teamMap.has(surname))
+                teamMap.set(surname, pl.team);
+            }
+          }
+        } catch {
+          /* SP lineup unavailable — fall through */
+        }
+      }
+
+      function resolveTeam(playerName: string): "home" | "away" | null {
+        const n = normName(playerName);
+        if (teamMap.has(n)) return teamMap.get(n)!;
+        // surname fallback
+        const surname = n.split(" ").pop() ?? "";
+        if (surname.length >= 4 && teamMap.has(surname))
+          return teamMap.get(surname)!;
+        return null;
+      }
+
+      const rows = [...priceMap.entries()]
+        .map(([playerName, oddsInfo]) => {
+          // Prefer SP lineup mapping; otherwise use odds feed hint; final fallback home.
+          const team =
+            resolveTeam(playerName) ??
+            oddsInfo.teamHint ??
+            (homeWord ? "home" : "away");
+
+          return {
+            match_id: matchDbId,
+            external_player_id:
+              "odds_" + normName(playerName).replace(/[^a-z0-9]/g, "_"),
+            name: playerName,
+            team,
+            jersey_number: null,
+            position: null,
+            is_starter: true,
+            odds: oddsInfo.price,
+          };
+        })
+        .filter((r): r is NonNullable<typeof r> => r !== null);
+
+      if (rows.length === 0) return 0;
 
       await supabase
         .from("players")
@@ -394,32 +616,77 @@ export default function CreateEvent() {
 
       if (dbErr) throw new Error(dbErr.message);
 
-      // ── Step 1.5: Seed players from Odds API scorer market ─────────────────
-      setStep({ id: "seed", label: "Seeding players from Odds API…" });
-      const seededCount = await seedPlayersFromOddsApi(
-        match.id,
-        form.homeTeam,
-        form.awayTeam,
-        sportKey,
-        form.externalMatchId,
-      ).catch(() => 0);
-
-      if (seededCount === 0) {
-        setSeedWarning(
-          'No scorer odds found yet for this match. Players can be seeded later using "Re-seed Players" on the match page once the market opens.',
-        );
-      }
-
-      // ── Step 1.6: Look up StatsPerform match ID (needed for live tracking) ─
-      const spMatchId = await lookupSpMatchId(
-        form.homeTeam,
-        form.awayTeam,
-      ).catch(() => null);
+      // ── Step 1.5: Use selected SP match ID (fallback to fuzzy lookup) ─
+      const spMatchId =
+        selectedEvent?.sport_key === "soccer_epl"
+          ? selectedEvent.id
+          : await lookupSpMatchId(form.homeTeam, form.awayTeam).catch(
+              () => null,
+            );
       if (spMatchId) {
         await supabase
           .from("matches")
           .update({ statsperform_match_id: spMatchId })
           .eq("id", match.id);
+      }
+
+      // ── Step 1.6: Seed players from Odds API scorer market ─────────────────
+      setStep({ id: "seed", label: "Seeding players from Odds API…" });
+      const oddsEventId = await lookupOddsEventId(
+        sportKey,
+        form.homeTeam,
+        form.awayTeam,
+        new Date(form.kickoffAt).toISOString(),
+      );
+
+      if (!oddsEventId) {
+        setSeedWarning(
+          "Could not resolve Odds API event id for this fixture yet. Match odds/scorer odds may be unavailable until Odds API lists this event.",
+        );
+      }
+
+      if (oddsEventId) {
+        const { data: existing } = await supabase
+          .from("matches")
+          .select("odds_api_config")
+          .eq("id", match.id)
+          .single();
+        const cfg =
+          (existing?.odds_api_config as Record<string, unknown> | null) ?? {};
+        await supabase
+          .from("matches")
+          .update({
+            odds_api_config: { ...cfg, sport: sportKey, event_id: oddsEventId },
+          })
+          .eq("id", match.id);
+      }
+
+      await seedMatchWinnerOdds(match.id, sportKey, oddsEventId).catch(
+        () => false,
+      );
+
+      const seededCount = await seedPlayersFromOddsApi(
+        match.id,
+        form.homeTeam,
+        form.awayTeam,
+        sportKey,
+        oddsEventId,
+        spMatchId,
+      ).catch(() => 0);
+
+      const fallbackSeededCount =
+        seededCount === 0 && spMatchId
+          ? await seedPlayersFromSpLineup(match.id, spMatchId).catch(() => 0)
+          : 0;
+
+      if (seededCount === 0 && fallbackSeededCount === 0) {
+        setSeedWarning(
+          'No scorer market available yet. Lineups/odds were not seeded. Use "Re-seed Players" later when the market opens.',
+        );
+      } else if (seededCount === 0 && fallbackSeededCount > 0) {
+        setSeedWarning(
+          `Scorer market is not open yet. Seeded ${fallbackSeededCount} players from StatsPerform lineup with placeholder odds; re-seed later for live scorer odds.`,
+        );
       }
 
       // ── Step 2: Deploy escrow contract (MetaMask) ──────────────────────────
@@ -465,13 +732,15 @@ export default function CreateEvent() {
         </p>
       </div>
 
-      {/* ── Tonight's Europa matches picker ─────────────────────────────────── */}
+      {/* ── Premier League fixtures picker ─────────────────────────────────── */}
       <div className="bg-gray-900 border border-white/5 rounded-2xl p-5 mb-5 shadow-xl">
         <div className="flex items-center gap-2 mb-4">
           <span className="text-base">🏆</span>
-          <h2 className="text-sm font-bold text-white">Upcoming Fixtures</h2>
+          <h2 className="text-sm font-bold text-white">
+            Premier League Fixtures
+          </h2>
           <span className="ml-auto text-[10px] text-gray-500 uppercase tracking-wider font-medium">
-            EPL · UCL · UEL · UECL · next 7 days
+            EPL · next 7 days
           </span>
         </div>
 

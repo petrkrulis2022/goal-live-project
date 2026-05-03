@@ -10,8 +10,8 @@
  *   match_id:               string,     // Supabase UUID — REQUIRED
  *
  *   // --- AUTO-FETCH MODE (omit all four below) ----------------------------
- *   // Edge fn fetches final score + scorers from Goalserve using
- *   // the match's goalserve_static_id. Returns 422 if not FT yet.
+ *   // Edge fn fetches final score + scorers from StatsPerform using
+ *   // the match's statsperform_match_id. Returns 422 if not FT yet.
  *
  *   // --- EXPLICIT MODE (CRE / manual override) ----------------------------
  *   winner:                "home" | "draw" | "away",  // optional
@@ -121,7 +121,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const { match_id, force } = body;
     // winner / home_goals / away_goals / goal_scorer_player_ids are optional
-    // — omit all three to trigger Goalserve auto-fetch mode.
+    // — omit all to trigger StatsPerform auto-fetch mode.
     let winner: string | undefined = body.winner;
     let home_goals: number | undefined = body.home_goals;
     let away_goals: number | undefined = body.away_goals;
@@ -144,7 +144,7 @@ Deno.serve(async (req: Request) => {
     if (match.status === "finished" && !force)
       return json({ error: "Match already settled" }, 409);
 
-    // ── AUTO-FETCH MODE: pull final result from Goalserve ─────────────────
+    // ── AUTO-FETCH MODE: pull final result from StatsPerform ──────────────
     // Triggered when winner / home_goals / away_goals are not supplied.
     const autoFetch =
       winner === undefined ||

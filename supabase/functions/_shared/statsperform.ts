@@ -134,6 +134,7 @@ function parseSpStatusStr(
   switch (matchStatus) {
     case "FullTime":
     case "Full-time":
+    case "Played":
       return { status: "finished", minute: null };
     case "HalfTime":
       return { status: "halftime", minute: 45 };
@@ -174,25 +175,47 @@ export async function getSpMatchLive(
   matchId: string,
   token: string,
 ): Promise<SpMatchLiveData | null> {
-  const url = `${SP_BASE}/soccerdata/match/${matchId}?live=yes&_fmt=json`;
+  // Try query-param style first (works for live AND finished matches), then
+  // fall back to path-style and finally non-live path.
+  const urlAttempts = [
+    `${SP_BASE}/soccerdata/match/?fx=${matchId}&live=yes&_fmt=json`,
+    `${SP_BASE}/soccerdata/match/${matchId}?live=yes&_fmt=json`,
+    `${SP_BASE}/soccerdata/match/${matchId}?_fmt=json`,
+  ];
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-    signal: AbortSignal.timeout(8_000),
-  });
-
-  if (!res.ok) {
-    console.warn(`[statsperform] MA1 ${matchId} → HTTP ${res.status}`);
-    return null;
+  // deno-lint-ignore no-explicit-any
+  let m: any = null;
+  for (const url of urlAttempts) {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!res.ok) {
+      console.warn(
+        `[statsperform] MA1 ${matchId} → HTTP ${res.status} (${url})`,
+      );
+      continue;
+    }
+    // deno-lint-ignore no-explicit-any
+    const data: any = await res.json();
+    // deno-lint-ignore no-explicit-any
+    let candidate: any = null;
+    const candidates = toArray(data?.match);
+    if (candidates.length > 0) candidate = candidates[0];
+    else if (data?.matchInfo?.id) candidate = data;
+    // Only accept if liveData.matchDetails has actual status content
+    if (candidate?.liveData?.matchDetails?.matchStatus) {
+      m = candidate;
+      break;
+    }
+    // For non-live endpoint, any valid match object is acceptable
+    if (url.includes("live=yes") === false && candidate?.matchInfo?.id) {
+      m = candidate;
+      break;
+    }
   }
 
-  // deno-lint-ignore no-explicit-any
-  const data: any = await res.json();
-  const matches = toArray(data?.match);
-  if (matches.length === 0) return null;
-
-  // deno-lint-ignore no-explicit-any
-  const m: any = matches[0];
+  if (!m) return null;
   const info = m?.matchInfo ?? {};
   const liveData = m?.liveData ?? {};
   const details = liveData?.matchDetails ?? {};

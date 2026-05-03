@@ -2,5 +2,9 @@
   "schedule": "*/60 * * * * *",
   "supabaseUrl": "https://weryswulejhjkrmervnf.supabase.co",
   "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlcnlzd3VsZWpoamtybWVydm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMjEyODEsImV4cCI6MjA4NzU5NzI4MX0.fxMn2LMdoFuYAln-34WUo1uUiWjSnlSzJlDS-sepdtc",
-  "goalserveApiKey": "5dc9cf20aca34682682708de71344f52"
+  "spApiKey": "yU2zT2pY6dM8mW4dN9hP",
+  "spClientId": "c87e3e7f-fc15-4a4a-8449-b298df0a0744",
+  "spClientSecret": "lR1pV1wL7oB8vW2pE5rT",
+  "spOauthUrl": "https://api.statsperform.com/realms/apigw/protocol/openid-connect/token",
+  "spBaseUrl": "https://api.statsperform.com/sdapi/v1"
 }

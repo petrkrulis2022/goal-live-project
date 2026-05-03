@@ -3,6 +3,7 @@
  *
  * Supports all three bet types:
  *   NEXT_GOAL_SCORER  — player_id required (Goalserve external_player_id)
+ *   NEXT_GOAL_SCORER  — player_id required (player external ID, e.g. odds_* / StatsPerform-linked)
  *   MATCH_WINNER      — outcome required ("home" | "draw" | "away")
  *   EXACT_GOALS       — goals_target required (integer total goals)
  *

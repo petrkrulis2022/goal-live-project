@@ -13,7 +13,8 @@
  *   "Fixture" / "PreMatch" → pre-match
  *   "Playing"              → live
  *   "HalfTime"             → halftime
- *   "FullTime"             → sets goalserve_finished=true (enables admin Settle button)
+ *   "FullTime"             → sets legacy FT flag goalserve_finished=true
+ *                              (enables admin Settle button)
  *   "Postponed"/"Cancelled"→ cancelled
  *
  * Status transitions are forward-only. The live → finished transition is NEVER
@@ -21,7 +22,7 @@
  * the settle-match edge function.
  *
  * Also updates: current_minute, score_home, score_away, corners_home,
- *               corners_away, corners_last_settled, goalserve_finished, updated_at
+ *               corners_away, corners_last_settled, goalserve_finished (legacy FT flag), updated_at
  *
  * Called by pg_cron every minute via pg_net. Can also be triggered manually:
  *   POST /functions/v1/sync-match-status   (no body required)
@@ -138,7 +139,10 @@ Deno.serve(async (req: Request) => {
 
     for (const dbMatch of dbMatches) {
       // ── Call StatsPerform MA1 for this match ─────────────────────────────
-      const spData = await getSpMatchLive(dbMatch.statsperform_match_id, spToken);
+      const spData = await getSpMatchLive(
+        dbMatch.statsperform_match_id,
+        spToken,
+      );
       if (!spData) {
         console.warn(
           `[sync] MA1 returned null for ${dbMatch.statsperform_match_id} — skipping`,
@@ -241,9 +245,13 @@ Deno.serve(async (req: Request) => {
         const prevHome = dbMatch.score_home ?? 0;
         const prevAway = dbMatch.score_away ?? 0;
         const newHome =
-          updates.score_home != null ? (updates.score_home as number) : prevHome;
+          updates.score_home != null
+            ? (updates.score_home as number)
+            : prevHome;
         const newAway =
-          updates.score_away != null ? (updates.score_away as number) : prevAway;
+          updates.score_away != null
+            ? (updates.score_away as number)
+            : prevAway;
 
         const homeGoalsDelta = Math.max(0, newHome - prevHome);
         const awayGoalsDelta = Math.max(0, newAway - prevAway);
@@ -270,9 +278,12 @@ Deno.serve(async (req: Request) => {
           };
 
           // Goals attributed to home team (exclude own goals — attributed to opposing side)
-          const homeGoalEvents = spEvents.goals.filter((g) => g.team === "home" && !g.isOwnGoal);
+          const homeGoalEvents = spEvents.goals.filter(
+            (g) => g.team === "home" && !g.isOwnGoal,
+          );
           for (let i = 0; i < homeGoalsDelta; i++) {
-            const s = homeGoalEvents[homeGoalEvents.length - homeGoalsDelta + i];
+            const s =
+              homeGoalEvents[homeGoalEvents.length - homeGoalsDelta + i];
             eventsToInsert.push({
               match_id: dbMatch.id,
               player_id: s?.playerId ?? "unknown",
@@ -287,9 +298,12 @@ Deno.serve(async (req: Request) => {
           }
 
           // Goals attributed to away team
-          const awayGoalEvents = spEvents.goals.filter((g) => g.team === "away" && !g.isOwnGoal);
+          const awayGoalEvents = spEvents.goals.filter(
+            (g) => g.team === "away" && !g.isOwnGoal,
+          );
           for (let i = 0; i < awayGoalsDelta; i++) {
-            const s = awayGoalEvents[awayGoalEvents.length - awayGoalsDelta + i];
+            const s =
+              awayGoalEvents[awayGoalEvents.length - awayGoalsDelta + i];
             eventsToInsert.push({
               match_id: dbMatch.id,
               player_id: s?.playerId ?? "unknown",

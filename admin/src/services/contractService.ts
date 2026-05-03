@@ -165,7 +165,21 @@ export const contractService = {
     }
 
     if (firstMatchId) {
-      await this.createMatch(firstMatchId);
+      try {
+        await this.createMatch(firstMatchId);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (
+          msg.includes("GLB: already active") ||
+          msg.toLowerCase().includes("already active")
+        ) {
+          // Reusing an existing active matchId is valid for singleton flow.
+          // Continue so pool funding can proceed.
+          console.warn("[contractService] createMatch skipped:", msg);
+        } else {
+          throw err;
+        }
+      }
     }
     return address;
   },
@@ -217,6 +231,25 @@ export const contractService = {
     const contract = getContract(address, signer);
     console.log("[contractService] requestSettlement", matchId);
     const tx = await contract.requestSettlement(matchId);
+    await tx.wait();
+    return tx.hash as string;
+  },
+
+  /**
+   * Cancel an active match and reset isActive=false so the same matchId
+   * can be created again. If pool exists, funds are refunded to refundTo.
+   */
+  async adminCancelMatch(
+    matchId: string,
+    refundTo?: string,
+    contractAddress?: string,
+  ): Promise<string> {
+    const address = contractAddress || requireContract();
+    const signer = await getSigner();
+    const contract = getContract(address, signer);
+    const to = refundTo || (await signer.getAddress());
+    console.log("[contractService] adminCancelMatch", matchId, "refundTo", to);
+    const tx = await contract.adminCancelMatch(matchId, to);
     await tx.wait();
     return tx.hash as string;
   },
@@ -555,21 +588,6 @@ export const contractService = {
       dest,
     );
     const tx = await contract.emergencyWithdrawPool(matchId, dest);
-    await tx.wait();
-    return tx.hash as string;
-  },
-
-  /**
-   * Cancel an active (unsettled) match. Refunds pool to `to` if non-empty.
-   * Works even on an empty pool — useful for dev reset / re-creation of same matchId.
-   */
-  async adminCancelMatch(matchId: string, to?: string): Promise<string> {
-    const address = requireContract();
-    const signer = await getSigner();
-    const dest = to ?? (await signer.getAddress());
-    const contract = getContract(address, signer);
-    console.log("[contractService] adminCancelMatch", matchId, "->", dest);
-    const tx = await contract.adminCancelMatch(matchId, dest);
     await tx.wait();
     return tx.hash as string;
   },

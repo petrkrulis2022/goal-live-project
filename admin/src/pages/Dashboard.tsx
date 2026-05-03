@@ -29,13 +29,23 @@ export default function Dashboard() {
     )
       return;
     setDeleting(matchId);
-    const { error } = await supabase.from("matches").delete().eq("id", matchId);
-    if (error) {
-      alert("Delete failed: " + error.message);
-    } else {
-      setMatches((prev) => prev.filter((m) => m.id !== matchId));
+    try {
+      const { error } = await supabase
+        .from("matches")
+        .delete()
+        .eq("id", matchId);
+
+      if (error) {
+        alert("Delete failed: " + error.message);
+      } else {
+        setMatches((prev) => prev.filter((m) => m.id !== matchId));
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert("Delete failed: " + msg);
+    } finally {
+      setDeleting(null);
     }
-    setDeleting(null);
   }
 
   const statusStyles: Record<string, { dot: string; badge: string }> = {
