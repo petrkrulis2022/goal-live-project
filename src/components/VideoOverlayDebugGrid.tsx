@@ -1,6 +1,10 @@
 import React from "react";
 import type { VideoOverlayBounds } from "../hooks/useVideoOverlayBounds";
 
+// Custom targeting-circle cursor — flat pitch-level ellipse (FIFA player marker style)
+const PLAYER_TRACKER_CURSOR =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='88' height='88' viewBox='0 0 88 88'%3E%3Cellipse cx='44' cy='44' rx='34' ry='8' transform='rotate(12 44 44)' stroke='white' stroke-width='5.5' fill='none'/%3E%3Ccircle cx='44' cy='44' r='3' fill='white'/%3E%3C/svg%3E\") 44 44, crosshair";
+
 interface VideoOverlayDebugGridProps {
   bounds: VideoOverlayBounds;
   rows?: number;
@@ -70,7 +74,7 @@ export const VideoOverlayDebugGrid: React.FC<VideoOverlayDebugGridProps> = ({
               border: "1px solid rgba(16,185,129,0.07)",
               background: "rgba(16,185,129,0.01)",
               color: "rgba(255,255,255,0)",
-              cursor: "crosshair",
+              cursor: PLAYER_TRACKER_CURSOR,
               fontSize: "9px",
               fontWeight: 700,
               padding: 0,

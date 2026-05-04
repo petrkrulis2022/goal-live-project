@@ -835,6 +835,83 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             ⇆
           </button>
 
+          {/* ── DEMO trigger buttons (C-W / C-L / G-W / G-L) ─────────── */}
+          {[
+            {
+              label: "C-W",
+              title: "Demo: Corner Won",
+              color: "#10b981",
+              onClick: () =>
+                openGoalModal({
+                  type: "goalResult",
+                  won: true,
+                  scorerName: "",
+                  betPlayerName: "",
+                  betType: "corner",
+                }),
+            },
+            {
+              label: "C-L",
+              title: "Demo: Corner Lost",
+              color: "#ef4444",
+              onClick: () =>
+                openGoalModal({
+                  type: "goalResult",
+                  won: false,
+                  scorerName: "",
+                  betPlayerName: "",
+                  betType: "corner",
+                }),
+            },
+            {
+              label: "G-W",
+              title: "Demo: Goal Won",
+              color: "#10b981",
+              onClick: () =>
+                openGoalModal({
+                  type: "goalResult",
+                  won: true,
+                  scorerName: "",
+                  betPlayerName: "",
+                  betType: "goal",
+                }),
+            },
+            {
+              label: "G-L",
+              title: "Demo: Goal Lost",
+              color: "#ef4444",
+              onClick: () =>
+                openGoalModal({
+                  type: "goalResult",
+                  won: false,
+                  scorerName: "",
+                  betPlayerName: "",
+                  betType: "goal",
+                }),
+            },
+          ].map(({ label, title, color, onClick }) => (
+            <button
+              key={label}
+              onClick={onClick}
+              className="gl-interactive"
+              title={title}
+              style={{
+                background: "rgba(0,0,0,0.6)",
+                border: `1px solid ${color}66`,
+                borderRadius: "4px",
+                color,
+                fontSize: "9px",
+                fontWeight: 700,
+                padding: "3px 5px",
+                cursor: "pointer",
+                lineHeight: 1,
+                letterSpacing: "0.02em",
+              }}
+            >
+              {label}
+            </button>
+          ))}
+
           {/* Exact Goals buttons — top bar, between swap and logo */}
           {!isFinished && (
             <div

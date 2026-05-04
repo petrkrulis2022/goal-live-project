@@ -51,6 +51,9 @@ export function useMatchData(matchKey?: string) {
           home: m.cornersHome ?? 0,
           away: m.cornersAway ?? 0,
         };
+        // Seed goal window from actual score so bets placed mid-match have
+        // the correct goal_window_at_placement (not always 0 after a reload).
+        goalWindowRef.current = (m.score?.home ?? 0) + (m.score?.away ?? 0);
       } catch (err) {
         console.error("[goal.live] Failed to load match data:", err);
       } finally {

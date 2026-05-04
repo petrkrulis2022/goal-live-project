@@ -59,12 +59,14 @@ const STATUS_ORDER: Record<string, number> = {
   cancelled: 4,
 };
 
-/** Settle all active NEXT_CORNER bets for a specific sequential corner number. */
+/** Settle all active NEXT_CORNER bets when a corner is taken by winningTeam.
+ * Bets whose outcome matches winningTeam win; all others lose.
+ * Note: does NOT filter by current_player_id so it works for bets stored in
+ * any format (sequential number OR legacy "home"/"away" string). */
 async function settleCornerBets(
   // deno-lint-ignore no-explicit-any
   supabase: any,
   matchId: string,
-  cornerNumber: number,
   winningTeam: "home" | "away",
 ): Promise<void> {
   const { data: bets } = await supabase
@@ -72,7 +74,6 @@ async function settleCornerBets(
     .select("id, odds, current_amount, outcome")
     .eq("match_id", matchId)
     .eq("bet_type", "NEXT_CORNER")
-    .eq("current_player_id", String(cornerNumber))
     .eq("status", "active");
 
   if (!bets || bets.length === 0) return;
@@ -83,6 +84,42 @@ async function settleCornerBets(
       .from("bets")
       .update({
         status: won ? "settled_won" : "settled_lost",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", bet.id);
+  }
+}
+
+/**
+ * Settle all active NEXT_GOAL_SCORER bets after a goal is scored.
+ * For each goal, bets whose current_player_id matches the scorer (by any
+ * candidate ID variant) win; all other active bets in the match lose.
+ * This is the server-side complement to the client-side processGoalEvent.
+ * It runs regardless of the client-side goal_window_at_placement counter.
+ *
+ * @param scorerIds — all candidate IDs for the scorer (raw SP, sp_xxx, odds_xxx)
+ */
+async function settleNgsBets(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  matchId: string,
+  scorerIds: Set<string>,
+): Promise<void> {
+  const { data: bets } = await supabase
+    .from("bets")
+    .select("id, current_player_id")
+    .eq("match_id", matchId)
+    .eq("bet_type", "NEXT_GOAL_SCORER")
+    .eq("status", "active");
+
+  if (!bets || bets.length === 0) return;
+
+  for (const bet of bets) {
+    const won = scorerIds.has(bet.current_player_id);
+    await supabase
+      .from("bets")
+      .update({
+        status: won ? "provisional_win" : "provisional_loss",
         updated_at: new Date().toISOString(),
       })
       .eq("id", bet.id);
@@ -292,7 +329,7 @@ Deno.serve(async (req: Request) => {
               minute: s?.minute ?? spData.minute ?? 0,
               event_type: "GOAL",
               confirmed: false,
-              source: "statsperform",
+              source: "manual",
               raw_payload: rawPayload,
             });
           }
@@ -312,7 +349,7 @@ Deno.serve(async (req: Request) => {
               minute: s?.minute ?? spData.minute ?? 0,
               event_type: "GOAL",
               confirmed: false,
-              source: "statsperform",
+              source: "manual",
               raw_payload: rawPayload,
             });
           }
@@ -320,6 +357,41 @@ Deno.serve(async (req: Request) => {
           if (eventsToInsert.length > 0) {
             await supabase.from("goal_events").insert(eventsToInsert);
           }
+
+          // ── Server-side NEXT_GOAL_SCORER settlement ──────────────────────
+          // Build all scorer candidate IDs from the MA3 goal events that fired
+          // in this sync window, then settle all active NGS bets.
+          // This is more reliable than client-side goal_window matching.
+          function normForId(s: string): string {
+            return (
+              s
+                .normalize("NFD")
+                // deno-lint-ignore no-explicit-any
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase()
+                .trim()
+                .replace(/[^a-z0-9]/g, "_")
+            );
+          }
+          const allGoalEvents = [
+            ...spEvents.goals
+              .filter((g) => g.team === "home" && !g.isOwnGoal)
+              .slice(-homeGoalsDelta),
+            ...spEvents.goals
+              .filter((g) => g.team === "away" && !g.isOwnGoal)
+              .slice(-awayGoalsDelta),
+          ];
+          const scorerIds = new Set<string>();
+          for (const g of allGoalEvents) {
+            if (g.playerId && g.playerId !== "unknown") {
+              scorerIds.add(g.playerId);
+              scorerIds.add(`sp_${g.playerId}`);
+              if (g.playerName) {
+                scorerIds.add(`odds_${normForId(g.playerName)}`);
+              }
+            }
+          }
+          await settleNgsBets(supabase, dbMatch.id, scorerIds);
 
           // Trigger immediate odds refresh after a goal
           fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/sync-odds`, {
@@ -347,10 +419,10 @@ Deno.serve(async (req: Request) => {
 
           let cornerSeq = prevTotal + 1;
           for (let h = 0; h < homeDelta; h++, cornerSeq++) {
-            await settleCornerBets(supabase, dbMatch.id, cornerSeq, "home");
+            await settleCornerBets(supabase, dbMatch.id, "home");
           }
           for (let a = 0; a < awayDelta; a++, cornerSeq++) {
-            await settleCornerBets(supabase, dbMatch.id, cornerSeq, "away");
+            await settleCornerBets(supabase, dbMatch.id, "away");
           }
 
           await supabase

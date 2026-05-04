@@ -161,18 +161,16 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
             </div>
             <p className="text-white font-bold text-base mb-1">Funded!</p>
             <p className="text-gray-400 text-xs mb-2">
-              {hbarMode
-                ? "Your HBAR has been sent to the match pool."
-                : "Your HBAR is locked in the match pool."}
+              {"Your USDC is locked in the match pool."}
             </p>
             {txHash && (
               <a
-                href={`https://hashscan.io/testnet/transaction/${txHash}`}
+                href={`https://sepolia.etherscan.io/tx/${txHash}`}
                 target="_blank"
                 rel="noreferrer"
                 className="text-indigo-400 text-[11px] hover:text-indigo-200"
               >
-                View on HashScan ↗
+                View on Etherscan ↗
               </a>
             )}
           </div>
@@ -180,17 +178,7 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
           <>
             {/* Match escrow info */}
             <div className="bg-indigo-950/40 border border-indigo-500/30 rounded-xl px-4 py-3 mb-4">
-              {hbarMode ? (
-                <>
-                  <p className="text-indigo-300 text-[10px] font-semibold uppercase tracking-wide mb-1">
-                    HBAR Match Pool
-                  </p>
-                  <p className="text-gray-400 text-xs">
-                    Fund this match with HBAR. Contract deploys on Hedera
-                    Testnet.
-                  </p>
-                </>
-              ) : (
+              {false ? null : (
                 <>
                   <p className="text-indigo-300 text-[10px] font-semibold uppercase tracking-wide mb-1">
                     Match Escrow Contract
@@ -199,12 +187,12 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
                     {contractAddress}
                   </p>
                   <a
-                    href={`https://hashscan.io/testnet/address/${contractAddress}`}
+                    href={`https://sepolia.etherscan.io/address/${contractAddress}`}
                     target="_blank"
                     rel="noreferrer"
                     className="text-indigo-400 text-[10px] hover:text-indigo-200 mt-1 inline-block"
                   >
-                    View on HashScan ↗
+                    View on Etherscan ↗
                   </a>
                 </>
               )}
@@ -227,7 +215,7 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
                 className="w-full bg-gray-900 border border-white/15 rounded-xl pl-4 pr-16 py-3 text-white text-sm font-bold focus:outline-none focus:border-emerald-500/60 disabled:opacity-50"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
-                HBAR
+                USDC
               </span>
             </div>
 

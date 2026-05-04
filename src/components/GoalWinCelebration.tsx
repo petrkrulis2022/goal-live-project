@@ -108,8 +108,8 @@ export const GoalWinCelebration: React.FC<GoalWinCelebrationProps> = ({
     <div
       className="gl-interactive fixed inset-0 z-[2147483647] flex items-center justify-center pointer-events-auto"
       style={{
-        background: "rgba(0, 0, 0, 0.75)",
-        backdropFilter: "blur(4px)",
+        background: "rgba(0, 0, 0, 0.35)",
+        backdropFilter: "blur(1px)",
       }}
     >
       <div
@@ -205,8 +205,8 @@ export const GoalWinCelebration: React.FC<GoalWinCelebrationProps> = ({
                 </p>
                 <p className="text-lg font-bold text-white/90 mt-4">
                   {betType === "goal"
-                    ? `${scorerName} scored!`
-                    : `Corner for ${scorerName}!`}
+                    ? "Your player scored! We're crediting your winnings 💰"
+                    : "Your corner came in! We're crediting your winnings 💰"}
                 </p>
                 <div
                   style={{
@@ -230,28 +230,21 @@ export const GoalWinCelebration: React.FC<GoalWinCelebrationProps> = ({
                       : `CORNER! ${icon}`
                     : "YOU LOST!!!"}
                 </p>
-                <p
-                  className="text-lg font-bold mt-4"
-                  style={{ color: "rgba(254,202,202,0.9)" }}
-                >
-                  {betType === "goal"
-                    ? `${scorerName} scored`
-                    : `${scorerName} corner`}
-                </p>
-                {!noBet && betPlayerName && (
+                {!noBet && (
                   <>
                     <p
-                      className="text-base font-semibold mt-3"
-                      style={{ color: "rgba(252,165,165,0.95)" }}
+                      className="text-lg font-bold mt-4"
+                      style={{ color: "rgba(254,202,202,0.9)" }}
                     >
-                      Your <strong>{betPlayerName}</strong> stake is forfeited
-                      to the pool
+                      {betType === "goal"
+                        ? "Your player didn't score — you're losing this bet"
+                        : "Your corner didn't come in — you're losing this bet"}
                     </p>
                     <p
-                      className="text-sm mt-2"
+                      className="text-sm mt-3"
                       style={{ color: "rgba(254,202,202,0.65)" }}
                     >
-                      Place a new bet with a new amount for the next goal
+                      Place a new bet for the next opportunity
                     </p>
                   </>
                 )}

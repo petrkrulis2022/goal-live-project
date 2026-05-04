@@ -317,8 +317,10 @@ export async function getSpMatchEvents(
         minute,
         isOwnGoal,
       });
-    } else if (typeId === 22) {
-      // Corner awarded
+    } else if (typeId === 6 && (ev?.outcome === 1 || ev?.outcome === "1")) {
+      // Corner kick taken (outcome=1 = the team taking the corner)
+      // typeId=6 produces two events per corner: outcome=0 (conceded) and outcome=1 (kick taken).
+      // Only count outcome=1 to avoid double-counting each corner.
       if (team === "home") cornersHome++;
       else cornersAway++;
     }
