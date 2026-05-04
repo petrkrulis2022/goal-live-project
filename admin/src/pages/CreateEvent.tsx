@@ -523,7 +523,8 @@ export default function CreateEvent() {
             team,
             jersey_number: null,
             position: null,
-            is_starter: true,
+            // Odds-API scorer candidates are NOT necessarily starters; SP lineup sets is_starter
+            is_starter: false,
             odds: oddsInfo.price,
           };
         })
@@ -675,6 +676,12 @@ export default function CreateEvent() {
         () => false,
       );
 
+      // ── Always seed SP lineup first — this sets correct is_starter for the starting 11 ─
+      const spSeededCount = spMatchId
+        ? await seedPlayersFromSpLineup(match.id, spMatchId).catch(() => 0)
+        : 0;
+
+      // ── Then enrich with Odds API scorer market (non-SP candidates get is_starter=false) ─
       const seededCount = await seedPlayersFromOddsApi(
         match.id,
         form.homeTeam,
@@ -684,18 +691,13 @@ export default function CreateEvent() {
         spMatchId,
       ).catch(() => 0);
 
-      const fallbackSeededCount =
-        seededCount === 0 && spMatchId
-          ? await seedPlayersFromSpLineup(match.id, spMatchId).catch(() => 0)
-          : 0;
-
-      if (seededCount === 0 && fallbackSeededCount === 0) {
+      if (spSeededCount === 0 && seededCount === 0) {
         setSeedWarning(
           'No scorer market available yet. Lineups/odds were not seeded. Use "Re-seed Players" later when the market opens.',
         );
-      } else if (seededCount === 0 && fallbackSeededCount > 0) {
+      } else if (seededCount === 0 && spSeededCount > 0) {
         setSeedWarning(
-          `Scorer market is not open yet. Seeded ${fallbackSeededCount} players from StatsPerform lineup with placeholder odds; re-seed later for live scorer odds.`,
+          `Seeded ${spSeededCount} players from StatsPerform lineup with placeholder odds; re-seed later for live scorer odds.`,
         );
       }
 

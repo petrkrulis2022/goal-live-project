@@ -126,9 +126,14 @@ Deno.serve(async (req: Request) => {
           name,
           team,
           jersey: p.shirtNumber != null ? Number(p.shirtNumber) : null,
-          position: p.position ?? p.formationPlace ?? null,
-          // "Start" = pre-match confirmed; "Played" = already on pitch (live match)
-          isStarter: p.status === "Start" || p.status === "Played",
+          // Use the real position field, not formationPlace (which is just a number 1-11)
+          position: p.position !== "Substitute" ? (p.position ?? null) : "Substitute",
+          // formationPlace is a numeric string "1"–"11" for starters; absent for subs.
+          // Also support status-based detection for live feeds ("Start" / "Played").
+          isStarter:
+            p.status === "Start" ||
+            p.status === "Played" ||
+            (p.formationPlace != null && String(p.formationPlace) !== ""),
         });
       }
     }

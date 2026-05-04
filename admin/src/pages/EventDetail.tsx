@@ -380,13 +380,99 @@ export default function EventDetail() {
   async function reseedPlayers(m: DbMatch) {
     if (
       !window.confirm(
-        "Re-seed players from Odds API + StatsPerform lineup? Unresolved players will stay hidden until lineup is available.",
+        "Re-seed starting 11 from StatsPerform lineup + Odds API odds? This will clear all existing players and re-import from StatsPerform.",
       )
     )
       return;
-    // Pass existing players so fetchNGSOdds takes the UPDATE path (fixes odds in-place)
-    // rather than inserting duplicate odds_xxx rows alongside existing sp_xxx rows.
-    await fetchNGSOdds(m, players);
+
+    const spMatchId: string | null =
+      ((m as unknown as Record<string, unknown>).statsperform_match_id as
+        | string
+        | null) ?? null;
+
+    // Step 1: Delete all existing players for this match so we start clean
+    await supabase.from("players").delete().eq("match_id", m.id);
+    setPlayers([]);
+
+    // Step 2: Seed from StatsPerform lineup (correct is_starter for starting 11)
+    let spSeeded = 0;
+    if (spMatchId) {
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+        const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+        const luRes = await fetch(
+          `${supabaseUrl}/functions/v1/sp-lineup?matchId=${encodeURIComponent(spMatchId)}`,
+          {
+            headers: { Authorization: `Bearer ${anonKey}` },
+            signal: AbortSignal.timeout(10_000),
+          },
+        );
+        if (luRes.ok) {
+          const lineup: Array<{
+            id: string;
+            name: string;
+            team: "home" | "away";
+            jersey: number | null;
+            position: string | null;
+            isStarter: boolean;
+          }> = await luRes.json();
+
+          function posOdds(position: string | null): number {
+            const p = (position ?? "").toLowerCase();
+            if (p.includes("goalkeeper")) return 1;
+            if (p.includes("striker") || p === "forward") return 5;
+            if (p.includes("attacking")) return 8;
+            if (p.includes("midfielder")) return 13;
+            if (p.includes("defender")) return 18;
+            if (p.includes("substitute")) return 12;
+            return 6.5;
+          }
+
+          const rows = lineup
+            .filter((p) => p.id && p.name)
+            .map((p) => ({
+              match_id: m.id,
+              external_player_id: `sp_${p.id}`,
+              name: p.name,
+              team: p.team,
+              jersey_number: p.jersey,
+              position: p.position,
+              is_starter: !!p.isStarter,
+              odds: posOdds(p.position),
+            }));
+
+          if (rows.length > 0) {
+            const { error: spErr } = await supabase
+              .from("players")
+              .upsert(rows, { onConflict: "match_id,external_player_id" });
+            if (!spErr) spSeeded = rows.length;
+          }
+        }
+      } catch {
+        /* SP lineup unavailable — fall through to odds-api */
+      }
+    }
+
+    // Step 3: Enrich with Odds API odds — fetch fresh players and update their odds
+    const { data: fresh } = await supabase
+      .from("players")
+      .select("*")
+      .eq("match_id", m.id)
+      .order("odds");
+    const freshPlayers = (fresh as DbPlayer[]) ?? [];
+    setPlayers(freshPlayers);
+
+    if (spSeeded === 0) {
+      showToast(
+        "StatsPerform lineup not yet published — falling back to Odds API scorer market",
+        "orange",
+      );
+    } else {
+      showToast(`Seeded ${spSeeded} players from StatsPerform lineup`, "green");
+    }
+
+    // Fetch Odds API odds to enrich/update the seeded players
+    await fetchNGSOdds(m, freshPlayers);
   }
 
   async function fetchNGSOdds(m: DbMatch, p: DbPlayer[]) {
@@ -624,7 +710,8 @@ export default function EventDetail() {
             team,
             jersey_number: null,
             position: null,
-            is_starter: true,
+            // Odds-API scorer candidates are not confirmed starters; SP lineup sets is_starter
+            is_starter: false,
             odds: price,
           };
         })
