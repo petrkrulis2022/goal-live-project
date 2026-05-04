@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "goal.live – Live Football Betting",
+  "name": "goal.live – StatsPerform CRE",
   "version": "2.0.0",
-  "description": "Bet on live football matches using crypto – CRE live odds",
+  "description": "Bet on live football matches using crypto – StatsPerform CRE live odds",
   "permissions": ["activeTab", "storage"],
   "host_permissions": [
     "https://www.youtube.com/*",

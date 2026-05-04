@@ -127,7 +127,8 @@ Deno.serve(async (req: Request) => {
           team,
           jersey: p.shirtNumber != null ? Number(p.shirtNumber) : null,
           // Use the real position field, not formationPlace (which is just a number 1-11)
-          position: p.position !== "Substitute" ? (p.position ?? null) : "Substitute",
+          position:
+            p.position !== "Substitute" ? (p.position ?? null) : "Substitute",
           // formationPlace is a numeric string "1"–"11" for starters; absent for subs.
           // Also support status-based detection for live feeds ("Start" / "Played").
           isStarter:
