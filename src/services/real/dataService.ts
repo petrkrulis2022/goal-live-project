@@ -140,11 +140,14 @@ class SupabaseDataService implements IDataService {
         prevScoreHome = data.score_home ?? 0;
         prevScoreAway = data.score_away ?? 0;
 
-        // Poll minute every 10s (Supabase Realtime doesn't push every second)
+        // Poll minute every 10s (Supabase Realtime doesn't push every second).
+        // Also polls corners so they are detected even if Realtime drops.
         minuteTimer = setInterval(async () => {
           const { data: m } = await supabase
             .from("matches")
-            .select("current_minute, status, score_home, score_away")
+            .select(
+              "current_minute, status, score_home, score_away, corners_home, corners_away",
+            )
             .eq("id", matchUuid)
             .single();
           if (!m) return;
@@ -152,6 +155,14 @@ class SupabaseDataService implements IDataService {
           callbacks.onScoreUpdate({ home: m.score_home, away: m.score_away });
           if (m.status === "finished") {
             callbacks.onMatchEnd({ home: m.score_home, away: m.score_away });
+          }
+          // Propagate corner changes detected via polling (Realtime fallback)
+          if (
+            ((m.corners_home ?? 0) + (m.corners_away ?? 0) > 0 ||
+              m.corners_home !== undefined) &&
+            callbacks.onCornersUpdate
+          ) {
+            callbacks.onCornersUpdate(m.corners_home ?? 0, m.corners_away ?? 0);
           }
         }, 10_000);
       });

@@ -82,15 +82,27 @@ function toArr<T>(x: T | T[] | null | undefined): T[] {
 function PlayersTab({
   players,
   match,
+  onUpdateOdds,
 }: {
   players: DbPlayer[];
   match: DbMatch | null;
+  onUpdateOdds?: (id: string, newOdds: number) => Promise<void>;
 }) {
   const [side, setSide] = useState<"home" | "away">("home");
   const homeLabel = match?.home_team ?? "Home";
   const awayLabel = match?.away_team ?? "Away";
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   const oddsPlayers = players.filter((p) => p.team === side);
+
+  async function commitEdit(id: string) {
+    const parsed = parseFloat(editValue);
+    if (!isNaN(parsed) && parsed > 1 && onUpdateOdds) {
+      await onUpdateOdds(id, parsed);
+    }
+    setEditingId(null);
+  }
 
   return (
     <div className="space-y-3">
@@ -144,8 +156,31 @@ function PlayersTab({
                   <td className="px-4 py-2.5 text-gray-500 text-xs">
                     {p.position ?? "—"}
                   </td>
-                  <td className="px-4 py-2.5 font-mono font-bold text-green-400">
-                    {p.odds > 1 ? (
+                  <td
+                    className="px-4 py-2.5 font-mono font-bold text-green-400 cursor-pointer hover:text-yellow-300"
+                    title="Click to edit odds"
+                    onClick={() => {
+                      setEditingId(p.id);
+                      setEditValue(String(p.odds));
+                    }}
+                  >
+                    {editingId === p.id ? (
+                      <input
+                        autoFocus
+                        type="number"
+                        step="0.01"
+                        min="1.01"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onBlur={() => commitEdit(p.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") commitEdit(p.id);
+                          if (e.key === "Escape") setEditingId(null);
+                        }}
+                        className="w-20 bg-gray-800 border border-yellow-500/50 rounded px-1 py-0.5 text-yellow-300 font-mono text-sm"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : p.odds > 1 ? (
                       `${p.odds}×`
                     ) : (
                       <span className="text-gray-700">—</span>
@@ -349,7 +384,9 @@ export default function EventDetail() {
       )
     )
       return;
-    await fetchNGSOdds(m, []);
+    // Pass existing players so fetchNGSOdds takes the UPDATE path (fixes odds in-place)
+    // rather than inserting duplicate odds_xxx rows alongside existing sp_xxx rows.
+    await fetchNGSOdds(m, players);
   }
 
   async function fetchNGSOdds(m: DbMatch, p: DbPlayer[]) {
@@ -391,6 +428,7 @@ export default function EventDetail() {
 
       // ── Team assignment via StatsPerform lineup ────────────────────────────
       const teamMap = new Map<string, "home" | "away">();
+      const spPositionMap = new Map<string, string>();
       const spMatchId: string | null =
         ((m as unknown as Record<string, unknown>).statsperform_match_id as
           | string
@@ -407,19 +445,33 @@ export default function EventDetail() {
             },
           );
           if (luRes.ok) {
-            const lineup: Array<{ name: string; team: "home" | "away" }> =
-              await luRes.json();
+            const lineup: Array<{
+              name: string;
+              team: "home" | "away";
+              position?: string | null;
+            }> = await luRes.json();
             for (const pl of lineup) {
               const n = norm(pl.name);
               teamMap.set(n, pl.team);
               const surname = n.split(" ").pop() ?? "";
               if (surname.length >= 4 && !teamMap.has(surname))
                 teamMap.set(surname, pl.team);
+              if (pl.position) spPositionMap.set(n, pl.position);
             }
           }
         } catch {
           /* SP lineup unavailable — unresolved players remain hidden */
         }
+      }
+
+      function positionOdds(position: string): number {
+        const p = position.toLowerCase();
+        if (p.includes("goalkeeper")) return 1;
+        if (p.includes("striker") || p === "forward") return 5;
+        if (p.includes("attacking")) return 8;
+        if (p.includes("midfielder")) return 13;
+        if (p.includes("defender")) return 18;
+        return 12;
       }
 
       function resolveTeam(playerName: string): "home" | "away" | null {
@@ -434,9 +486,52 @@ export default function EventDetail() {
       // ── If players already exist: just UPDATE odds ────────────────────────
       if (p.length > 0) {
         if (priceMap.size === 0) {
+          // Odds API market closed (match live) — fall back to SP position-based odds
+          if (spPositionMap.size === 0) {
+            showToast(
+              "Odds API: no scorer market open and SP lineup unavailable",
+              "red",
+            );
+            return;
+          }
+          const toUpdate: { id: string; price: number; pos: string }[] = [];
+          for (const pl of p) {
+            const n = norm(pl.name);
+            const pos =
+              spPositionMap.get(n) ??
+              spPositionMap.get(n.split(" ").pop() ?? "") ??
+              null;
+            if (pos)
+              toUpdate.push({ id: pl.id, price: positionOdds(pos), pos });
+          }
+          if (toUpdate.length === 0) {
+            showToast(
+              "SP position data unavailable — re-seed players first",
+              "orange",
+            );
+            return;
+          }
+          await Promise.all(
+            toUpdate.map(({ id, price, pos }) =>
+              supabase
+                .from("players")
+                .update({
+                  odds: price,
+                  position: pos,
+                  is_starter: !pos.toLowerCase().includes("substitute"),
+                })
+                .eq("id", id),
+            ),
+          );
+          const { data: fresh } = await supabase
+            .from("players")
+            .select("*")
+            .eq("match_id", m.id)
+            .order("odds");
+          if (fresh) setPlayers(fresh as DbPlayer[]);
           showToast(
-            "Odds API: no scorer market open for this event yet",
-            "red",
+            `Position-based odds applied — ${toUpdate.length} players updated (Odds API market closed)`,
+            "green",
           );
           return;
         }
@@ -1266,7 +1361,19 @@ export default function EventDetail() {
               ↺ Re-seed Players
             </button>
           </div>
-          <PlayersTab players={players} match={match} />
+          <PlayersTab
+            players={players}
+            match={match}
+            onUpdateOdds={async (id, newOdds) => {
+              await supabase
+                .from("players")
+                .update({ odds: newOdds })
+                .eq("id", id);
+              setPlayers((prev) =>
+                prev.map((p) => (p.id === id ? { ...p, odds: newOdds } : p)),
+              );
+            }}
+          />
         </div>
       )}
 

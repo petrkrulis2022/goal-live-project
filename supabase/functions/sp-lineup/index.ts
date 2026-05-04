@@ -127,7 +127,8 @@ Deno.serve(async (req: Request) => {
           team,
           jersey: p.shirtNumber != null ? Number(p.shirtNumber) : null,
           position: p.position ?? p.formationPlace ?? null,
-          isStarter: p.status === "Start",
+          // "Start" = pre-match confirmed; "Played" = already on pitch (live match)
+          isStarter: p.status === "Start" || p.status === "Played",
         });
       }
     }

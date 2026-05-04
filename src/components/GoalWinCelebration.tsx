@@ -1,5 +1,7 @@
 import React, { useEffect } from "react";
 
+const GOAL_RESULT_MODAL_MS = 5_000;
+
 function playResultSound(
   won: boolean,
   betType: "goal" | "corner",
@@ -95,9 +97,10 @@ export const GoalWinCelebration: React.FC<GoalWinCelebrationProps> = ({
 }) => {
   useEffect(() => {
     playResultSound(won, betType, noBet);
-    const timer = setTimeout(onClose, 5000);
+    // Run once per modal mount so the display duration is stable for recordings.
+    const timer = setTimeout(onClose, GOAL_RESULT_MODAL_MS);
     return () => clearTimeout(timer);
-  }, [onClose]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const icon = betType === "goal" ? "⚽" : "🏳️";
 
@@ -108,7 +111,6 @@ export const GoalWinCelebration: React.FC<GoalWinCelebrationProps> = ({
         background: "rgba(0, 0, 0, 0.75)",
         backdropFilter: "blur(4px)",
       }}
-      onClick={onClose}
     >
       <div
         className="relative flex flex-col items-center justify-center"

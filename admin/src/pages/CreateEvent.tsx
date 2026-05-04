@@ -394,7 +394,17 @@ export default function CreateEvent() {
           position: p.position,
           is_starter: !!p.isStarter,
           // Placeholder until scorer market opens; sync-odds/re-seed will overwrite.
-          odds: p.isStarter ? 6.5 : 12,
+          // Position-based placeholder odds (used when Odds API scorer market unavailable)
+          odds: (() => {
+            const pos = (p.position ?? "").toLowerCase();
+            if (pos.includes("goalkeeper")) return 1;
+            if (pos.includes("striker") || pos === "forward") return 5;
+            if (pos.includes("attacking")) return 8;
+            if (pos.includes("midfielder")) return 13;
+            if (pos.includes("defender")) return 18;
+            if (pos.includes("substitute")) return 12;
+            return p.isStarter ? 6.5 : 12;
+          })(),
         }));
 
       if (rows.length === 0) return 0;

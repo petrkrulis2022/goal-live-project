@@ -273,6 +273,18 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
   } | null>(null);
   const prevBetStatusesRef = useRef<Map<string, string>>(new Map());
   const betsInitializedRef = useRef(false);
+  // Incremented each time a new goalResult modal is triggered so GoalWinCelebration
+  // remounts (re-running its useEffect) even when the modal type stays "goalResult".
+  const goalModalKeyRef = useRef(0);
+  const [goalModalKey, setGoalModalKey] = useState(0);
+  const openGoalModal = useCallback(
+    (state: Exclude<ModalState, null> & { type: "goalResult" }) => {
+      goalModalKeyRef.current += 1;
+      setGoalModalKey(goalModalKeyRef.current);
+      setModal(state);
+    },
+    [],
+  );
 
   // Reset bet-status tracking when match changes
   useEffect(() => {
@@ -280,7 +292,11 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     prevBetStatusesRef.current = new Map();
   }, [match?.dbId]);
 
-  // Capture scorer dispatched by useMatchData when a real goal fires
+  // Capture scorer dispatched by useMatchData when a real goal fires.
+  // Also shows a noBet notification so something always appears even if the
+  // bet-transition effect doesn't fire (e.g. processGoalEvent failed silently).
+  // The bet-transition effect will overwrite this with the proper won/lost
+  // result ~1-2 s later when the bet status update arrives.
   useEffect(() => {
     const handler = (e: Event) => {
       const { scorerPlayerId, scorerPlayerName } = (
@@ -290,10 +306,19 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
         playerId: scorerPlayerId,
         playerName: scorerPlayerName,
       };
+      // Always show a notification so the goal is visible even with no active bet.
+      openGoalModal({
+        type: "goalResult",
+        won: false,
+        noBet: true,
+        scorerName: scorerPlayerName,
+        betPlayerName: "",
+        betType: "goal",
+      });
     };
     window.addEventListener("gl:goalScored", handler);
     return () => window.removeEventListener("gl:goalScored", handler);
-  }, []);
+  }, [openGoalModal]);
 
   // Show corner notification immediately — regardless of whether user has a bet.
   // If the user DOES have an active NEXT_CORNER bet, the bet-transition effect
@@ -311,7 +336,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
         team === "home"
           ? (match?.homeTeam ?? "Home team")
           : (match?.awayTeam ?? "Away team");
-      setModal({
+      openGoalModal({
         type: "goalResult",
         won: false,
         noBet: true,
@@ -322,7 +347,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
     };
     window.addEventListener("gl:cornerScored", handler);
     return () => window.removeEventListener("gl:cornerScored", handler);
-  }, [match?.homeTeam, match?.awayTeam]);
+  }, [match?.homeTeam, match?.awayTeam, openGoalModal]);
 
   // Detect bet status transitions (active → provisional_win/loss) → show result modal
   useEffect(() => {
@@ -351,7 +376,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
           const betPlayer =
             players.find((p) => p.id === bet.current_player_id)?.name ??
             "your player";
-          setModal({
+          openGoalModal({
             type: "goalResult",
             won,
             scorerName,
@@ -373,7 +398,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
             bet.outcome === "home"
               ? (match?.homeTeam ?? "Home")
               : (match?.awayTeam ?? "Away");
-          setModal({
+          openGoalModal({
             type: "goalResult",
             won,
             scorerName,
@@ -1555,6 +1580,7 @@ export const BettingOverlay: React.FC<{ matchKey?: string }> = ({
 
       {modal?.type === "goalResult" && (
         <GoalWinCelebration
+          key={goalModalKey}
           won={modal.won}
           noBet={modal.noBet}
           scorerName={modal.scorerName}

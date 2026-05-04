@@ -343,9 +343,10 @@ class SupabaseBettingService implements IBettingService {
     if (!bets?.length) return;
 
     for (const bet of bets) {
-      const inWindow =
-        (bet.goal_window_at_placement ?? 0) <= minute &&
-        minute <= (bet.goal_window_at_placement ?? 0) + goalWindow;
+      // A bet is in-window if it was placed for this exact goal window — i.e. it
+      // was placed after (goal_window_at_placement) goals had been scored and the
+      // goal we're processing is the next one (goalWindow == goal_window_at_placement).
+      const inWindow = (bet.goal_window_at_placement ?? 0) === goalWindow;
       const isWinner = candidateIds.has(bet.current_player_id) && inWindow;
       await supabase
         .from("bets")
