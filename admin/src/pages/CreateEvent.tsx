@@ -13,11 +13,8 @@ const ODDS_API_KEY = "8d90e1a5fa443922e69844377834c0ab";
 const SPORT_LABELS: Record<string, string> = {
   soccer_epl: "Premier League",
   soccer_spain_la_liga: "La Liga",
-  soccer_italy_serie_a: "Serie A",
+  soccer_germany_bundesliga: "Bundesliga",
   soccer_france_ligue_one: "Ligue 1",
-  soccer_uefa_champs_league: "UEFA Champions League",
-  soccer_uefa_europa_league: "UEFA Europa League",
-  soccer_uefa_europa_conference_league: "UEFA Europa Conference League",
 };
 
 const SPORT_COLOR: Record<string, { badge: string }> = {
@@ -27,22 +24,27 @@ const SPORT_COLOR: Record<string, { badge: string }> = {
   soccer_spain_la_liga: {
     badge: "bg-red-400/15 text-red-400 border-red-400/25",
   },
-  soccer_italy_serie_a: {
-    badge: "bg-blue-400/15 text-blue-400 border-blue-400/25",
+  soccer_germany_bundesliga: {
+    badge: "bg-amber-400/15 text-amber-400 border-amber-400/25",
   },
   soccer_france_ligue_one: {
     badge: "bg-sky-400/15 text-sky-400 border-sky-400/25",
   },
-  soccer_uefa_champs_league: {
-    badge: "bg-indigo-400/15 text-indigo-400 border-indigo-400/25",
-  },
-  soccer_uefa_europa_league: {
-    badge: "bg-orange-400/15 text-orange-400 border-orange-400/25",
-  },
-  soccer_uefa_europa_conference_league: {
-    badge: "bg-emerald-400/15 text-emerald-400 border-emerald-400/25",
-  },
 };
+
+const SPORT_TO_GS_LEAGUE: Record<string, string> = {
+  soccer_epl: "1204",
+  soccer_spain_la_liga: "1399",
+  soccer_france_ligue_one: "1221",
+  soccer_germany_bundesliga: "1229",
+};
+
+const FIXTURE_SPORTS: string[] = [
+  "soccer_epl",
+  "soccer_spain_la_liga",
+  "soccer_france_ligue_one",
+  "soccer_germany_bundesliga",
+];
 
 // Module-level cache — survives re-mounts, avoids hammering the Odds API
 let _eventsCache: OddsEvent[] | null = null;
@@ -57,7 +59,7 @@ interface OddsEvent {
   commence_time: string;
 }
 
-interface SpFixture {
+interface GsFixture {
   id: string;
   home: string;
   away: string;
@@ -65,6 +67,7 @@ interface SpFixture {
   time: string;
   competition: string;
   competitionCode: string;
+  leagueId?: string;
 }
 
 function normName(s: string): string {
@@ -86,6 +89,67 @@ function kickoffLabel(utcIso: string): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   return `${days[d.getDay()]} ${pad(d.getDate())}/${pad(d.getMonth() + 1)} · ${pad(d.getHours())}:${pad(d.getMinutes())} local`;
+}
+
+/**
+ * GoalServe fixtures may return date as:
+ *  - "YYYY-MM-DD"
+ *  - "May 10"
+ *  - "10.05.2026"
+ * Convert to ISO string for consistent filtering/sorting in UI.
+ * GoalServe times are treated as UTC and rendered in local timezone.
+ */
+function parseGoalServeKickoff(
+  dateStr: string,
+  timeStr: string,
+): string | null {
+  const t = /^\s*(\d{1,2}):(\d{2})\s*$/.exec(timeStr ?? "");
+  if (!t) return null;
+  const hour = Number(t[1]);
+  const minute = Number(t[2]);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+
+  const now = new Date();
+  const nowUtcYear = now.getUTCFullYear();
+  let year = nowUtcYear;
+  let month = -1;
+  let day = -1;
+  const rawDate = (dateStr ?? "").trim();
+
+  // YYYY-MM-DD
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(rawDate);
+  if (iso) {
+    year = Number(iso[1]);
+    month = Number(iso[2]) - 1;
+    day = Number(iso[3]);
+  }
+
+  // DD.MM.YYYY
+  const dot = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(rawDate);
+  if (month < 0 && dot) {
+    day = Number(dot[1]);
+    month = Number(dot[2]) - 1;
+    year = Number(dot[3]);
+  }
+
+  // "May 10" / "Sep 2"
+  if (month < 0) {
+    const tentative = new Date(`${rawDate} ${year} 00:00 UTC`);
+    if (!Number.isNaN(tentative.getTime())) {
+      month = tentative.getUTCMonth();
+      day = tentative.getUTCDate();
+      // Handle year boundary when querying next 7 days around New Year.
+      if (tentative.getTime() < now.getTime() - 14 * 24 * 60 * 60 * 1000) {
+        year += 1;
+      }
+    }
+  }
+
+  if (month < 0 || day < 0) return null;
+
+  const utcMs = Date.UTC(year, month, day, hour, minute, 0, 0);
+  const utcDate = new Date(utcMs);
+  return Number.isNaN(utcDate.getTime()) ? null : utcDate.toISOString();
 }
 
 function buildViewerUrl(evt: OddsEvent): string {
@@ -111,8 +175,9 @@ interface FormState {
   network: DeployNetwork;
 }
 
-// Platform wallet = oracle (signs settleMatch on-chain via ORACLE_PRIVATE_KEY in edge fn)
-const PLATFORM_ORACLE = "0xcb443c2db4025128964397CCb5BC4F4E8ab6A665";
+// Network-specific default oracle/admin identities for this branch.
+const PLATFORM_ORACLE_ETH = "0xcb443c2db4025128964397CCb5BC4F4E8ab6A665";
+const PLATFORM_ORACLE_SOL = "Dn382aRJfXJwyE12Yck3mLSXtGeMQdcSJ7NR5wsQaJd5";
 
 const EMPTY: FormState = {
   externalMatchId: "",
@@ -120,7 +185,7 @@ const EMPTY: FormState = {
   awayTeam: "",
   kickoffAt: "",
   isDemo: false,
-  oracleAddress: PLATFORM_ORACLE,
+  oracleAddress: PLATFORM_ORACLE_ETH,
   poolAmountUsdc: "",
   network: "sepolia",
 };
@@ -140,7 +205,7 @@ export default function CreateEvent() {
   const [error, setError] = useState<string | null>(null);
   const [seedWarning, setSeedWarning] = useState<string | null>(null);
 
-  // ── Premier League fixtures picker ────────────────────────────────────────
+  // ── Multi-league fixtures picker (GoalServe) ─────────────────────────────
   const [tonightEvents, setTonightEvents] = useState<OddsEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [eventsError, setEventsError] = useState<string | null>(null);
@@ -149,6 +214,22 @@ export default function CreateEvent() {
   const [existingMatchIds, setExistingMatchIds] = useState<Set<string>>(
     new Set(),
   );
+
+  // Keep default oracle aligned with selected chain unless user entered a custom one.
+  useEffect(() => {
+    setForm((prev) => {
+      const desired =
+        prev.network === "solana_devnet"
+          ? PLATFORM_ORACLE_SOL
+          : PLATFORM_ORACLE_ETH;
+      const isDefaultLike =
+        prev.oracleAddress === "" ||
+        prev.oracleAddress === PLATFORM_ORACLE_ETH ||
+        prev.oracleAddress === PLATFORM_ORACLE_SOL;
+      if (!isDefaultLike || prev.oracleAddress === desired) return prev;
+      return { ...prev, oracleAddress: desired };
+    });
+  }, [form.network]);
 
   useEffect(() => {
     supabase
@@ -178,31 +259,44 @@ export default function CreateEvent() {
       try {
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
         const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-        const res = await fetch(`${supabaseUrl}/functions/v1/sp-fixtures`, {
-          headers: { Authorization: `Bearer ${anonKey}` },
-          signal: AbortSignal.timeout(20_000),
-        });
-        if (!res.ok) {
-          throw new Error(`sp-fixtures failed (${res.status})`);
-        }
+        const allFixtures: Array<{ fixture: GsFixture; sportKey: string }> = [];
+        for (const sportKey of FIXTURE_SPORTS) {
+          const leagueId = SPORT_TO_GS_LEAGUE[sportKey];
+          const res = await fetch(
+            `${supabaseUrl}/functions/v1/gs-fixtures?leagueId=${leagueId}`,
+            {
+              headers: { Authorization: `Bearer ${anonKey}` },
+              signal: AbortSignal.timeout(20_000),
+            },
+          );
+          if (!res.ok) {
+            throw new Error(
+              `gs-fixtures failed (${res.status}) for ${sportKey}`,
+            );
+          }
 
-        const fixtures: SpFixture[] = await res.json();
-        if (!Array.isArray(fixtures)) {
-          throw new Error("sp-fixtures returned non-array response");
+          const fixtures: GsFixture[] = await res.json();
+          if (!Array.isArray(fixtures)) {
+            throw new Error("gs-fixtures returned non-array response");
+          }
+          for (const fixture of fixtures) {
+            allFixtures.push({ fixture, sportKey });
+          }
         }
 
         const now = Date.now();
         // show games starting from now up to 7 days ahead
         const windowEnd = now + 7 * 24 * 60 * 60 * 1000;
 
-        const all: OddsEvent[] = fixtures
-          .map((f) => ({
-            id: f.id,
-            sport_key: "soccer_epl",
-            home_team: f.home,
-            away_team: f.away,
-            commence_time: `${f.date}T${f.time}`,
+        const all: OddsEvent[] = allFixtures
+          .map(({ fixture, sportKey }) => ({
+            id: fixture.id,
+            sport_key: sportKey,
+            home_team: fixture.home,
+            away_team: fixture.away,
+            commence_time: parseGoalServeKickoff(fixture.date, fixture.time),
           }))
+          .filter((e): e is OddsEvent => typeof e.commence_time === "string")
           .filter((e) => {
             const t = new Date(e.commence_time).getTime();
             // upcoming: starts from now (allow 2hr grace for live games) to +7 days
@@ -222,7 +316,7 @@ export default function CreateEvent() {
         _eventsCacheAt = Date.now();
         setTonightEvents(all);
       } catch (e: any) {
-        setEventsError("Failed to fetch Premier League fixtures: " + e.message);
+        setEventsError("Failed to fetch GoalServe fixtures: " + e.message);
       } finally {
         setEventsLoading(false);
       }
@@ -362,15 +456,16 @@ export default function CreateEvent() {
     }
   }
 
-  async function seedPlayersFromSpLineup(
+  async function seedPlayersFromGsLineup(
     matchDbId: string,
-    spMatchId: string,
+    gsMatchId: string,
+    leagueId: string,
   ): Promise<number> {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
       const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
       const res = await fetch(
-        `${supabaseUrl}/functions/v1/sp-lineup?matchId=${encodeURIComponent(spMatchId)}`,
+        `${supabaseUrl}/functions/v1/gs-lineup?matchId=${encodeURIComponent(gsMatchId)}&leagueId=${encodeURIComponent(leagueId)}`,
         {
           headers: { Authorization: `Bearer ${anonKey}` },
           signal: AbortSignal.timeout(10_000),
@@ -393,7 +488,7 @@ export default function CreateEvent() {
         .filter((p) => p.id && p.name)
         .map((p) => ({
           match_id: matchDbId,
-          external_player_id: `sp_${p.id}`,
+          external_player_id: p.id,
           name: p.name,
           team: p.team,
           jersey_number: p.jersey,
@@ -433,7 +528,8 @@ export default function CreateEvent() {
     awayTeam: string,
     sportKey: string,
     oddsEventId: string | null,
-    spMatchId?: string | null,
+    gsMatchId?: string | null,
+    leagueId?: string,
   ): Promise<number> {
     try {
       if (!oddsEventId) return 0;
@@ -474,13 +570,13 @@ export default function CreateEvent() {
 
       // ── Team assignment: fetch SP lineup and only keep resolved players ─
       const teamMap = new Map<string, "home" | "away">();
-      const spId = spMatchId ?? null;
-      if (spId) {
+      const gsId = gsMatchId ?? null;
+      if (gsId && leagueId) {
         try {
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
           const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
           const luRes = await fetch(
-            `${supabaseUrl}/functions/v1/sp-lineup?matchId=${encodeURIComponent(spId)}`,
+            `${supabaseUrl}/functions/v1/gs-lineup?matchId=${encodeURIComponent(gsId)}&leagueId=${encodeURIComponent(leagueId)}`,
             {
               headers: { Authorization: `Bearer ${anonKey}` },
               signal: AbortSignal.timeout(8_000),
@@ -499,7 +595,7 @@ export default function CreateEvent() {
             }
           }
         } catch {
-          /* SP lineup unavailable — fall through */
+          /* GoalServe lineup unavailable — fall through */
         }
       }
 
@@ -547,50 +643,6 @@ export default function CreateEvent() {
     }
   }
 
-  // ── Look up StatsPerform match ID by fuzzy team-name matching ─────────────
-  async function lookupSpMatchId(
-    homeTeam: string,
-    awayTeam: string,
-  ): Promise<string | null> {
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-      const res = await fetch(`${supabaseUrl}/functions/v1/sp-fixtures`, {
-        headers: { Authorization: `Bearer ${anonKey}` },
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!res.ok) return null;
-      const fixtures: Array<{ id: string; home: string; away: string }> =
-        await res.json();
-      if (!Array.isArray(fixtures)) return null;
-
-      function normName(s: string): string {
-        return s
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toLowerCase()
-          .trim();
-      }
-
-      const normHome = normName(homeTeam);
-      const normAway = normName(awayTeam);
-
-      const match = fixtures.find((f) => {
-        const fHome = normName(f.home);
-        const fAway = normName(f.away);
-        if (fHome === normHome && fAway === normAway) return true;
-        // first-word match handles "Manchester City" ↔ "Man City" partially
-        const homeWord = normHome.split(" ")[0];
-        const awayWord = normAway.split(" ")[0];
-        return fHome.startsWith(homeWord) && fAway.startsWith(awayWord);
-      });
-
-      return match?.id ?? null;
-    } catch {
-      return null;
-    }
-  }
-
   const set = (k: keyof FormState, v: string | boolean) =>
     setForm((f) => ({ ...f, [k]: v }));
 
@@ -611,10 +663,13 @@ export default function CreateEvent() {
       // ── Step 1: Save event to Supabase ─────────────────────────────────────
       setStep({ id: "db", label: "Saving event to database…" });
       const sportKey = selectedEvent?.sport_key ?? "soccer_epl";
+      const gsLeague = SPORT_TO_GS_LEAGUE[sportKey] ?? "1204";
+      const gsStaticId = form.externalMatchId;
       const { error: dbErr, data: match } = await supabase
         .from("matches")
         .insert({
           external_match_id: form.externalMatchId,
+          goalserve_static_id: gsStaticId,
           home_team: form.homeTeam,
           away_team: form.awayTeam,
           kickoff_at: new Date(form.kickoffAt).toISOString(),
@@ -626,26 +681,12 @@ export default function CreateEvent() {
           score_home: 0,
           score_away: 0,
           half: 1,
-          odds_api_config: { sport: sportKey },
+          odds_api_config: { sport: sportKey, goalserve_league: gsLeague },
         })
         .select()
         .single();
 
       if (dbErr) throw new Error(dbErr.message);
-
-      // ── Step 1.5: Use selected SP match ID (fallback to fuzzy lookup) ─
-      const spMatchId =
-        selectedEvent?.sport_key === "soccer_epl"
-          ? selectedEvent.id
-          : await lookupSpMatchId(form.homeTeam, form.awayTeam).catch(
-              () => null,
-            );
-      if (spMatchId) {
-        await supabase
-          .from("matches")
-          .update({ statsperform_match_id: spMatchId })
-          .eq("id", match.id);
-      }
 
       // ── Step 1.6: Seed players from Odds API scorer market ─────────────────
       setStep({ id: "seed", label: "Seeding players from Odds API…" });
@@ -682,28 +723,31 @@ export default function CreateEvent() {
         () => false,
       );
 
-      // ── Always seed SP lineup first — this sets correct is_starter for the starting 11 ─
-      const spSeededCount = spMatchId
-        ? await seedPlayersFromSpLineup(match.id, spMatchId).catch(() => 0)
+      // ── Always seed GoalServe lineup first — this sets correct starters ─
+      const gsSeededCount = gsStaticId
+        ? await seedPlayersFromGsLineup(match.id, gsStaticId, gsLeague).catch(
+            () => 0,
+          )
         : 0;
 
-      // ── Then enrich with Odds API scorer market (non-SP candidates get is_starter=false) ─
+      // ── Then enrich with Odds API scorer market (non-lineup candidates get is_starter=false) ─
       const seededCount = await seedPlayersFromOddsApi(
         match.id,
         form.homeTeam,
         form.awayTeam,
         sportKey,
         oddsEventId,
-        spMatchId,
+        gsStaticId,
+        gsLeague,
       ).catch(() => 0);
 
-      if (spSeededCount === 0 && seededCount === 0) {
+      if (gsSeededCount === 0 && seededCount === 0) {
         setSeedWarning(
           'No scorer market available yet. Lineups/odds were not seeded. Use "Re-seed Players" later when the market opens.',
         );
-      } else if (seededCount === 0 && spSeededCount > 0) {
+      } else if (seededCount === 0 && gsSeededCount > 0) {
         setSeedWarning(
-          `Seeded ${spSeededCount} players from StatsPerform lineup with placeholder odds; re-seed later for live scorer odds.`,
+          `Seeded ${gsSeededCount} players from GoalServe lineup with placeholder odds; re-seed later for live scorer odds.`,
         );
       }
 
@@ -756,15 +800,13 @@ export default function CreateEvent() {
         </p>
       </div>
 
-      {/* ── Premier League fixtures picker ─────────────────────────────────── */}
+      {/* ── Top leagues fixtures picker ─────────────────────────────────────── */}
       <div className="bg-gray-900 border border-white/5 rounded-2xl p-5 mb-5 shadow-xl">
         <div className="flex items-center gap-2 mb-4">
           <span className="text-base">🏆</span>
-          <h2 className="text-sm font-bold text-white">
-            Premier League Fixtures
-          </h2>
+          <h2 className="text-sm font-bold text-white">Top Leagues Fixtures</h2>
           <span className="ml-auto text-[10px] text-gray-500 uppercase tracking-wider font-medium">
-            EPL · next 7 days
+            EPL · La Liga · Ligue 1 · Bundesliga
           </span>
         </div>
 
@@ -954,37 +996,37 @@ export default function CreateEvent() {
                 disabled={busy}
               >
                 <option value="sepolia">Ethereum Sepolia (USDC testnet)</option>
-                <option value="solana_devnet">Solana Devnet (SOL)</option>
+                <option value="solana_devnet">Solana Devnet (USDC-dev)</option>
               </select>
             </Field>
 
             {form.network === "solana_devnet" && (
               <div className="mt-2 mb-3 px-3 py-2 bg-purple-500/10 border border-purple-500/20 rounded-lg text-xs text-purple-300 leading-relaxed">
-                <strong>Solana Devnet:</strong> Pool amount is in SOL (devnet).
-                Phantom wallet required. A deterministic pool address will be
-                derived from your wallet pubkey + match ID.
+                <strong>Solana Devnet:</strong> Pool amount is in dev USDC
+                (mint: Gh9…KJr). SOL is used only for transaction fees. Phantom
+                wallet required.
               </div>
             )}
 
             <Field
               label={
                 form.network === "solana_devnet"
-                  ? "Initial Pool Amount (SOL)"
+                  ? "Initial Pool Amount (USDC-dev)"
                   : "Initial Pool Amount (USDC)"
               }
               required
             >
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">
-                  {form.network === "solana_devnet" ? "\u25ce" : "$"}
+                  $
                 </span>
                 <input
                   className={INPUT + " pl-7"}
                   type="number"
-                  min={form.network === "solana_devnet" ? "0.01" : "1"}
+                  min="0.01"
                   step="0.01"
                   placeholder={
-                    form.network === "solana_devnet" ? "0.5" : "5000.00"
+                    form.network === "solana_devnet" ? "500.00" : "5000.00"
                   }
                   value={form.poolAmountUsdc}
                   onChange={(e) => set("poolAmountUsdc", e.target.value)}
@@ -995,7 +1037,7 @@ export default function CreateEvent() {
             </Field>
             <p className="text-xs text-gray-600 mt-2 leading-relaxed">
               {form.network === "solana_devnet"
-                ? "This amount (SOL) is transferred from your Phantom wallet to the derived pool address on Solana Devnet. Phantom will open twice — once to create the pool account, once to fund it."
+                ? "This amount (dev USDC) is transferred from your Phantom wallet to the pool token account on Solana Devnet. Phantom will open to approve the token transfer; SOL is charged only as network fee."
                 : "This amount is deducted from the goal.live admin wallet and transferred into the deployed escrow contract. MetaMask will open twice — once to deploy the contract, once to fund it."}
             </p>
           </div>

@@ -49,7 +49,7 @@ Deno.serve(async (req: Request) => {
       const GS_BASE = `http://www.goalserve.com/getfeed/${
         Deno.env.get("GOALSERVE_API_KEY") ?? "edc0ecd4f73c4c1a20f808dea8e5ebf2"
       }`;
-      const rawRes = await fetch(`${GS_BASE}/soccernew/d0?json=1`, {
+      const rawRes = await fetch(`${GS_BASE}/soccernew/home?json=1`, {
         signal: AbortSignal.timeout(15_000),
       });
       const rawData = rawRes.ok

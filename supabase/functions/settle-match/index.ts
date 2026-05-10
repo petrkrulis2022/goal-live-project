@@ -37,10 +37,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ethers } from "https://esm.sh/ethers@6.13.2";
 import {
-  getSpToken,
-  getSpMatchLive,
-  getSpMatchEvents,
-} from "../_shared/statsperform.ts";
+  getGsMatchLive,
+  parseGsGoals,
+  gsPlayerId,
+} from "../_shared/goalserve.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -121,7 +121,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const { match_id, force } = body;
     // winner / home_goals / away_goals / goal_scorer_player_ids are optional
-    // — omit all to trigger StatsPerform auto-fetch mode.
+    // — omit all to trigger GoalServe auto-fetch mode.
     let winner: string | undefined = body.winner;
     let home_goals: number | undefined = body.home_goals;
     let away_goals: number | undefined = body.away_goals;
@@ -135,7 +135,7 @@ Deno.serve(async (req: Request) => {
     const { data: match, error: matchErr } = await supabase
       .from("matches")
       .select(
-        "id, status, home_team, away_team, contract_address, external_match_id, statsperform_match_id, odds_api_config",
+        "id, status, home_team, away_team, contract_address, external_match_id, goalserve_static_id, odds_api_config",
       )
       .eq("id", match_id)
       .single();
@@ -144,52 +144,49 @@ Deno.serve(async (req: Request) => {
     if (match.status === "finished" && !force)
       return json({ error: "Match already settled" }, 409);
 
-    // ── AUTO-FETCH MODE: pull final result from StatsPerform ──────────────
+    // ── AUTO-FETCH MODE: pull final result from GoalServe ─────────────────
     // Triggered when winner / home_goals / away_goals are not supplied.
     const autoFetch =
       winner === undefined ||
       home_goals === undefined ||
       away_goals === undefined;
     if (autoFetch) {
-      const spMatchId: string | null = match.statsperform_match_id ?? null;
-      if (!spMatchId) {
+      const staticId: string | null =
+        ((match as Record<string, unknown>).goalserve_static_id as
+          | string
+          | null) ?? (match.external_match_id as string | null);
+      const cfg = (match.odds_api_config ?? {}) as Record<string, unknown>;
+      const leagueId = String(cfg.goalserve_league ?? "1204");
+
+      if (!staticId) {
         return json(
           {
             error:
-              "Cannot auto-fetch: match has no statsperform_match_id. Pass winner + home_goals + away_goals explicitly.",
+              "Cannot auto-fetch: match has no goalserve_static_id. Pass winner + home_goals + away_goals explicitly.",
           },
           422,
         );
       }
 
-      // ── StatsPerform OAuth token ────────────────────────────────────────
-      let spToken: string;
-      try {
-        spToken = await getSpToken();
-      } catch (tokenErr) {
-        return json({ error: `StatsPerform OAuth failed: ${tokenErr}` }, 502);
-      }
-
-      // ── MA1: verify FullTime and get final score ────────────────────────
-      const spMatch = await getSpMatchLive(spMatchId, spToken);
-      if (!spMatch) {
+      const gsMatch = await getGsMatchLive(staticId, leagueId);
+      if (!gsMatch) {
         return json(
-          { error: `StatsPerform MA1 fetch failed for match ${spMatchId}` },
+          { error: `GoalServe fetch failed for match ${staticId}` },
           502,
         );
       }
 
-      if (!spMatch.isFullTime) {
+      if (!gsMatch.isFullTime) {
         return json(
           {
-            error: `Match is not FullTime yet on StatsPerform. Current status: "${spMatch.status}". Settle only at FullTime.`,
+            error: `Match is not FullTime yet on GoalServe. Current status: "${gsMatch.status}". Settle only at FullTime.`,
           },
           422,
         );
       }
 
-      home_goals = spMatch.scoreHome ?? 0;
-      away_goals = spMatch.scoreAway ?? 0;
+      home_goals = gsMatch.scoreHome ?? 0;
+      away_goals = gsMatch.scoreAway ?? 0;
       winner =
         home_goals > away_goals
           ? "home"
@@ -197,17 +194,8 @@ Deno.serve(async (req: Request) => {
             ? "away"
             : "draw";
 
-      // ── MA3: get goal scorer IDs ────────────────────────────────────────
-      const spEvents = await getSpMatchEvents(
-        spMatchId,
-        spToken,
-        spMatch.homeContestantId,
-      );
-      // Own goals are excluded — credit goes to the opposing team, not the scorer
-      // Each scorer gets TWO IDs in the set:
-      //   1. SP opaque ID  (e.g. "5aw3p3wnz93mshc3ivspwfgxs") — for on-chain
-      //   2. Synthetic odds_xxx ID derived from SP playerName — matches the
-      //      external_player_id format used when players are seeded from Odds API
+      // Parse scorer IDs from GoalServe goals.
+      // We include both gs_* and odds_* IDs so either seeded format settles.
       function normForId(s: string): string {
         return s
           .normalize("NFD")
@@ -216,12 +204,15 @@ Deno.serve(async (req: Request) => {
           .trim()
           .replace(/[^a-z0-9]/g, "_");
       }
-      goal_scorer_player_ids = spEvents.goals
+      goal_scorer_player_ids = parseGsGoals(gsMatch.raw)
         .filter((g) => !g.isOwnGoal)
-        .flatMap((g) => [g.playerId, `odds_${normForId(g.playerName)}`]);
+        .flatMap((g) => [
+          gsPlayerId(g.playerName),
+          `odds_${normForId(g.playerName)}`,
+        ]);
 
       console.log(
-        `[settle-match] auto-fetch (StatsPerform): ${match.home_team} ${home_goals}-${away_goals} ${match.away_team}, ` +
+        `[settle-match] auto-fetch (GoalServe): ${match.home_team} ${home_goals}-${away_goals} ${match.away_team}, ` +
           `winner=${winner}, scorers=[${goal_scorer_player_ids.join(",")}]`,
       );
     }

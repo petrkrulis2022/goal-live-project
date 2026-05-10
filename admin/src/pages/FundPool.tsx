@@ -186,7 +186,8 @@ export default function FundPool() {
       {match.contract_address && (
         <div className="bg-gray-900 border border-white/5 rounded-2xl p-5 mb-4">
           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            Amount ({isSolanaAddress(match.contract_address) ? "SOL" : "USDC"})
+            Amount (
+            {isSolanaAddress(match.contract_address) ? "USDC-dev" : "USDC"})
           </label>
           <div className="flex gap-3">
             <input
@@ -227,9 +228,10 @@ export default function FundPool() {
         <p className="font-semibold text-gray-500 mb-1.5">How it works</p>
         {isSolanaAddress(match.contract_address) ? (
           <p>
-            Pool funding transfers SOL from your Phantom wallet to the derived
-            pool address on Solana Devnet. The pool address is deterministically
-            derived from your admin pubkey + match ID using{" "}
+            Pool funding transfers dev USDC (mint: Gh9…KJr) from your Phantom
+            wallet to the pool token account on Solana Devnet. SOL is only used
+            for tx fees. The pool owner address is deterministically derived
+            from your admin pubkey + match ID using{" "}
             <code className="text-gray-400 bg-gray-800 px-1 py-0.5 rounded">
               PublicKey.createWithSeed
             </code>

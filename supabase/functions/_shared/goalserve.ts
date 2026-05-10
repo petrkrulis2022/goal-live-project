@@ -171,7 +171,8 @@ export async function getGsFixtures(
   daysAhead: number,
   leagueIdFilter?: string,
 ): Promise<GsFixture[]> {
-  const dayParam = daysAhead === 0 ? "d0" : `d${daysAhead}`;
+  // This GoalServe key serves "home" for current day; d0 returns HTML.
+  const dayParam = daysAhead === 0 ? "home" : `d${daysAhead}`;
   const url = `${GS_BASE}/soccernew/${dayParam}?json=1`;
 
   const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
@@ -190,6 +191,13 @@ export async function getGsFixtures(
       data?.scores?.league ??
       data?.leagues ??
       data?.league,
+  );
+
+  // Alternate shape for this GoalServe key:
+  // { scores: { category: [{ @id, @name, matches: { match: [...] } }] } }
+  // deno-lint-ignore no-explicit-any
+  const categories: any[] = toArr(
+    data?.scores?.category ?? data?.soccernew?.category,
   );
 
   for (const league of leagues) {
@@ -214,6 +222,42 @@ export async function getGsFixtures(
         m.visitorteam?.["@name"] ?? m.visitorteam?.name ?? "";
       const dateStr: string = m["@date"] ?? m.date ?? "";
       const timeStr: string = m["@time"] ?? m.time ?? "";
+
+      fixtures.push({
+        id: staticId,
+        home,
+        away,
+        date: dateStr,
+        time: timeStr,
+        competition: compName,
+        competitionCode: compCode,
+        leagueId,
+      });
+    }
+  }
+
+  for (const cat of categories) {
+    const leagueId: string = String(cat?.["@id"] ?? cat?.id ?? "");
+    if (leagueIdFilter && leagueId !== leagueIdFilter) continue;
+
+    const leagueName: string = cat?.["@name"] ?? cat?.name ?? "";
+    const sportKey = GS_LEAGUE_TO_SPORT[leagueId] ?? "soccer";
+    const compCode = sportKey.split("_").slice(1).join("_").toUpperCase();
+    const compName = GS_LEAGUE_TO_NAME[leagueId] ?? leagueName;
+
+    // deno-lint-ignore no-explicit-any
+    const matches: any[] = toArr(cat?.matches?.match ?? cat?.match);
+    for (const m of matches) {
+      const staticId: string = String(
+        m?.["@static_id"] ?? m?.["@id"] ?? m?.static_id ?? m?.id ?? "",
+      );
+      if (!staticId) continue;
+
+      const home: string = m?.localteam?.["@name"] ?? m?.localteam?.name ?? "";
+      const away: string =
+        m?.visitorteam?.["@name"] ?? m?.visitorteam?.name ?? "";
+      const dateStr: string = m?.["@date"] ?? m?.date ?? "";
+      const timeStr: string = m?.["@time"] ?? m?.time ?? "";
 
       fixtures.push({
         id: staticId,

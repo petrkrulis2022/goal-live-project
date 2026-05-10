@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "goal.live – StatsPerform CRE",
+  "name": "goal.live - solana-goalserve",
   "version": "2.0.0",
-  "description": "Bet on live football matches using crypto – StatsPerform CRE live odds",
+  "description": "Bet on live football matches using crypto - solana-goalserve branch build",
   "permissions": ["activeTab", "storage"],
   "host_permissions": [
     "https://www.youtube.com/*",

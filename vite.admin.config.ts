@@ -7,6 +7,9 @@ export default defineConfig({
   plugins: [react()],
   root: resolve(__dirname, "admin"),
   envDir: resolve(__dirname), // load .env from project root, not admin/
+  optimizeDeps: {
+    include: ["buffer", "@solana/web3.js"],
+  },
   build: {
     outDir: resolve(__dirname, "dist-admin"),
     emptyOutDir: true,
@@ -26,6 +29,7 @@ export default defineConfig({
     alias: {
       "@": resolve(__dirname, "admin/src"),
       "@shared": resolve(__dirname, "src"),
+      buffer: "buffer",
     },
   },
 });

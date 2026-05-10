@@ -13,10 +13,25 @@ declare global {
         handler: (...args: unknown[]) => void,
       ) => void;
     };
+    solana?: {
+      isPhantom?: boolean;
+      connect: (opts?: {
+        onlyIfTrusted?: boolean;
+      }) => Promise<{ publicKey: { toString(): string } }>;
+      disconnect: () => Promise<void>;
+      publicKey: { toString(): string } | null;
+      on: (event: string, handler: (...args: unknown[]) => void) => void;
+      removeListener: (
+        event: string,
+        handler: (...args: unknown[]) => void,
+      ) => void;
+    };
   }
 }
 
-const ADMIN_ADDRESS = "0xcb443c2db4025128964397CCb5BC4F4E8ab6A665";
+const ADMIN_SOLANA_PUBKEY = "Dn382aRJfXJwyE12Yck3mLSXtGeMQdcSJ7NR5wsQaJd5";
+
+export type WalletType = "metamask" | "phantom";
 
 export type WalletStatus =
   | "disconnected"
@@ -26,22 +41,32 @@ export type WalletStatus =
 
 export function useAdminWallet() {
   const [address, setAddress] = useState<string | null>(null);
+  const [walletType, setWalletType] = useState<WalletType | null>(null);
   const [status, setStatus] = useState<WalletStatus>("disconnected");
   const [error, setError] = useState<string | null>(null);
 
-  function evaluate(addr: string | null) {
+  function evaluateEth(addr: string | null) {
     if (!addr) {
       setStatus("disconnected");
       return;
     }
-    if (addr.toLowerCase() === ADMIN_ADDRESS.toLowerCase()) {
+    // solana-goalserve branch: admin auth is Phantom-only.
+    setStatus("wrong_wallet");
+  }
+
+  function evaluateSolana(pubkey: string | null) {
+    if (!pubkey) {
+      setStatus("disconnected");
+      return;
+    }
+    if (pubkey === ADMIN_SOLANA_PUBKEY) {
       setStatus("authorized");
     } else {
       setStatus("wrong_wallet");
     }
   }
 
-  // On mount: check if already connected
+  // On mount: restore MetaMask session if already connected
   useEffect(() => {
     if (!window.ethereum) return;
     window.ethereum
@@ -49,26 +74,49 @@ export function useAdminWallet() {
       .then((res) => {
         const accounts = res as string[];
         const addr = accounts[0] ?? null;
-        setAddress(addr);
-        evaluate(addr);
+        if (addr) {
+          setAddress(addr);
+          setWalletType("metamask");
+          evaluateEth(addr);
+        }
       })
       .catch(() => {});
   }, []);
 
-  // Listen for account changes
+  // Listen for MetaMask account changes
   useEffect(() => {
     if (!window.ethereum) return;
     const handler = (...args: unknown[]) => {
       const accounts = args[0] as string[];
       const addr = accounts[0] ?? null;
       setAddress(addr);
-      evaluate(addr);
+      if (addr) {
+        setWalletType("metamask");
+        evaluateEth(addr);
+      } else {
+        setWalletType(null);
+        setStatus("disconnected");
+      }
     };
     window.ethereum.on("accountsChanged", handler);
     return () => window.ethereum!.removeListener("accountsChanged", handler);
   }, []);
 
-  const connect = useCallback(async () => {
+  // Listen for Phantom disconnect
+  useEffect(() => {
+    if (!window.solana) return;
+    const handler = () => {
+      if (walletType === "phantom") {
+        setAddress(null);
+        setWalletType(null);
+        setStatus("disconnected");
+      }
+    };
+    window.solana.on("disconnect", handler);
+    return () => window.solana!.removeListener("disconnect", handler);
+  }, [walletType]);
+
+  const connectMetaMask = useCallback(async () => {
     setError(null);
     if (!window.ethereum) {
       setError("MetaMask not detected. Install MetaMask to continue.");
@@ -82,25 +130,56 @@ export function useAdminWallet() {
       const accounts = res as string[];
       const addr = accounts[0] ?? null;
       setAddress(addr);
-      evaluate(addr);
+      setWalletType("metamask");
+      evaluateEth(addr);
     } catch (e: unknown) {
       setStatus("disconnected");
       setError(e instanceof Error ? e.message : "Connection rejected");
     }
   }, []);
 
-  const disconnect = useCallback(() => {
-    setAddress(null);
-    setStatus("disconnected");
+  const connectPhantom = useCallback(async () => {
+    setError(null);
+    if (!window.solana?.isPhantom) {
+      setError("Phantom not detected. Install the Phantom browser extension.");
+      return;
+    }
+    setStatus("connecting");
+    try {
+      const resp = await window.solana.connect();
+      const pubkey = resp.publicKey.toString();
+      setAddress(pubkey);
+      setWalletType("phantom");
+      evaluateSolana(pubkey);
+    } catch (e: unknown) {
+      setStatus("disconnected");
+      setError(e instanceof Error ? e.message : "Connection rejected");
+    }
   }, []);
+
+  const disconnect = useCallback(async () => {
+    if (walletType === "phantom" && window.solana) {
+      try {
+        await window.solana.disconnect();
+      } catch {
+        /* ignore */
+      }
+    }
+    setAddress(null);
+    setWalletType(null);
+    setStatus("disconnected");
+  }, [walletType]);
 
   return {
     address,
+    walletType,
     status,
     error,
     isAuthorized: status === "authorized",
-    connect,
+    connect: connectMetaMask, // kept for backward compat
+    connectMetaMask,
+    connectPhantom,
     disconnect,
-    adminAddress: ADMIN_ADDRESS,
+    adminAddress: ADMIN_SOLANA_PUBKEY,
   };
 }

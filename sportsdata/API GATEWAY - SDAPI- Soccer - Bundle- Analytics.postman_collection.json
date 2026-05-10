@@ -1,0 +1,2054 @@
+{
+	"info": {
+		"_postman_id": "032e097f-6b86-493f-8e15-ba03a1fcfd2a",
+		"name": "API GATEWAY - SDAPI: Soccer - Bundle: Analytics",
+		"description": "## Soccer API - Overview\n\nYou can get data from the following feeds of the Soccer API. Access to these feeds is subject to your current level of subscription.\n\nTo get started, find your feed(s) in the table and visit the dedicated section. You will see a user guide for the feed, use cases, and supported query parameters to help you to customise your requests and get the assets and metadata you require. You can combine multiple query parameter-value strings in one URL to make a single HTTP `GET` request.  \nThis example is for a standard `GET` request but it is possible to make requests using OAuth. For more information about the available security and authorisation options including OAuth, see our [API Overview and Authorisation Guide](https://documentation.statsperform.com/docs/rh/sdapi/Topics/getting_started/api-overview-and-authorisation-guide.htm#oauth). For a tutorial on how to make OAuth requests, see our FAQ: [How can I make requests using OAuth?](https://documentation.statsperform.com/docs/rh/sdapi/Topics/getting_started/faqs.htm#faqs-how-can-i-make-requests-using-oauth)\n\n**Base URL and structure:**\n\nThe examples in our guides use HTTP format. URL requests broadly use the following structure. In the Soccer API, the `feedResource` is `soccerdata`.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/index.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/index.htm)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "6382314",
+		"_collection_link": "https://restless-resonance-444913.postman.co/workspace/SDAPI-Gateway-Bundles~56a7f706-acc9-4246-a81a-595a375bb756/collection/6382314-032e097f-6b86-493f-8e15-ba03a1fcfd2a?action=share&source=collection_link&creator=6382314"
+	},
+	"item": [
+		{
+			"name": "OAuth",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Has Access Token\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData).to.have.property(\"access_token\");\r",
+							"    pm.collectionVariables.set(\"bearerToken\", jsonData.access_token);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {
+					"content-type": true,
+					"accept": true,
+					"accept-encoding": true,
+					"connection": true,
+					"user-agent": true
+				}
+			},
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "grant_type",
+							"value": "client_credentials",
+							"type": "text"
+						},
+						{
+							"key": "client_id",
+							"value": "{{clientId}}",
+							"type": "text"
+						},
+						{
+							"key": "client_secret",
+							"value": "{{clientSecret}}",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://api.statsperform.com/realms/apigw/protocol/openid-connect/token?apikey={{apiKey}}",
+					"protocol": "https",
+					"host": [
+						"api",
+						"statsperform",
+						"com"
+					],
+					"path": [
+						"realms",
+						"apigw",
+						"protocol",
+						"openid-connect",
+						"token"
+					],
+					"query": [
+						{
+							"key": "apikey",
+							"value": "{{apiKey}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "OT2 - Tournament Calendar",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/tournamentcalendar/active/authorized?_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"tournamentcalendar",
+						"active",
+						"authorized"
+					],
+					"query": [
+						{
+							"key": "comp",
+							"value": "{{competitionId}}",
+							"description": "Get tournament calendar information only for the specified competition. Pass the competition UUID to the comp parameter.",
+							"disabled": true
+						},
+						{
+							"key": "coverage",
+							"value": "yes",
+							"description": "GET coverage information for tournament calendars that will have Live Text Commentary (LTC) or Opta facts (pre/live/post) and the available languages:\nPass a value of yes or no to the coverage parameter.",
+							"disabled": true
+						},
+						{
+							"key": "stages",
+							"value": "yes",
+							"description": "GET or exclude the following stages, series, and standings information of a tournament calendar:\n\nAll stages including the Opta Core ID, stage UUID and name (such as, Group Stage, Play-Offs, Final), stage start and end date, and a lastUpdated timestamp.\nAll series information including the Opta Core ID, series UUID and name (such as, Group A, Group B), and a lastUpdated timestamp.\nStandings information on the stage element.\nPass a value of yes or no to the stages parameter.",
+							"disabled": true
+						},
+						{
+							"key": "ctst",
+							"value": "{{teamId}}",
+							"description": "GET tournament calendar information only for the specified contestant (the opposition in a fixture, such as a sports team). Pass the contestant UUID to the ctst parameter.",
+							"disabled": true
+						},
+						{
+							"key": "_pgNm",
+							"value": "{{pageNumber}}",
+							"description": "GET data only in the specified page size and/or page number. All results are returned in pages and these parameters help limit the page size in order to optimise the efficiency of the SDAPI.\nNote: You cannot use this parameter without passing the data type in the call.\n_pgNm - Specify the {pageNumber} to return - indexed from 1. If this value is not provided, then page 1 is returned by default.",
+							"disabled": true
+						},
+						{
+							"key": "_pgSz",
+							"value": "{{pageSize}}",
+							"description": "GET data only in the specified page size and/or page number. All results are returned in pages and these parameters help limit the page size in order to optimise the efficiency of the SDAPI.\nNote: You cannot use this parameter without passing the data type in the call.\n_pgSz - Specify the size of the page to return - the number of match definitions in a page. Valid {pageSize} values depend on the operating mode of an outlet. For B2B requests, the maximum value is 1000 (default is 400). For B2C requests, the maximum value is 400 (the default is 400).",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get basic information about the tournament calendars - the individual seasons/editions of a competition.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-tournament-calendars.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-tournament-calendars.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "MA0 - Tournament Schedule",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/tournamentschedule/?_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"tournamentschedule",
+						""
+					],
+					"query": [
+						{
+							"key": "cvlv",
+							"value": "{{coverageLevel}}",
+							"description": "Get fixtures for only the specified coverage level/s (subject to other query parameters/criteria). This will filter out (hide) all matches that are not from requested coverage level/s.\nPass one value (or multiple values in a comma-separated list) to the parameter: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 - this is a number that represents the coverage level tier, in the range 1-15 - for example: cvlv=9",
+							"disabled": true
+						},
+						{
+							"key": "tmcl",
+							"value": "{{tournamentCalendarId}}",
+							"description": "Get match information only for the specified tournament calendar. Pass the tournament calendar UUID to the tmcl parameter.",
+							"disabled": true
+						},
+						{
+							"key": "_lcl",
+							"value": "{{languageCode}}",
+							"description": "Add this parameter-value to return assets with the Opta namings, in english, in the response (instead of Opta Core namings). When the call does not include the _lcl=en-op parameter-value, the feeds will continue to work as they do currently; one example is that the response will be in the default language of english unless the call contains the _lcl parameter and a locale code value to request the response in a different locale/language.\nNote: You can use this parameter in combination with other valid parameters and values in the request. However, you cannot use it in combination with a locale/language code and _lcl parameter.",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get schedule information for a tournament, including individual matches split by day, including the coverage level for a match.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-tournament-schedule.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-tournament-schedule.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "MA1 - Fixtures and Results",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/match/?tmcl={{tournamentCalendarId}}&live={{yes|no}}&_pgSz={{pageSize}}&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"match",
+						""
+					],
+					"query": [
+						{
+							"key": "tmcl",
+							"value": "{{tournamentCalendarId}}",
+							"description": "GET information about fixtures and results only for the specified tournament calendar. Pass the tournament calendar UUID to the tmcl parameter."
+						},
+						{
+							"key": "live",
+							"value": "{{yes|no}}",
+							"description": "GET live data (such as score, goals, cards, attendance, officials etc) for fixtures. If there is no live data available, then an empty <liveData/> element is returned. The available values for the live parameter are: no (default) and yes. If the parameter is not used, the default behaviour of the feed is not to return live data (equivalent to live=no). However, once the match is over, the default response will have live data, irrespective of whether the feed is queried with live=yes or not.\nNote: We recommend filtering the live data by an entity UUID and parameter, such as a tournament calendar (tmcl) or contestant (ctst).\nExample: tmcl UUID + live"
+						},
+						{
+							"key": "_pgSz",
+							"value": "{{pageSize}}",
+							"description": "GET data only in the specified page size and/or page number. All results are returned in pages and these parameters help limit the page size in order to optimize the efficiency of the SDAPI.\n_pgSz - Specify the size of the page to return - the number of match definitions in a page. Valid {pageSize} values depend on the operating mode of an outlet. For B2B requests, the maximum value is 1000 (default is 20). For B2C requests, the maximum value is 50 (default is 20)."
+						},
+						{
+							"key": "_pgNm",
+							"value": "{{pageNumber}}",
+							"description": "GET data only in the specified page size and/or page number. All results are returned in pages and these parameters help limit the page size in order to optimize the efficiency of the SDAPI.\n_pgNm - Specify the {pageNumber} to return - indexed from 1. If this value is not provided, then page 1 is returned by default.",
+							"disabled": true
+						},
+						{
+							"key": "status",
+							"value": "{{statusType}}",
+							"description": "GET only games of a certain match status. Data is returned in the <liveData/> element.\n\nNote: You must use this parameter in combination with the following parameters, otherwise the feed will return an error:\n\nlive (a parameter-value of live=yes)\nAn entity parameter and UUID such as tmcl={tournamentCalendarUuid} (a tournament calendar)\nThe default behaviour is all types (equivalent to status=all). You can pass only one value to the status parameter. Available values: Fixture, Played, Playing, Cancelled, Postponed, Suspended, All (default)\nIn the Soccer API, the values for status are not case-sensitive - for example, both status=fixture and status=Fixture are valid.",
+							"disabled": true
+						},
+						{
+							"key": "_dlt",
+							"value": "{{dateTime}}",
+							"description": "Programmatically get the latest fixture and result data assets since a particular date/time (created, updated and published), and subject to your specified query parameters. Allows users to only query matches where data has changed. What is the benefit? It streamlines the queries while improving performance and latency, because you are able to know in which specific matches there have been updates. i.e. instead of polling a feed for a whole competition (or multiple competitions) and having to check each individual match to find out.\nYou can also use all other filters, such as: tmcl, comp, mt.mDt\nThere is no asset versioning system, but you can use the Delta parameter to ingest updates. Value: Use {xsd:dateTime} (with timezone) or {milliseconds} (since the epoch) to specify the date and time. The format of the date/time for XSD UTC/GMT is: YYYY-MM-DDThh:mm:ss%2B00:00",
+							"disabled": true
+						},
+						{
+							"key": "fx",
+							"value": "{{matchId}}",
+							"description": "GET detailed information about one fixture or multiple fixtures.\n\nTo return one fixture: Pass a fixture UUID or legacy Opta match ID to the fx parameter.\nTo return multiple fixtures: Pass the fixture UUIDs in a comma separated list to the fx parameter. For the B2B outlet request type (apikey={{apiKey}})) you can pass up to 50 UUIDs, while a B2C request (apikey={{apiKey}}) allows up to 20 UUIDs. Multiple legacy Opta and Opta Core match IDs are not supported.",
+							"disabled": true
+						},
+						{
+							"key": "comp",
+							"value": "{{competitionId}}",
+							"description": "GET information about fixtures and results only for a specific competition. Pass the competition UUID to the comp parameter - you can pass one or up to 50 competition UUIDs in a comma separated list.",
+							"disabled": true
+						},
+						{
+							"key": "lineups",
+							"value": "{{yes|no}}",
+							"description": "GET only lineups information (including substitutes) for contestants in fixtures - you must use this parameter in combination with the live parameter with a value of yes. Data is returned in the <liveData/> element. The available values for the live and lineups parameters are: no (default) and yes. We recommend filtering the live data by an entity UUID and parameter, such as a tournament calendar (tmcl) or contestant (ctst).",
+							"disabled": true
+						},
+						{
+							"key": "mt.mDt",
+							"value": "{{dateTime}}",
+							"description": "GET fixtures and results only for the specified match date range - the maximum span of the date range is one year. Pass the date range (in the format YYYY-MM-DDThh:mm:ssZ) to the mt.mDt parameter. You can use this parameter in combination with other filter parameters (including comp, ctst, srs, stg, tmcl.\nNote: Remove the placeholder value curly braces {} from your call.",
+							"disabled": true
+						},
+						{
+							"key": "srs",
+							"value": "{{seriesId}}",
+							"description": "GET information about fixtures and results only for a specific series. Pass the series UUID to the srs parameter.",
+							"disabled": true
+						},
+						{
+							"key": "stg",
+							"value": "{{stageId}}",
+							"description": "GET information about fixtures and results only for a specific stage of a tournament calendar. Pass the stage UUID to the stg parameter.",
+							"disabled": true
+						},
+						{
+							"key": "cvlv",
+							"value": "{{coverageLevel}}",
+							"description": "GET fixtures for only the specified coverage level (subject to other query parameters/criteria). This will filter out (hide) all matches that are not from requested coverage level.\nPass one value (or multiple values in a comma-separated list) to the parameter: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 - this is a number that represents the coverage level tier, in the range 1-15 - for example: cvlv=9\nNote:\nThis parameter is not supported when the call contains a single fixture UUID (to the fx parameter or as the path parameter). It is supported with all other parameters.\nIf no matches are available for that tier and query criteria, the standard error code is returned to reflect that no data is available.\nIf this parameter is not used the default behaviour of the feed is to return fixtures from all tiers, subject to other query criteria.",
+							"disabled": true
+						},
+						{
+							"key": "_ordSrt",
+							"value": "{{asc|desc}}",
+							"description": "GET fixtures and results with sorted by match date/time in ascending or descending order.\n_ordSrt=asc - the resulting list is sorted by match date/time ascending.\n_ordSrt=desc - the resulting list is sorted by match date/time descending.",
+							"disabled": true
+						},
+						{
+							"key": "optaBetting",
+							"value": "{{yes|no|1|2}}",
+							"description": "GET information about fixtures and results which has the OPTA betting coverage. You must use this parameter in combination with the cvlvparameter. The available values for the optaBetting parameters are: no (default) and yes.",
+							"disabled": true
+						},
+						{
+							"key": "week",
+							"value": "{{weekNumber}}",
+							"description": "GET information about fixtures and results only for the specified game week. Pass the week value (integer) to the week parameter, for example 1, 2, and so on.",
+							"disabled": true
+						},
+						{
+							"key": "_fld",
+							"value": "{{Value}}",
+							"description": "GET only the subsets of data fields that you specify, instead of all points, by passing specific values to the _fld parameter in the URL. This also reduces the size of the feed, loading speed, and only pulls back the relevant, specified data. All existing MA1 parameters can be used in combination with _fld.\n\nValues of _fld parameter are based on position of fields in the XML. They are shortcuts of the relevant path to the field. Therefore, once you take a look, you should be able to use the following logic to get the values:\n\nFirst two letters of every word of a field name, for example: main.da = matchInfo + date\nFirst three letters of a word for one-word parts of path, for example: main.con.con.id = matchInfo + contestant + contestant + id\nFirst two letters of each word for multi-word parts of the path, for example:main.da = matchInfo + date\nExample: The call returns matchInfo element (main), match date and ID (main.da), each contestant ID and position (main.con.con.id), competition, and country ID (main.com.cou.id):",
+							"disabled": true
+						},
+						{
+							"key": "ctst",
+							"value": "{{teamId}}",
+							"description": "GET information about fixtures and results only for a specific contestant in a competition. Pass the contestant UUID to the ctst parameter, and competition UUID to the comp parameter.",
+							"disabled": true
+						},
+						{
+							"key": "ctstpos",
+							"value": "{{home|away}}",
+							"description": "GET fixtures and results filtered by whether the specified contestant will play in the home or away position, across all competitions. \nValues: home|away",
+							"disabled": true
+						},
+						{
+							"key": "ctst2",
+							"value": "{{team2Id}}",
+							"description": "GET fixtures and results between the two specified contestants, across all competitions.",
+							"disabled": true
+						},
+						{
+							"key": "prsn",
+							"value": "{{playerId}}",
+							"description": "GET only matches in which a given person appears either as a player or a team official - this depends on the prsntp parameter. The value of the prsn parameter is a UUID of a person.\nNote: You must use this parameter in combination when all of the following parameter and value pairs are present: live=yes & lineups=yes & prsntp={player|teamofficial}",
+							"disabled": true
+						},
+						{
+							"key": "prsntp",
+							"value": "{{personType}}",
+							"description": "GET only matches in which a given person appears either as a player or a team official - this depends on the prsntp parameter. The value of the prsn parameter is a UUID of a person.\nNote: You must use this parameter in combination when all of the following parameter and value pairs are present: live=yes & lineups=yes & prsntp={player|teamofficial}",
+							"disabled": true
+						},
+						{
+							"key": "_lcl",
+							"value": "{{languageCode}}",
+							"description": "GET assets with the Opta namings in English in the response (instead of Opta Core namings). When the call does not include the _lcl=en-op parameter-value, the feeds will continue to work as they do currently; one example is that the response will be in the default language of English unless the call contains the _lcl parameter and a locale code value to request the response in a different locale/language.\nNote: You can use this parameter in combination with other valid parameters and values in the request. However, you cannot use it in combination with a locale/language code and _lcl parameter.",
+							"disabled": true
+						},
+						{
+							"key": "fx",
+							"value": "{{matchId}}",
+							"description": "GET detailed information about one fixture or multiple fixtures.\n\nTo return one fixture: Pass a fixture UUID or legacy Opta match ID to the fx parameter.\nTo return multiple fixtures: Pass the fixture UUIDs in a comma separated list to the fx parameter. For the B2B outlet request type (apikey={{apiKey}})) you can pass up to 50 UUIDs, while a B2C request (apikey={{apiKey}}) allows up to 20 UUIDs. Multiple legacy Opta and Opta Core match IDs are not supported.",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get a fixture or fixture list with match details, such as date, start time, contestants, competition, season, score, result and lineups.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-fixtures-and-results.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-fixtures-and-results.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "MA2 - Match Stats",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/matchstats/?detailed=yes&fx={{matchId}}&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"matchstats",
+						""
+					],
+					"query": [
+						{
+							"key": "detailed",
+							"value": "yes",
+							"description": "GET an extended list of (detailed) statistics. Pass a value of yes or no (default) to the detailed parameter.\n\nGET an extended list of (detailed) statistics. Pass a value fallback to the detailed parameter.\nNote:\n\nWhen requested with detailed=fallback, output should contain detailed feed, only if subscribed to detailed version.\n\nWhen requested with detailed=fallback, output should return basic feed, only if subscribed to basic version.\n\nWhen requested with detailed=fallback, output should return 403 error, if not subscribed to both basic or detailed version."
+						},
+						{
+							"key": "people",
+							"value": "{{yes|no}}",
+							"description": "GET statistics for all people within a team (default) or teams only. Pass a value of yes (default, returns all people) or no (teams only, not people) to the people parameter.\n",
+							"disabled": true
+						},
+						{
+							"key": "_dlt",
+							"value": "{{dateTime}}",
+							"description": "Programmatically get the latest data updates since a particular date/time (created, updated and published) for matches currently in progress (status=playing). Note: The _dlt parameter is not valid when the request specifies a single fixture ID in the call\nValue: Replace dateTime with xsd:dateTime (with timezone) or milliseconds (since the epoch) to specify the date and time. The format of the date/time for XSD UTC/GMT is: YYYY-MM-DDThh:mm:ss%2B00:00\n\nNote: The default behaviour is all types (equivalent to status=all). You can pass only one value to the status parameter. Available values: Fixture, Played, Playing, Cancelled, Postponed, Suspended, All (default). In the Soccer API, the values for status are not case-sensitive - for example, both status=fixture and status=Fixture are valid.",
+							"disabled": true
+						},
+						{
+							"key": "status",
+							"value": "{{statusType}}",
+							"description": "Programmatically get the latest data updates since a particular date/time (created, updated and published) for matches currently in progress (status=playing). Note: The _dlt parameter is not valid when the request specifies a single fixture ID in the call\nValue: Replace dateTime with xsd:dateTime (with timezone) or milliseconds (since the epoch) to specify the date and time. The format of the date/time for XSD UTC/GMT is: YYYY-MM-DDThh:mm:ss%2B00:00\nNote: The default behaviour is all types (equivalent to status=all). You can pass only one value to the status parameter. Available values: Fixture, Played, Playing, Cancelled, Postponed, Suspended, All (default). In the Soccer API, the values for status are not case-sensitive - for example, both status=fixture and status=Fixture are valid.",
+							"disabled": true
+						},
+						{
+							"key": "fx",
+							"value": "{{matchId}}",
+							"description": "GET match stats and information about one fixture or multiple fixtures.\n• To return one fixture: Pass a fixture UUID or legacy Opta match ID to the fx parameter.\n• To return multiple fixtures: Pass the fixture UUIDs in a comma-separated list to the fx parameter. For the B2B outlet request type (apikey={{apiKey}})) you can pass up to 50 UUIDs, while a B2C request (apikey={{apiKey}}) allows up to 20 UUIDs. Multiple legacy Opta and Opta Core match IDs are not supported."
+						},
+						{
+							"key": "_lcl",
+							"value": "{{languageCode}}",
+							"description": "GET assets with the Opta namings in English in the response (instead of Opta Core namings). When the call does not include the _lcl=en-op parameter-value, the feeds will continue to work as they do currently; one example is that the response will be in the default language of English unless the call contains the _lcl parameter and a locale code value to request the response in a different locale/language.\nNote: You can use this parameter in combination with other valid parameters and values in the request. However, you cannot use it in combination with a locale/language code and _lcl parameter.",
+							"disabled": true
+						},
+						{
+							"key": "_pgNm",
+							"value": "{{pageNumber}}",
+							"description": "GET data only in the specified page size and/or page number. All results are returned in pages and these parameters help limit the page size in order to optimise the efficiency of the SDAPI.\n_pgNm - Specify the {pageNumber} to return - indexed from 1. If this value is not provided, then page 1 is returned by default.",
+							"disabled": true
+						},
+						{
+							"key": "_pgSz",
+							"value": "{{pageSize}}",
+							"description": "GET data only in the specified page size and/or page number. All results are returned in pages and these parameters help limit the page size in order to optimise the efficiency of the SDAPI.\n_pgSz - Specify the size of the page to return - the number of match definitions in a page. Valid {pageSize} values depend on the operating mode of an outlet. For B2B requests, the maximum value is 1000 (default is 20). For B2C requests, the maximum value is 50 (default is 20).",
+							"disabled": true
+						},
+						{
+							"key": "_fld",
+							"value": "{{Value}}",
+							"description": "GET only the subsets of data fields that you specify, instead of all points, by passing specific values to the _fld parameter in the URL. This also reduces the size of the feed, loading speed, and only pulls back the relevant, specified data. All existing MA2 parameters can be used in combination with _fld.\nValues of _fld parameter are based on position of fields in the XML. They are shortcuts of the relevant path to the field; therefore, once you take a look, you should be able to use the following logic to get the values:\n• first two letters of every word of a field name - eg main.da = matchInfo + date\n• first three letters of a word for one-word parts of path - eg main.con.con.id = matchInfo + contestant + contestant + id\n• first two letters of each word for multi-word parts of the path - eg main.da = matchInfo + date\nExample: The call returns matchInfo element (main), match date and ID (main.da), each contestant ID and position (main.con.con.id), competition, and country ID (main.com.cou.id):",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get detailed match statistics for teams and each individual player, including passes, shots, crosses, tackles and more.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-statistics.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-statistics.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "MA3 - Match Events",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/matchevent/?fx={{matchId}}&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"matchevent",
+						""
+					],
+					"query": [
+						{
+							"key": "ctst",
+							"value": "{{teamId}}",
+							"description": "Get match events only for the specified contestant in the fixture. Pass the contestant UUID to the ctst parameter.",
+							"disabled": true
+						},
+						{
+							"key": "prsn",
+							"value": "{{playerId}}",
+							"description": "Get match events only for a specific person in the fixture. Pass the person UUID to the prsn parameter.",
+							"disabled": true
+						},
+						{
+							"key": "type",
+							"value": "{{typeId}}",
+							"description": "Get match events only of a specific event type(s) in the fixture, such as shots, goals, and crosses. Pass the event type ID(s) to the type parameter. You can specify multiple event typeId values to the type parameter in a comma-separated list (up to a maximum of 20 values).\nsingle event typeId value",
+							"disabled": true
+						},
+						{
+							"key": "fx",
+							"value": "{{matchId}}",
+							"description": "Get match events for a match by the specified fixture UUID (query parameter method). Pass the fixture UUID to the fx parameter."
+						},
+						{
+							"key": "_lcl",
+							"value": "{{languageCode}}",
+							"description": "Add this parameter-value to return assets with the Opta namings, in English, in the response (instead of Opta Core namings). When the call does not include the _lcl=en-op parameter-value, the feeds will continue to work as they do currently; one example is that the response will be in the default language of English unless the call contains the _lcl parameter and a locale code value to request the response in a different locale/language.\nNote: You can use this parameter in combination with other valid parameters and values in the request. However, you cannot use it in combination with a locale/language code and _lcl parameter.",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get all events in a game - including the player, team, event, type, time (minute and second) - and qualifiers for each action.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-events.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-events.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "MA4 - Pass Matrix & Average Formation",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/passmatrix/?_fmt={{fileFormat}}&fx={{matchId}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"passmatrix",
+						""
+					],
+					"query": [
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						},
+						{
+							"key": "fx",
+							"value": "{{matchId}}",
+							"description": "Get match pass matrix data by the specified fixture UUID (query parameter method). Pass the fixture UUID to the fx parameter.\n"
+						}
+					]
+				},
+				"description": "Get the number of completed passes of all player combinations and x/y coordinates of their average pitch positions during the match.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-pass-matrix.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-pass-matrix.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "MA5 - Possession",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/possession/?_fmt={{fileFormat}}&fx={{matchId}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"possession",
+						""
+					],
+					"query": [
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						},
+						{
+							"key": "fx",
+							"value": "{{matchId}}",
+							"description": "Get possession data for a match by the specified fixture UUID (query parameter method). Pass the fixture UUID to the fx parameter.\nNote: Only one ID is supported (you cannot pass multiple IDs in a comma-separated list)."
+						}
+					]
+				},
+				"description": "Get a breakdown of ball possession during a match, including overall % possession and territorial advantage, split by time period.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-possession.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-possession.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "MA6 - Commentary",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/commentary/?type=auto&_fmt={{fileFormat}}&_lcl={{languageCode}}&fx={{matchId}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"commentary",
+						""
+					],
+					"query": [
+						{
+							"key": "type",
+							"value": "auto",
+							"description": "Get an extended list of (detailed) statistics. Pass one of the following values to the type parameter - see Commentary types and feed behaviour for more information on the feed behaviour associated with each value.\nmanual - live manual commentary\nauto - automated commentary (default if the 'type' parameter is not specified)\nfallback - live manual commentary with a fallback to automated commentary if a manual commentary does not exist"
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						},
+						{
+							"key": "_lcl",
+							"value": "{{languageCode}}",
+							"description": "English (UK): en-gb | auto:Y | manual:Y\nEnglish (US): en-us | auto:Y | manual:Y\nEnglish (Aus): en-au | auto:Y | manual:Y\nFrench: fr-fr | auto:Y | manual:N\nGerman: de-de | auto:Y | manual:Y\nItalian: it-it | auto:Y | manual:Y\nSpanish: es-es | auto:Y | manual:Y\nPortuguese: pt-pt | auto:Y | manual:N\nDutch: nl-nl | auto:Y | manual:N\nNorwegian Bokmål: nb-no | auto:Y | manual:N\nNorwegian Nynorsk: nn-no | auto:Y | manual:N\nSwedish: sv-se | auto:Y | manual:N\nDanish: da-dk | auto:Y | manual:N\nCatalan: ca-es | auto:Y | manual:N\nSpanish: es-419 | auto:Y | manual:Y\nBrazilian Portuguese: pt-br | auto:Y | manual:Y\nBahasa Indonesian: id-id | auto:Y | manual:Y\nTurkish: tr | auto:N | manual:Y\nSimplified Chinese: zh-cn | auto:N | manual:Y\nArabic: ar | auto:N | manual:Y"
+						},
+						{
+							"key": "fx",
+							"value": "{{matchId}}",
+							"description": "Get a commentary by legacy fixture ID. Note: As this function may be removed in the future, we recommend using the path parameter method if you are not using legacy IDs.\n"
+						}
+					]
+				},
+				"description": "Get an automated and/or a manual set of commentary messages to update the reader on the key match events\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-commentary.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-commentary.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "MA8 - Match Preview",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/matchpreview/?_fmt={{fileFormat}}&fx={{matchId}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"matchpreview",
+						""
+					],
+					"query": [
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						},
+						{
+							"key": "fx",
+							"value": "{{matchId}}",
+							"description": "Get match preview data by the specified fixture UUID (query parameter method). Pass the fixture UUID to the fx parameter.\n"
+						}
+					]
+				},
+				"description": "Get match preview data, information about previous meetings between contestants and each contestant's form in the last six matches.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-preview.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-preview.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "MA9 - Match Facts",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/matchfacts/?_fmt={{fileFormat}}&fx={{matchId}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"matchfacts",
+						""
+					],
+					"query": [
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						},
+						{
+							"key": "fx",
+							"value": "{{matchId}}",
+							"description": "Get match facts by the specified fixture UUID (query parameter method). Pass the fixture UUID to the fx parameter.\n"
+						}
+					]
+				},
+				"description": "Get match facts, interesting information and comments related to the match as written by our Data Editorial team.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-facts.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-facts.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "MA12 - Match xG",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/matchexpectedgoals/?_fmt={{fileFormat}}&fx={{matchId}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"matchexpectedgoals",
+						""
+					],
+					"query": [
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						},
+						{
+							"key": "fx",
+							"value": "{{matchId}}",
+							"description": "GET match extected goals for the specified fixture. Pass the fixture/match UUID to the fx parameter.."
+						}
+					]
+				},
+				"description": "Get shot, 'expected goals' and 'expected goals on target' data, cumulative player and team totals, and general match details.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-expected-goals.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-expected-goals.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "MA13 - Possession Events",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/possessionevent/?_fmt={{fileFormat}}&fx={{matchId}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"possessionevent",
+						""
+					],
+					"query": [
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						},
+						{
+							"key": "fx",
+							"value": "{{matchId}}",
+							"description": "GET possession events for a match by the specified fixture UUID (query parameter method). Pass the fixture UUID to the fx parameter."
+						}
+					]
+				},
+				"description": "Get all possession data for each action in a game, including player, team, event, type, minute, second, and qualifiers.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-possession-events.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-possession-events.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "MA19 - Penalties",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/matchpenaltiespreview/?_fmt={{fileFormat}}&fx={{matchId}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"matchpenaltiespreview",
+						""
+					],
+					"query": [
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						},
+						{
+							"key": "fx",
+							"value": "{{matchId}}",
+							"description": "Get match penalties preview data by the specified fixture UUID (query parameter method). Pass the fixture UUID to the fx parameter."
+						}
+					]
+				},
+				"description": "Get a preview of penalties data for each player in a match, with a breakdown of each player's penalty history.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-penalties-preview.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-penalties-preview.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "MA47 - Match Corners Preview",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/matchcornerspreview/?_fmt={{fileFormat}}&fx={{matchId}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"matchcornerspreview",
+						""
+					],
+					"query": [
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						},
+						{
+							"key": "fx",
+							"value": "{{matchId}}",
+							"description": "GET match corners preview data by the specified fixture UUID (query parameter method). Pass the fixture UUID to the fx parameter."
+						}
+					]
+				},
+				"description": "Get match corners preview for a given fixture\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-corners-preview.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-corners-preview.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "MA50 - Manager Preview",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/managerpreview/?fx={{matchId}}&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"managerpreview",
+						""
+					],
+					"query": [
+						{
+							"key": "fx",
+							"value": "{{matchId}}",
+							"description": "GET manager preview only by specific fixture. Pass fixture UUID to the fx parameter."
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Provides Manager Preview for a fixture.  \n  \n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-manager-preview.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-manager-preview.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "MAP - Mappings",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/mappings/?idList=&idType=urn:perform:opta:competition&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"mappings",
+						""
+					],
+					"query": [
+						{
+							"key": "idList",
+							"value": "",
+							"description": "GET mappings for a specified ID or list of IDs from the specified supplier and entity type, in the same call\n\nYou can use idList in combination with idType to achieve one of the following:\nget mappings for a specific SDAPI/Perform uuid (not filtered by entityType or supplierName)\nget mappings for a specific uuid (filtered by entityType or supplierName)\nget mappings for multiple IDs, specified in a list, in the same call for a specific supplier and entity type\nget mappings for multiple entityType instances in the same call (not filtered by supplierName or SDAPI/Perform UUID)\nget mappings for a specific entityType (not filtered by supplierName or SDAPI/Perform UUID)\nget mappings for a specific supplierName (not filtered by entityType or SDAPI/Perform UUID)\nget mappings for a specific entityType AND supplierName (not filtered by an SDAPI/Perform UUID)\nNote:\nYou cannot use idType by itself (it must be used with idList) otherwise, the feed returns an error\nTo pass multiple IDs in one call, the IDs must be for the same entity type (eg competition) and passed in a comma-separated list.\nYou can pass up to 50 IDs in one call to the idList parameter. The feed has a limit of 20,000 results."
+						},
+						{
+							"key": "idType",
+							"value": "urn:perform:opta:competition",
+							"description": "GET mappings for a specified ID or list of IDs from the specified supplier and entity type, in the same call\n\nYou can use idList in combination with idType to achieve one of the following:\nget mappings for a specific SDAPI/Perform uuid (not filtered by entityType or supplierName)\nget mappings for a specific uuid (filtered by entityType or supplierName)\nget mappings for multiple IDs, specified in a list, in the same call for a specific supplier and entity type\nget mappings for multiple entityType instances in the same call (not filtered by supplierName or SDAPI/Perform UUID)\nget mappings for a specific entityType (not filtered by supplierName or SDAPI/Perform UUID)\nget mappings for a specific supplierName (not filtered by entityType or SDAPI/Perform UUID)\nget mappings for a specific entityType AND supplierName (not filtered by an SDAPI/Perform UUID)\nNote:\nYou cannot use idType by itself (it must be used with idList) otherwise, the feed returns an error\nTo pass multiple IDs in one call, the IDs must be for the same entity type (eg competition) and passed in a comma-separated list.\nYou can pass up to 50 IDs in one call to the idList parameter. The feed has a limit of 20,000 results."
+						},
+						{
+							"key": "idType",
+							"value": "urn:perform:opta:fixture",
+							"description": "GET mappings for a specified ID or list of IDs from the specified supplier and entity type, in the same call\nYou can use idList in combination with idType to achieve one of the following:\nget mappings for a specific SDAPI/Perform uuid (not filtered by entityType or supplierName)\nget mappings for a specific uuid (filtered by entityType or supplierName)\nget mappings for multiple IDs, specified in a list, in the same call for a specific supplier and entity type\nget mappings for multiple entityType instances in the same call (not filtered by supplierName or SDAPI/Perform UUID)\nget mappings for a specific entityType (not filtered by supplierName or SDAPI/Perform UUID)\nget mappings for a specific supplierName (not filtered by entityType or SDAPI/Perform UUID)\nget mappings for a specific entityType AND supplierName (not filtered by an SDAPI/Perform UUID)\nNote:\nYou cannot use idType by itself (it must be used with idList) otherwise, the feed returns an error\nTo pass multiple IDs in one call, the IDs must be for the same entity type (eg competition) and passed in a comma-separated list.\nYou can pass up to 50 IDs in one call to the idList parameter. The feed has a limit of 20,000 results.",
+							"disabled": true
+						},
+						{
+							"key": "idType",
+							"value": "urn:perform:opta:person",
+							"description": "GET mappings for a specified ID or list of IDs from the specified supplier and entity type, in the same call\nYou can use idList in combination with idType to achieve one of the following:\nget mappings for a specific SDAPI/Perform uuid (not filtered by entityType or supplierName)\nget mappings for a specific uuid (filtered by entityType or supplierName)\nget mappings for multiple IDs, specified in a list, in the same call for a specific supplier and entity type\nget mappings for multiple entityType instances in the same call (not filtered by supplierName or SDAPI/Perform UUID)\nget mappings for a specific entityType (not filtered by supplierName or SDAPI/Perform UUID)\nget mappings for a specific supplierName (not filtered by entityType or SDAPI/Perform UUID)\nget mappings for a specific entityType AND supplierName (not filtered by an SDAPI/Perform UUID)\nNote:\nYou cannot use idType by itself (it must be used with idList) otherwise, the feed returns an error\nTo pass multiple IDs in one call, the IDs must be for the same entity type (eg competition) and passed in a comma-separated list.\nYou can pass up to 50 IDs in one call to the idList parameter. The feed has a limit of 20,000 results.",
+							"disabled": true
+						},
+						{
+							"key": "idType",
+							"value": "urn:perform:opta:contestant",
+							"description": "GET mappings for a specified ID or list of IDs from the specified supplier and entity type, in the same call\nYou can use idList in combination with idType to achieve one of the following:\nget mappings for a specific SDAPI/Perform uuid (not filtered by entityType or supplierName)\nget mappings for a specific uuid (filtered by entityType or supplierName)\nget mappings for multiple IDs, specified in a list, in the same call for a specific supplier and entity type\nget mappings for multiple entityType instances in the same call (not filtered by supplierName or SDAPI/Perform UUID)\nget mappings for a specific entityType (not filtered by supplierName or SDAPI/Perform UUID)\nget mappings for a specific supplierName (not filtered by entityType or SDAPI/Perform UUID)\nget mappings for a specific entityType AND supplierName (not filtered by an SDAPI/Perform UUID)\nNote:\nYou cannot use idType by itself (it must be used with idList) otherwise, the feed returns an error\nTo pass multiple IDs in one call, the IDs must be for the same entity type (eg competition) and passed in a comma-separated list.\nYou can pass up to 50 IDs in one call to the idList parameter. The feed has a limit of 20,000 results.",
+							"disabled": true
+						},
+						{
+							"key": "idType",
+							"value": "urn:perform:uuid:competition",
+							"description": "GET mappings for a specified ID or list of IDs from the specified supplier and entity type, in the same call\nYou can use idList in combination with idType to achieve one of the following:\nget mappings for a specific SDAPI/Perform uuid (not filtered by entityType or supplierName)\nget mappings for a specific uuid (filtered by entityType or supplierName)\nget mappings for multiple IDs, specified in a list, in the same call for a specific supplier and entity type\nget mappings for multiple entityType instances in the same call (not filtered by supplierName or SDAPI/Perform UUID)\nget mappings for a specific entityType (not filtered by supplierName or SDAPI/Perform UUID)\nget mappings for a specific supplierName (not filtered by entityType or SDAPI/Perform UUID)\nget mappings for a specific entityType AND supplierName (not filtered by an SDAPI/Perform UUID)\nNote:\nYou cannot use idType by itself (it must be used with idList) otherwise, the feed returns an error\nTo pass multiple IDs in one call, the IDs must be for the same entity type (eg competition) and passed in a comma-separated list.\nYou can pass up to 50 IDs in one call to the idList parameter. The feed has a limit of 20,000 results.",
+							"disabled": true
+						},
+						{
+							"key": "idType",
+							"value": "urn:perform:uuid:fixture",
+							"description": "GET mappings for a specified ID or list of IDs from the specified supplier and entity type, in the same call\nYou can use idList in combination with idType to achieve one of the following:\nget mappings for a specific SDAPI/Perform uuid (not filtered by entityType or supplierName)\nget mappings for a specific uuid (filtered by entityType or supplierName)\nget mappings for multiple IDs, specified in a list, in the same call for a specific supplier and entity type\nget mappings for multiple entityType instances in the same call (not filtered by supplierName or SDAPI/Perform UUID)\nget mappings for a specific entityType (not filtered by supplierName or SDAPI/Perform UUID)\nget mappings for a specific supplierName (not filtered by entityType or SDAPI/Perform UUID)\nget mappings for a specific entityType AND supplierName (not filtered by an SDAPI/Perform UUID)\nNote:\nYou cannot use idType by itself (it must be used with idList) otherwise, the feed returns an error\nTo pass multiple IDs in one call, the IDs must be for the same entity type (eg competition) and passed in a comma-separated list.\nYou can pass up to 50 IDs in one call to the idList parameter. The feed has a limit of 20,000 results.",
+							"disabled": true
+						},
+						{
+							"key": "idType",
+							"value": "urn:perform:uuid:person",
+							"description": "GET mappings for a specified ID or list of IDs from the specified supplier and entity type, in the same call\nYou can use idList in combination with idType to achieve one of the following:\nget mappings for a specific SDAPI/Perform uuid (not filtered by entityType or supplierName)\nget mappings for a specific uuid (filtered by entityType or supplierName)\nget mappings for multiple IDs, specified in a list, in the same call for a specific supplier and entity type\nget mappings for multiple entityType instances in the same call (not filtered by supplierName or SDAPI/Perform UUID)\nget mappings for a specific entityType (not filtered by supplierName or SDAPI/Perform UUID)\nget mappings for a specific supplierName (not filtered by entityType or SDAPI/Perform UUID)\nget mappings for a specific entityType AND supplierName (not filtered by an SDAPI/Perform UUID)\nNote:\nYou cannot use idType by itself (it must be used with idList) otherwise, the feed returns an error\nTo pass multiple IDs in one call, the IDs must be for the same entity type (eg competition) and passed in a comma-separated list.\nYou can pass up to 50 IDs in one call to the idList parameter. The feed has a limit of 20,000 results.",
+							"disabled": true
+						},
+						{
+							"key": "idType",
+							"value": "urn:perform:uuid:contestant",
+							"description": "GET mappings for a specified ID or list of IDs from the specified supplier and entity type, in the same call\nYou can use idList in combination with idType to achieve one of the following:\nget mappings for a specific SDAPI/Perform uuid (not filtered by entityType or supplierName)\nget mappings for a specific uuid (filtered by entityType or supplierName)\nget mappings for multiple IDs, specified in a list, in the same call for a specific supplier and entity type\nget mappings for multiple entityType instances in the same call (not filtered by supplierName or SDAPI/Perform UUID)\nget mappings for a specific entityType (not filtered by supplierName or SDAPI/Perform UUID)\nget mappings for a specific supplierName (not filtered by entityType or SDAPI/Perform UUID)\nget mappings for a specific entityType AND supplierName (not filtered by an SDAPI/Perform UUID)\nNote:\nYou cannot use idType by itself (it must be used with idList) otherwise, the feed returns an error\nTo pass multiple IDs in one call, the IDs must be for the same entity type (eg competition) and passed in a comma-separated list.\nYou can pass up to 50 IDs in one call to the idList parameter. The feed has a limit of 20,000 results.",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Match up IDs for competitions, fixtures, contestants/teams, players/people between different suppliers and SDAPI UUIDs\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-mappings.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-mappings.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "MAR - Match Reference",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/matchreference/?type={{feedCode}}&_rdlt={{dateTime}}&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"matchreference",
+						""
+					],
+					"query": [
+						{
+							"key": "type",
+							"value": "{{feedCode}}",
+							"description": "Get a match reference list for matches updated since a particular date/time (where data has changed) for the specified type of feed.\ntype - pass the feed code to the parameter. Values: ma3 or ma13 (case-sensitive)\n_rdlt - pass the date/time to the parameter. Values: Use {xsd:dateTime} (with timezone) or {milliseconds} (since the epoch) to specify the date and time. The format of the date/time for XSD UTC/GMT is: YYYY-MM-DDThh:mm:ssZ\nImportant: The parameter (and feed) only accepts a maximum value range from the current time of your request (currentTime) - 36 hours. If the value exceeds maximum value, error code 10213 is returned (and HTTP 400)."
+						},
+						{
+							"key": "_rdlt",
+							"value": "{{dateTime}}",
+							"description": "Get a match reference list for matches updated since a particular date/time (where data has changed) for the specified type of feed.\ntype - pass the feed code to the parameter. Values: ma3 or ma13 (case-sensitive)\n_rdlt - pass the date/time to the parameter. Values: Use {xsd:dateTime} (with timezone) or {milliseconds} (since the epoch) to specify the date and time. The format of the date/time for XSD UTC/GMT is: YYYY-MM-DDThh:mm:ssZ\nImportant: The parameter (and feed) only accepts a maximum value range from the current time of your request (currentTime) - 36 hours. If the value exceeds maximum value, error code 10213 is returned (and HTTP 400)."
+						},
+						{
+							"key": "_pgSz",
+							"value": "{{pageSize}}",
+							"description": "GET data only in the specified page size and/or page number. All results are returned in pages and these parameters help limit the page size in order to optimise the efficiency of the SDAPI.\n_pgSz - Specify the size of the page to return - the number of match definitions in a page. Valid {pageSize} values depend on the operating mode of an outlet. For B2B requests, the maximum value is 1000 (default is 50). For B2C requests, the maximum value is 50 (default is 20).",
+							"disabled": true
+						},
+						{
+							"key": "_pgNm",
+							"value": "{{pageNumber}}",
+							"description": "GET data only in the specified page size and/or page number. All results are returned in pages and these parameters help limit the page size in order to optimise the efficiency of the SDAPI.\n_pgNm - Specify the {pageNumber} to return - indexed from 1. If this value is not provided, then page 1 is returned by default.",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get a list of matches from your requested feed that have been updated since a certain point in time (as date/time specified).\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-reference.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-reference.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "DEL - Deletions",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/deletions/?type={{entityType}}&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"deletions",
+						""
+					],
+					"query": [
+						{
+							"key": "type",
+							"value": "{{entityType}}",
+							"description": "GET only data of a certain type that has been deleted within the last 72 hours - filter the feed to show either matches, teams, or players.\nValues: One of the following: match | team | person"
+						},
+						{
+							"key": "_dlt",
+							"value": "{{dateTime}}",
+							"description": "GET data that has been deleted within the specifed time period (up to 72 hours) for the specified data type",
+							"disabled": true
+						},
+						{
+							"key": "_pgSz",
+							"value": "{{pageSize}}",
+							"description": "GET data only in the specified page size and/or page number. All results are returned in pages and these parameters help limit the page size in order to optimise the efficiency of the SDAPI.\nNote: You cannot use this parameter without passing the data type in the call.\n_pgSz - Specify the size of the page to return - the number of article definitions in a page. Valid {pageSize} values depend on the operating mode of an outlet. For B2B requests, the maximum value is 1000 (default is 50). For B2C requests, the maximum value is 50 (the default is 20).",
+							"disabled": true
+						},
+						{
+							"key": "_pgNm",
+							"value": "{{pageNumber}}",
+							"description": "GET data only in the specified page size and/or page number. All results are returned in pages and these parameters help limit the page size in order to optimise the efficiency of the SDAPI.\nNote: You cannot use this parameter without passing the data type in the call.\n_pgNm - Specify the {pageNumber} to return - indexed from 1. If this value is not provided, then page 1 is returned by default.",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get a list of either matches, teams or players that have been deleted within the last 72 hours.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-deletions.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-deletions.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "DEC - Decodes",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/decode/?type=groupformat&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"decode",
+						""
+					],
+					"query": [
+						{
+							"key": "type",
+							"value": "groupformat",
+							"description": "GET only allowed content list by type."
+						},
+						{
+							"key": "type",
+							"value": "roundFormat",
+							"description": "GET only allowed content list by type.",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get UUID mappings for all entities in a sport.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-decode.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-decode.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "OT3 - Venues",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/venues/?tmcl={{tournamentCalendarId}}&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"venues",
+						""
+					],
+					"query": [
+						{
+							"key": "tmcl",
+							"value": "{{tournamentCalendarId}}",
+							"description": "Get venue information only for the specified tournament calendar. Pass the tournament calendar UUID to the tmcl parameter."
+						},
+						{
+							"key": "ctst",
+							"value": "{{teamId}}",
+							"description": "Get venue information only for the specified contestant (the opposition in a fixture, such as a sports team). Pass the contestant UUID to the ctst parameter.",
+							"disabled": true
+						},
+						{
+							"key": "venue",
+							"value": "{{venueId}}",
+							"description": "Get venue information only for the specified venue. Pass the venue UUID to the venue parameter.",
+							"disabled": true
+						},
+						{
+							"key": "_pgSz",
+							"value": "{{pageSize}}",
+							"description": "GET data only in the specified page size and/or page number. All results are returned in pages and these parameters help limit the page size in order to optimise the efficiency of the SDAPI.\n_pgSz - Specify the size of the page to return - the number of match definitions in a page. Valid {pageSize} values depend on the operating mode of an outlet. For B2B requests, the maximum value is 1000 (default is 50). For B2C requests, the maximum value is 50 (default is 20).",
+							"disabled": true
+						},
+						{
+							"key": "_pgNm",
+							"value": "{{pageNumber}}",
+							"description": "GET data only in the specified page size and/or page number. All results are returned in pages and these parameters help limit the page size in order to optimise the efficiency of the SDAPI.\n_pgNm - Specify the {pageNumber} to return - indexed from 1. If this value is not provided, then page 1 is returned by default.",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get information on either the venues associated with a competition, a team or the teams associated with a venue.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-venues.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-venues.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "OT4 - Areas",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/areas/?_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"areas",
+						""
+					],
+					"query": [
+						{
+							"key": "area",
+							"value": "{{areaId}}",
+							"description": "GET area information only for the specified area. Pass the area UUID to the area parameter.",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get information about areas associated with a competition, a team or the teams associated with a venue.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-areas.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-areas.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "PE2 - Player Career",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/playercareer/?prsn={{playerId}}&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"playercareer",
+						""
+					],
+					"query": [
+						{
+							"key": "prsn",
+							"value": "{{playerId}}",
+							"description": "Get player career data for a specific person (a player). Pass the person UUID to the prsn parameter."
+						},
+						{
+							"key": "ctst",
+							"value": "{{teamId}}",
+							"description": "Get all player career data for the specified contestant - the feed returns careers for all players that have/had membership at the contestant. Pass the contestant UUID to the ctst parameter.",
+							"disabled": true
+						},
+						{
+							"key": "active",
+							"value": "{{yes|no}}",
+							"description": "Get player careers either for players that:\nhave an active membership at the specified contestant (pass a value of yes (default) to the active parameter)\nor:\nhave had a membership at any time at the specified contestant (pass a value of no to the or parameter)",
+							"disabled": true
+						},
+						{
+							"key": "_lcl",
+							"value": "{{languageCode}}",
+							"description": "GET assets with the Opta namings in English in the response (instead of Opta Core namings). When the call does not include the _lcl=en-op parameter-value, the feeds will continue to work as they do currently; one example is that the response will be in the default language of English unless the call contains the _lcl parameter and a locale code value to request the response in a different locale/language.\nNote: You can use this parameter in combination with other valid parameters and values in the request. However, you cannot use it in combination with a locale/language code and _lcl parameter.",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get information about the current and past memberships of players and teams, with very basic season statistics included.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-player-career.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-player-career.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "PE3 - Referees",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/referees/?prsn={{refereeId}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"referees",
+						""
+					],
+					"query": [
+						{
+							"key": "prsn",
+							"value": "{{refereeId}}",
+							"description": "Get information about a single referee. Pass the person UUID to the prsn parameter."
+						},
+						{
+							"key": "tmcl",
+							"value": "{{tournamentCalendarId}}",
+							"description": "Get all referees data for the specified tournament calendar. Pass the tournament calendar UUID to the tmcl parameter.",
+							"disabled": true
+						},
+						{
+							"key": "stg",
+							"value": "{{stageId}}",
+							"description": "Get all referees data for the specified stage. Pass the stage UUID to the stg parameter.",
+							"disabled": true
+						},
+						{
+							"key": "_pgSz",
+							"value": "{{pageSize}}",
+							"description": "GET data only in the specified page size and/or page number. All results are returned in pages and these parameters help limit the page size in order to optimise the efficiency of the SDAPI.\n_pgSz - Specify the size of the page to return - the number of match definitions in a page. Valid {pageSize} values depend on the operating mode of an outlet. For B2B requests, the maximum value is 1000 (default is 50). For B2C requests, the maximum value is 50 (default is 20).",
+							"disabled": true
+						},
+						{
+							"key": "_pgNm",
+							"value": "{{pageNumber}}",
+							"description": "GET data only in the specified page size and/or page number. All results are returned in pages and these parameters help limit the page size in order to optimise the efficiency of the SDAPI.\n_pgNm - Specify the {pageNumber} to return - indexed from 1. If this value is not provided, then page 1 is returned by default.",
+							"disabled": true
+						}
+					]
+				},
+				"description": "Get information about all referees for a season (tournament calendar) or a stage, or details about a single referee.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-referees.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-referees.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "PE4 - Rankings",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/rankings/?_fmt={{fileFormat}}&tmcl={{tournamentCalendarId}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"rankings",
+						""
+					],
+					"query": [
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						},
+						{
+							"key": "tmcl",
+							"value": "{{tournamentCalendarId}}",
+							"description": "GET rankings data for the specified tournament calendar (query parameter method). Pass the tournament calendar UUID to the tmcl parameter."
+						}
+					]
+				},
+				"description": "Get rankings data for all players and games in a range of statistical categories within a tournament calendar (season).\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-rankings.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-rankings.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "PE6 - Top Performers",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/topperformers/?tmcl={{tournamentCalendarId}}&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"topperformers",
+						""
+					],
+					"query": [
+						{
+							"key": "tmcl",
+							"value": "{{tournamentCalendarId}}",
+							"description": "GET ranking information only from the specified tournament calendar. Pass the tournament calendar UUID to the tmcl parameter."
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get rankings data for all players and games in a range of statistical categories within a tournament calendar (season).\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-top-performers.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-top-performers.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "PE12 - Player Contract",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/playercontract/?prsn={{playerId}}&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"playercontract",
+						""
+					],
+					"query": [
+						{
+							"key": "prsn",
+							"value": "{{playerId}}",
+							"description": "GET player contract by person UUID (prsn query parameter method)\n"
+						},
+						{
+							"key": "ctst",
+							"value": "{{teamId}}",
+							"description": "GET player contract by contestant UUID (ctst query parameter method)",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get contract related information for a player\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-player-contract.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-player-contract.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "PE13 - Referee Stats",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/refereestats/?tmcl={{tournamentCalendarId}}&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"refereestats",
+						""
+					],
+					"query": [
+						{
+							"key": "tmcl",
+							"value": "{{tournamentCalendarId}}",
+							"description": "Get referee statistics only for a specific tournament calendar (of a competition). Pass the tournament calendar UUID to the tmcl parameter"
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Provide referee stats that have featured in a given competition for a give season.  \n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-referee-stats.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-referee-stats.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "PE14 - Season Points Rankings",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/seasonstatspoints/?tmcl={{tournamentCalendarId}}&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"seasonstatspoints",
+						""
+					],
+					"query": [
+						{
+							"key": "tmcl",
+							"value": "{{tournamentCalendarId}}",
+							"description": "Get cumulative Opta Points for a specific tournament calendar. Pass the tournament calendar UUID to the tmcl parameter."
+						},
+						{
+							"key": "ctst",
+							"value": "{{teamId}}",
+							"description": "Get cumulative Opta Points for a specific contestant in a competition (of a competition). Pass the contestant UUID to the ctst parameter, and competition UUID to the comp parameter.\n",
+							"disabled": true
+						},
+						{
+							"key": "ctst2",
+							"value": "{{team2Id}}",
+							"description": "Get cumulative Opta Points for contestant playing against a specified another contestant",
+							"disabled": true
+						},
+						{
+							"key": "stg",
+							"value": "{{stageId}}",
+							"description": "Get cumulative Opta Points for a specific stage of tournament calendar. Pass the stage UUID to the stg parameter.",
+							"disabled": true
+						},
+						{
+							"key": "srs",
+							"value": "{{seriesId}}",
+							"description": "Get cumulative Opta Points for a specific series. Pass the series UUID to the srs parameter.",
+							"disabled": true
+						},
+						{
+							"key": "detailed",
+							"value": "yes",
+							"description": "Get an extended list of (detailed) Opta Points. Pass a value of no or yes (default) to the detailed parameter.\nNote: This parameter is valid only when combined with either the tmcl, comp or ctst parameters and an associated UUID (represented by {restOfQueryString} in the below URL path example)",
+							"disabled": true
+						},
+						{
+							"key": "ctstpos",
+							"value": "{{contestant Position}}",
+							"description": "Get cumulative Opta Points for tournament calendar and contestant playing in the home or away position.",
+							"disabled": true
+						},
+						{
+							"key": "week",
+							"value": "{{weekNumber}}",
+							"description": "Get cumulative Opta Points for a specific tournament calendar and game week (positive integer).",
+							"disabled": true
+						},
+						{
+							"key": "plrpos",
+							"value": "{{Playersposition}}",
+							"description": "Get cumulative Opta Points for a specific tournament calendar and players that have played on a specific position.",
+							"disabled": true
+						},
+						{
+							"key": "people",
+							"value": "yes",
+							"description": "Get cumulative Opta Points for a specific tournament calendar including data for players (default) or for teams only. Pass a value of yes(default) or no to the people parameter.",
+							"disabled": true
+						},
+						{
+							"key": "top",
+							"value": "{topValue}}",
+							"description": "Get cumulative Opta Points for a specific tournament calendar only for people with the highest Opta Points value. The result will contain players with statistic rank ≤ top.Pass the top value (positive integer) to the top parameter.",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Provides rankings data for all players, teams, and games based on the OPTA point scores within a tournament calendar (season).\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-season-points-rankings.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-season-points-rankings.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "TM1 - Team",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/team/?tmcl={{tournamentCalendarId}}&detailed=yes&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"team",
+						""
+					],
+					"query": [
+						{
+							"key": "tmcl",
+							"value": "{{tournamentCalendarId}}",
+							"description": "Get team information only for the specified tournament calendar. Pass the tournament calendar UUID to the tmcl parameter.\n"
+						},
+						{
+							"key": "detailed",
+							"value": "yes",
+							"description": "GET an extended list of (detailed) attributes about each team. "
+						},
+						{
+							"key": "ctry",
+							"value": "{{countryId}}",
+							"description": "Get team information only for a specific country. Pass the contestant UUID to the ctst parameter.\n",
+							"disabled": true
+						},
+						{
+							"key": "ctst",
+							"value": "{{teamId}}",
+							"description": "Get team information only for a specific contestant. Pass the contestant UUID to the ctst parameter.\n",
+							"disabled": true
+						},
+						{
+							"key": "stg",
+							"value": "{{stageId}}",
+							"description": "Get team information only for a specific stage. Pass the stage UUID to the stg parameter.\n",
+							"disabled": true
+						},
+						{
+							"key": "srs",
+							"value": "{{seriesId}}",
+							"description": "Get team information only for a specific series. Pass the series UUID to the ctst parameter.\n",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get team details of all contestants within a specified tournament calendar or details for a single contestant.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-teams.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-teams.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "TM2 - Standings",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/standings/?tmcl={{tournamentCalendarId}}&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"standings",
+						""
+					],
+					"query": [
+						{
+							"key": "tmcl",
+							"value": "{{tournamentCalendarId}}",
+							"description": "GET team standings information only for the specified tournament calendar. Pass the tournament calendar UUID to the tmcl parameter.\n"
+						},
+						{
+							"key": "stg",
+							"value": "{{stageId}}",
+							"description": "GET team standings information only for a specific stage of a specified tournament calendar. Pass the {stageUuid} to the stg parameter, and tournament calendar UUID to the tmcl parameter.\n",
+							"disabled": true
+						},
+						{
+							"key": "live",
+							"value": "{{yes|no}}",
+							"description": "GET only live team standings data (such as score, goals, cards, attendance, officials, and more). The available values for the live parameter are: no (default) and yes. In the team standings feed, you must use the live parameter in combination with the tmcl parameter and UUID.\n",
+							"disabled": true
+						},
+						{
+							"key": "type",
+							"value": "{{divisionType}}",
+							"description": "GET only a certain type of division of team standings information. In the team standings feed, you must use the type parameter in combination with the tmcl parameter and UUID. Data is returned in the <division/> element. The available values for the type parameter are:\ntotal (all types, default when type parameter is not specified)\nhome\naway\nform-total\nform-home\nform-away\nhalf-time-total\nhalf-time-home\nhalf-time-away\nattendance\nover-under\nrelegation\nchampionship",
+							"disabled": true
+						},
+						{
+							"key": "_lcl",
+							"value": "{{languageCode}}",
+							"description": "Add this parameter-value to return assets with the Opta namings, in English, in the response (instead of Opta Core namings). When the call does not include the _lcl=en-op parameter-value, the feeds will continue to work as they do currently; one example is that the response will be in the default language of English unless the call contains the _lcl parameter and a locale code value to request the response in a different locale/language.\nNote: You can use this parameter in combination with other valid parameters and values in the request. However, you cannot use it in combination with a locale/language code and _lcl parameter.",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get data to create a league table - position, points, matches won/lost/drawn, goals scored and conceded, and goal difference.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-team-standings.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-team-standings.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "TM3 - Squads",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/squads/?tmcl={{tournamentCalendarId}}&detailed=yes&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"squads",
+						""
+					],
+					"query": [
+						{
+							"key": "tmcl",
+							"value": "{{tournamentCalendarId}}",
+							"description": "GET squads information only for the specified tournament calendar. Pass the tournament calendar UUID to the tmcl parameter.\nThe feed will return information about all players (active or not) in the specified season. If a player is signed before the start or after the end date of the season, then the player will only appear in that squad for the next season of the competition.\nYou can find the start dates and end dates for each tournament calendar within a competition in the Tournament Calendars (OT2) feed."
+						},
+						{
+							"key": "detailed",
+							"value": "yes",
+							"description": "GET an extended list of (detailed) personal attributes about each person in a team. Pass a value of yes or no (default) to the detailed parameter."
+						},
+						{
+							"key": "ctst",
+							"value": "{{teamId}}",
+							"description": "GET squads information only for a specific contestant. Pass the contestant UUID to the ctst parameter.\nThe feed will return information about all players from the specified team that are active (active=yes). This is the full list of currently assigned players to this team without looking into any season data/connections.\nThis query is best used when players are signed outside of the conventional season start/end dates.",
+							"disabled": true
+						},
+						{
+							"key": "_pgSz",
+							"value": "{{pageSize}}",
+							"description": "GET data only in the specified page size and/or page number. All results are returned in pages and these parameters help limit the page size in order to optimise the efficiency of the SDAPI.\n_pgSz - Specify the size of the page to return - the number of match definitions in a page. Valid {pageSize} values depend on the operating mode of an outlet. For B2B requests, the maximum value is 1000 (default is 50). For B2C requests, the maximum value is 50 (default is 20).",
+							"disabled": true
+						},
+						{
+							"key": "_pgNm",
+							"value": "{{pageNumber}}",
+							"description": "Specify the {pageNumber} to returnGET data only in the specified page size and/or page number. All results are returned in pages and these parameters help limit the page size in order to optimise the efficiency of the SDAPI.\n_pgNm - Specify the {pageNumber} to return - indexed from 1. If this value is not provided, then page 1 is returned by default.",
+							"disabled": true
+						},
+						{
+							"key": "_lcl",
+							"value": "{{languageCode}}",
+							"description": "GET assets with the Opta namings, in English, in the response (instead of Opta Core namings).\nWhen the call does not include the _lcl=en-op parameter-value, the feeds will continue to work as they do currently - for example, the response will be in the default language of English unless the call contains the _lcl parameter and a locale code value to request a different locale/language.\nNote: You can use this parameter in combination with other valid parameters and values in the request. However, you cannot use it in combination with a locale/language code and _lcl parameter.",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get squad details, including individual personal information, for a current squad of a specified team and of teams playing a specified tournament calendar.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-squads.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-squads.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "TM4 - Season Stats",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/seasonstats/?tmcl={{tournamentCalendarId}}&ctst={{teamId}}&detailed=yes&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"seasonstats",
+						""
+					],
+					"query": [
+						{
+							"key": "tmcl",
+							"value": "{{tournamentCalendarId}}",
+							"description": "Get seasonal statistics only for a specific contestant in a tournament calendar (of a competition). Pass the contestant UUID to the ctst parameter, and tournament calendar UUID to the tmcl parameter.\n"
+						},
+						{
+							"key": "ctst",
+							"value": "{{teamId}}",
+							"description": "Get seasonal statistics for a specific contestant in a competition (of a competition). Pass the contestant UUID to the ctst parameter, and competition UUID to the comp parameter.\n"
+						},
+						{
+							"key": "detailed",
+							"value": "yes",
+							"description": "Get an extended list of (detailed) seasonal statistics. Pass a value of no or yes (default) to the detailed parameter.\nNote: This parameter is valid only when combined with either the tmcl, comp or ctst parameters and an associated UUID (represented by {restOfQueryString} in the below URL path example)"
+						},
+						{
+							"key": "comp",
+							"value": "{{competitionId}}",
+							"description": "Get seasonal statistics for a specific contestant in a competition (of a competition). Pass the contestant UUID to the ctst parameter, and competition UUID to the comp parameter.\n",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get cumulative performance statistics for every player that has made an appearance in the specified tournament calendar.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-seasonal-stats.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-seasonal-stats.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "TM7 - Transfers",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/transfers/?tmcl={{tournamentCalendarId}}&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"transfers",
+						""
+					],
+					"query": [
+						{
+							"key": "tmcl",
+							"value": "{{tournamentCalendarId}}",
+							"description": "GET all player transfers for the specified tournament calendar - the feed returns transfers for all players that have been active in the specified calendar. Pass the tournament calendar UUID to the tmcl parameter."
+						},
+						{
+							"key": "ctst",
+							"value": "{{teamId}}",
+							"description": "GET all player transfers for the specified contestant - the feed returns transfers for all players that have/had membership at the contestant. Pass the contestant UUID to the ctst parameter.\n",
+							"disabled": true
+						},
+						{
+							"key": "prsn",
+							"value": "{{playerId}}",
+							"description": "GET transfers data for a specific person (a player). Pass the person UUID to the prsn parameter.\n",
+							"disabled": true
+						},
+						{
+							"key": "strtDt",
+							"value": "{{date}}",
+							"description": "GET all player transfers in the specified date range and competition. START DATE",
+							"disabled": true
+						},
+						{
+							"key": "endDt",
+							"value": "{{date}}",
+							"description": "GET all player transfers in the specified date range and competition. END DATE",
+							"disabled": true
+						},
+						{
+							"key": "comp",
+							"value": "{{competitionId}}",
+							"description": "GET all player transfers in the specified date range and competition. Pass the competition UUID to the comp parameter, and date values to the strtDt and endDt parameters (in the format YYYY-MM-DD).\n",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get information about players transferred between clubs, including transfer type, date, currency and transfer value.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-transfers.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-transfers.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "TM8 - Trophies",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/trophies/?comp={{competitionId}}&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"trophies",
+						""
+					],
+					"query": [
+						{
+							"key": "comp",
+							"value": "{{competitionId}}",
+							"description": "Get trophies information only from the specified competition. Pass the competition UUID to the comp parameter.\n"
+						},
+						{
+							"key": "ctst",
+							"value": "{{teamId}}",
+							"description": "Get trophies information only from the specified contestant. Pass the contestant UUID to the ctst parameter.\n",
+							"disabled": true
+						},
+						{
+							"key": "prsn",
+							"value": "{{playerId}}",
+							"description": "Get trophies information only for a specific person. Pass the person UUID to the prsn parameter.\n",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get trophy information about a team, based on team, season, or competition.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-trophies.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-trophies.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "TM9 - Season xG",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/seasonexpectedgoals/?tmcl={{tournamentCalendarId}}&ctst={{teamId}}&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"seasonexpectedgoals",
+						""
+					],
+					"query": [
+						{
+							"key": "tmcl",
+							"value": "{{tournamentCalendarId}}",
+							"description": "Get season expected goals only for a specific contestant in a tournament calendar (of a competition). Pass the contestant UUID to the ctst parameter, and tournament calendar UUID to the tmcl parameter.\n"
+						},
+						{
+							"key": "ctst",
+							"value": "{{teamId}}",
+							"description": "Get season expected goals only for a specific contestant in a tournament calendar (of a competition). Pass the contestant UUID to the ctst parameter, and tournament calendar UUID to the tmcl parameter.\n"
+						},
+						{
+							"key": "comp",
+							"value": "{{competitionId}}",
+							"description": "Get season expected goals for a specific contestant in a competition (of a competition). Pass the contestant UUID to the ctst parameter, and competition UUID to the comp parameter.\n",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get shot information, 'expected goals' and 'expected goals on target' data, cumulative player and team totals, in any match within a season.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-season-expected-goals.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-season-expected-goals.htm)"
+			},
+			"response": []
+		},
+		{
+			"name": "TM16 - Contestant Participation",
+			"request": {
+				"method": "GET",
+				"header": [{}],
+				"url": {
+					"raw": "{{apiUrlPath}}/soccerdata/contestantparticipation/?ctst={{teamId}}&_fmt={{fileFormat}}",
+					"host": [
+						"{{apiUrlPath}}"
+					],
+					"path": [
+						"soccerdata",
+						"contestantparticipation",
+						""
+					],
+					"query": [
+						{
+							"key": "ctst",
+							"value": "{{teamId}}",
+							"description": "GET content participation information only for the specified contestant (the opposition in a fixture, such as a sports team). Pass the contestant UUID to the ctst parameter.\n"
+						},
+						{
+							"key": "active",
+							"value": "yes",
+							"description": "GET Contestant Participant list by contestant UUID ONLY for active tournament calendar\n",
+							"disabled": true
+						},
+						{
+							"key": "_fmt",
+							"value": "{{fileFormat}}"
+						}
+					]
+				},
+				"description": "Get list of all competitions and tournament calendars a team has participated in, along with contestant details.\n\n[https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-contestant-participation.htm](https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-contestant-participation.htm)"
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{bearerToken}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "tournamentCalendarId",
+			"value": ""
+		},
+		{
+			"key": "matchId",
+			"value": ""
+		},
+		{
+			"key": "teamId",
+			"value": ""
+		},
+		{
+			"key": "playerId",
+			"value": ""
+		},
+		{
+			"key": "venueId",
+			"value": ""
+		},
+		{
+			"key": "areaId",
+			"value": ""
+		},
+		{
+			"key": "refereeId",
+			"value": ""
+		},
+		{
+			"key": "stageId",
+			"value": ""
+		},
+		{
+			"key": "countryId",
+			"value": ""
+		},
+		{
+			"key": "seriesId",
+			"value": ""
+		},
+		{
+			"key": "competitionId",
+			"value": ""
+		},
+		{
+			"key": "team2Id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "fileFormat",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "pageSize",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "pageNumber",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "languageCode",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "coverageLevel",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "yes|no",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "statusType",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "dateTime",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "yes|no|1|2",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "weekNumber",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "Value",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "home|away",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "personType",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "typeId",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "feedCode",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "entityType",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "divisionType",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "date",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "apiUrlPath",
+			"value": "https://api.statsperform.com/sdapi/v1",
+			"type": "string"
+		},
+		{
+			"key": "apiKey",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "clientId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "clientSecret",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "bearerToken",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

@@ -5,8 +5,8 @@
  *   - "Deploy contract" = derive a deterministic pool public key from the match
  *     ID and save it as the contract_address in Supabase.  The pool address is
  *     a valid Solana devnet address derived via SHA-256(adminPubkey + matchId).
- *   - "Fund pool"       = SystemProgram.transfer SOL from the admin wallet
- *     (Phantom) to the pool address.
+ *   - "Fund pool"       = SPL transfer of dev USDC from the admin wallet
+ *     (Phantom) to the pool's associated token account.
  *   - Settlement is handled server-side (edge function) — no on-chain program
  *     call needed from the admin UI.
  *
@@ -15,17 +15,21 @@
  *   the program ID, and replace `fundPoolTx` with the program's `fundPool`
  *   instruction.
  *
- * USDC on Devnet: devnet uses fake SPL tokens; we use SOL as the pool currency
- * for now (1 SOL = 1 "unit" in devnet testing).  Switch to devUSDC once a
- * faucet address is configured via VITE_SOLANA_DEVNET_USDC_MINT.
+ * Dev USDC mint (Solana devnet):
+ *   Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr
+ * SOL is used for tx fees only.
  */
 import {
   Connection,
   PublicKey,
   SystemProgram,
   Transaction,
-  LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
+import {
+  getAssociatedTokenAddress,
+  createAssociatedTokenAccountInstruction,
+  createTransferCheckedInstruction,
+} from "@solana/spl-token";
 import {
   connectPhantom,
   getPhantomPublicKey,
@@ -37,6 +41,11 @@ import {
 export const SOLANA_DEVNET_RPC =
   (import.meta.env.VITE_SOLANA_DEVNET_RPC as string | undefined) ??
   "https://api.devnet.solana.com";
+
+export const SOLANA_DEVNET_USDC_MINT =
+  (import.meta.env.VITE_SOLANA_DEVNET_USDC_MINT as string | undefined) ??
+  "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr";
+const SOLANA_USDC_DECIMALS = 6;
 
 const POOL_KEY = "gl_solana_pool_address";
 
@@ -161,45 +170,80 @@ export const solanaService = {
   },
 
   /**
-   * Fund the match pool — transfer SOL from admin wallet to the pool address.
+   * Fund the match pool — transfer dev USDC from admin to pool ATA.
    *
-   * @param matchId   — the external match ID
-   * @param amountSol — amount in SOL (e.g. 0.1 = 0.1 SOL on devnet)
+   * @param matchId    — the external match ID
+   * @param amountUsdc — amount in USDC units (e.g. 10.5)
    * @returns transaction signature
    */
-  async fundPool(matchId: string, amountSol: number): Promise<string> {
+  async fundPool(matchId: string, amountUsdc: number): Promise<string> {
     let adminPubkeyStr = getPhantomPublicKey();
     if (!adminPubkeyStr) {
       adminPubkeyStr = await connectPhantom();
     }
     const adminPubkey = new PublicKey(adminPubkeyStr);
     const connection = getConnection();
+    const usdcMint = new PublicKey(SOLANA_DEVNET_USDC_MINT);
 
     const poolAddressStr =
       getStoredMatchPoolAddress(matchId) ??
       (await this.deployContract(matchId));
     const poolAddress = new PublicKey(poolAddressStr);
 
-    const lamports = Math.round(amountSol * LAMPORTS_PER_SOL);
+    // Admin USDC ATA (source) and pool USDC ATA (destination).
+    const adminUsdcAta = await getAssociatedTokenAddress(
+      usdcMint,
+      adminPubkey,
+      true,
+    );
+    const poolUsdcAta = await getAssociatedTokenAddress(
+      usdcMint,
+      poolAddress,
+      true,
+    );
+
+    const rawAmount = Math.round(amountUsdc * 10 ** SOLANA_USDC_DECIMALS);
+    if (!Number.isFinite(rawAmount) || rawAmount <= 0) {
+      throw new Error("Invalid USDC amount. Enter a positive value.");
+    }
+
+    const instructions = [];
+    const poolAtaInfo = await connection.getAccountInfo(poolUsdcAta);
+    if (!poolAtaInfo) {
+      instructions.push(
+        createAssociatedTokenAccountInstruction(
+          adminPubkey,
+          poolUsdcAta,
+          poolAddress,
+          usdcMint,
+        ),
+      );
+    }
+    instructions.push(
+      createTransferCheckedInstruction(
+        adminUsdcAta,
+        usdcMint,
+        poolUsdcAta,
+        adminPubkey,
+        BigInt(rawAmount),
+        SOLANA_USDC_DECIMALS,
+      ),
+    );
+
     const { blockhash, lastValidBlockHeight } =
       await connection.getLatestBlockhash();
 
     const tx = new Transaction({
       feePayer: adminPubkey,
       recentBlockhash: blockhash,
-    }).add(
-      SystemProgram.transfer({
-        fromPubkey: adminPubkey,
-        toPubkey: poolAddress,
-        lamports,
-      }),
-    );
+    });
+    for (const ix of instructions) tx.add(ix);
 
     const sig = await signAndSendTransaction(connection, tx);
     console.log(
       "[solanaService] funded pool with",
-      amountSol,
-      "SOL, sig:",
+      amountUsdc,
+      "USDC-dev, sig:",
       sig,
     );
 
@@ -211,18 +255,27 @@ export const solanaService = {
     return sig;
   },
 
-  /** Get the SOL balance of a pool address (in SOL). */
+  /** Get the pool USDC-dev balance for the pool owner address. */
   async getPoolBalance(poolAddressStr: string): Promise<number> {
     const connection = getConnection();
     const poolAddress = new PublicKey(poolAddressStr);
-    const lamports = await connection.getBalance(poolAddress);
-    return lamports / LAMPORTS_PER_SOL;
+    const usdcMint = new PublicKey(SOLANA_DEVNET_USDC_MINT);
+    const poolUsdcAta = await getAssociatedTokenAddress(
+      usdcMint,
+      poolAddress,
+      true,
+    );
+    const info = await connection
+      .getTokenAccountBalance(poolUsdcAta)
+      .catch(() => null);
+    return info?.value?.uiAmount ?? 0;
   },
 
   /**
-   * Emergency withdraw — transfer all SOL from pool back to admin.
+   * Emergency withdraw — transfer pool USDC back to admin.
    * (Requires program authority in production; on devnet the pool account
-   * is owned by System Program so we can't drain it without a custom program.
+   * owner is deterministic and not signable directly, so we can't drain it
+   * without a custom program.
    * This returns a helpful message for now.)
    */
   async emergencyWithdrawPool(_matchId: string): Promise<string> {
