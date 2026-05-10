@@ -60,7 +60,9 @@ function injectEthBridge() {
   script.onload = () => script.remove();
   (document.head ?? document.documentElement).appendChild(script);
 }
-injectEthBridge();
+if (import.meta.env.VITE_WALLET_MODE !== "solana") {
+  injectEthBridge();
+}
 
 function injectApp(matchKey?: string) {
   // Tear down any existing instance first

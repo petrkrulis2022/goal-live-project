@@ -12,7 +12,8 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     define: {
       "import.meta.env.VITE_USE_MOCK": '"true"',
-      "import.meta.env.VITE_USE_REAL_WALLET": '"true"', // extension always uses MetaMask
+      "import.meta.env.VITE_USE_REAL_WALLET": '"true"',
+      "import.meta.env.VITE_WALLET_MODE": '"solana"',
       "import.meta.env.VITE_DEBUG": '"false"',
       "import.meta.env.VITE_APP_NAME": '"goal.live"',
       // Forward platform wallet address baked in at build time

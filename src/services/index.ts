@@ -8,11 +8,17 @@
 import { realDataService } from "./real/dataService";
 import { realBettingService } from "./real/bettingService";
 import { walletBridgeService } from "./bridge/walletBridgeService";
+import { walletBridgeServiceSolana } from "./bridge/walletBridgeServiceSolana";
+
+const walletService =
+  (import.meta.env.VITE_WALLET_MODE as string | undefined) === "solana"
+    ? walletBridgeServiceSolana
+    : walletBridgeService;
 
 export const services = {
   data: realDataService,
   betting: realBettingService,
-  wallet: walletBridgeService,
+  wallet: walletService,
 } as const;
 
 // Expose to content-script dev tools (window.__goalLive)
