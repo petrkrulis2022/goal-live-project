@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@shared/lib/supabase";
-import { contractService } from "../services/contractService";
+import {
+  contractService,
+  type DeployNetwork,
+} from "../services/contractService";
+import { solanaService } from "../services/solanaService";
 
 // ─── Odds API helpers ─────────────────────────────────────────────────────────
 const ODDS_API_KEY = "8d90e1a5fa443922e69844377834c0ab";
@@ -104,6 +108,7 @@ interface FormState {
   isDemo: boolean;
   oracleAddress: string;
   poolAmountUsdc: string;
+  network: DeployNetwork;
 }
 
 // Platform wallet = oracle (signs settleMatch on-chain via ORACLE_PRIVATE_KEY in edge fn)
@@ -117,6 +122,7 @@ const EMPTY: FormState = {
   isDemo: false,
   oracleAddress: PLATFORM_ORACLE,
   poolAmountUsdc: "",
+  network: "sepolia",
 };
 
 type Step =
@@ -701,14 +707,17 @@ export default function CreateEvent() {
         );
       }
 
-      // ── Step 2: Deploy escrow contract (MetaMask) ──────────────────────────
+      // ── Step 2: Deploy escrow contract ─────────────────────────────────────
+      const walletName =
+        form.network === "solana_devnet" ? "Phantom" : "MetaMask";
       setStep({
         id: "deploy",
-        label: "Deploying pool contract… (confirm in MetaMask)",
+        label: `Deploying pool contract… (confirm in ${walletName})`,
       });
-      const contractAddress = await contractService.deployContract(
-        form.externalMatchId,
-      );
+      const contractAddress =
+        form.network === "solana_devnet"
+          ? await solanaService.deployContract(form.externalMatchId)
+          : await contractService.deployContract(form.externalMatchId);
 
       // Save contract address back
       await supabase
@@ -716,12 +725,15 @@ export default function CreateEvent() {
         .update({ contract_address: contractAddress })
         .eq("id", match.id);
 
-      // ── Step 3: Fund the pool (MetaMask) ───────────────────────────────────
-      setStep({ id: "fund", label: "Funding pool… (confirm in MetaMask)" });
-      const txHash = await contractService.fundPool(
-        form.externalMatchId,
-        poolAmount,
-      );
+      // ── Step 3: Fund the pool ──────────────────────────────────────────────
+      setStep({
+        id: "fund",
+        label: `Funding pool… (confirm in ${walletName})`,
+      });
+      const txHash =
+        form.network === "solana_devnet"
+          ? await solanaService.fundPool(form.externalMatchId, poolAmount)
+          : await contractService.fundPool(form.externalMatchId, poolAmount);
 
       // ── Done ───────────────────────────────────────────────────────────────
       setStep({ id: "done", contractAddress, txHash });
@@ -920,22 +932,60 @@ export default function CreateEvent() {
                 $
               </div>
               <p className="text-sm font-semibold text-white">Pool Funding</p>
-              <span className="ml-auto text-[10px] text-green-400 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full font-medium uppercase tracking-wide">
-                MetaMask
+              <span
+                className={`ml-auto text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide border ${
+                  form.network === "solana_devnet"
+                    ? "text-purple-400 bg-purple-500/10 border-purple-500/20"
+                    : "text-green-400 bg-green-500/10 border-green-500/20"
+                }`}
+              >
+                {form.network === "solana_devnet" ? "Phantom" : "MetaMask"}
               </span>
             </div>
 
-            <Field label="Initial Pool Amount (USDC)" required>
+            {/* Network selector */}
+            <Field label="Blockchain Network" required>
+              <select
+                className={INPUT}
+                value={form.network}
+                onChange={(e) =>
+                  set("network", e.target.value as DeployNetwork)
+                }
+                disabled={busy}
+              >
+                <option value="sepolia">Ethereum Sepolia (USDC testnet)</option>
+                <option value="solana_devnet">Solana Devnet (SOL)</option>
+              </select>
+            </Field>
+
+            {form.network === "solana_devnet" && (
+              <div className="mt-2 mb-3 px-3 py-2 bg-purple-500/10 border border-purple-500/20 rounded-lg text-xs text-purple-300 leading-relaxed">
+                <strong>Solana Devnet:</strong> Pool amount is in SOL (devnet).
+                Phantom wallet required. A deterministic pool address will be
+                derived from your wallet pubkey + match ID.
+              </div>
+            )}
+
+            <Field
+              label={
+                form.network === "solana_devnet"
+                  ? "Initial Pool Amount (SOL)"
+                  : "Initial Pool Amount (USDC)"
+              }
+              required
+            >
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">
-                  $
+                  {form.network === "solana_devnet" ? "\u25ce" : "$"}
                 </span>
                 <input
                   className={INPUT + " pl-7"}
                   type="number"
-                  min="1"
+                  min={form.network === "solana_devnet" ? "0.01" : "1"}
                   step="0.01"
-                  placeholder="5000.00"
+                  placeholder={
+                    form.network === "solana_devnet" ? "0.5" : "5000.00"
+                  }
                   value={form.poolAmountUsdc}
                   onChange={(e) => set("poolAmountUsdc", e.target.value)}
                   disabled={busy}
@@ -944,10 +994,9 @@ export default function CreateEvent() {
               </div>
             </Field>
             <p className="text-xs text-gray-600 mt-2 leading-relaxed">
-              This amount is deducted from the goal.live admin wallet and
-              transferred into the deployed escrow contract. MetaMask will open{" "}
-              <strong className="text-gray-500">twice</strong> — once to deploy
-              the contract, once to fund it.
+              {form.network === "solana_devnet"
+                ? "This amount (SOL) is transferred from your Phantom wallet to the derived pool address on Solana Devnet. Phantom will open twice — once to create the pool account, once to fund it."
+                : "This amount is deducted from the goal.live admin wallet and transferred into the deployed escrow contract. MetaMask will open twice — once to deploy the contract, once to fund it."}
             </p>
           </div>
 

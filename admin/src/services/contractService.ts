@@ -30,6 +30,8 @@ const USDC_ADDRESS =
 
 const CONTRACT_KEY = "gl_contract_address";
 
+export type DeployNetwork = "sepolia" | "solana_devnet";
+
 export const MatchOutcome = { HOME: 0, DRAW: 1, AWAY: 2 } as const;
 export type MatchOutcomeValue =
   (typeof MatchOutcome)[keyof typeof MatchOutcome];

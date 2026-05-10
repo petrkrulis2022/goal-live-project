@@ -3,6 +3,13 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "@shared/lib/supabase";
 import type { DbMatch } from "@shared/lib/supabase";
 import { contractService } from "../services/contractService";
+import { solanaService } from "../services/solanaService";
+
+/** Detect chain from stored contract_address format. */
+function isSolanaAddress(addr: string | null | undefined): boolean {
+  if (!addr) return false;
+  return !addr.startsWith("0x");
+}
 
 export default function FundPool() {
   const { matchId } = useParams<{ matchId: string }>();
@@ -14,6 +21,10 @@ export default function FundPool() {
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawTx, setWithdrawTx] = useState<string | null>(null);
   const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false);
+  // Network selector for new deploys (when no contract yet)
+  const [selectedNetwork, setSelectedNetwork] = useState<
+    "sepolia" | "solana_devnet"
+  >("sepolia");
 
   useEffect(() => {
     if (!matchId) return;
@@ -30,10 +41,16 @@ export default function FundPool() {
     setError(null);
     setFunding(true);
     try {
-      const tx = await contractService.fundPool(
-        match.external_match_id,
-        parseFloat(amount),
-      );
+      const solana = isSolanaAddress(match.contract_address);
+      const tx = solana
+        ? await solanaService.fundPool(
+            match.external_match_id,
+            parseFloat(amount),
+          )
+        : await contractService.fundPool(
+            match.external_match_id,
+            parseFloat(amount),
+          );
       setTxHash(tx);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
@@ -48,9 +65,10 @@ export default function FundPool() {
     setWithdrawing(true);
     setShowWithdrawConfirm(false);
     try {
-      const tx = await contractService.emergencyWithdrawPool(
-        match.external_match_id,
-      );
+      const solana = isSolanaAddress(match.contract_address);
+      const tx = solana
+        ? await solanaService.emergencyWithdrawPool()
+        : await contractService.emergencyWithdrawPool(match.external_match_id);
       setWithdrawTx(tx);
       // Clear contract address in Supabase — pool is now empty and match deactivated
       await supabase
@@ -72,9 +90,10 @@ export default function FundPool() {
     setError(null);
     setFunding(true);
     try {
-      const address = await contractService.deployContract(
-        match.external_match_id,
-      );
+      const address =
+        selectedNetwork === "solana_devnet"
+          ? await solanaService.deployContract(match.external_match_id)
+          : await contractService.deployContract(match.external_match_id);
       await supabase
         .from("matches")
         .update({ contract_address: address })
@@ -123,19 +142,42 @@ export default function FundPool() {
         {match.contract_address ? (
           <div className="font-mono text-sm text-green-400 break-all leading-relaxed">
             {match.contract_address}
+            <span className="ml-2 text-[10px] font-sans uppercase tracking-wide text-gray-500">
+              {isSolanaAddress(match.contract_address)
+                ? "Solana Devnet"
+                : "Ethereum Sepolia"}
+            </span>
           </div>
         ) : (
-          <div className="flex items-center justify-between">
-            <span className="text-yellow-500 text-sm font-medium">
-              Not deployed yet
-            </span>
-            <button
-              onClick={handleDeploy}
-              disabled={funding}
-              className="px-3.5 py-2 text-xs bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/18 rounded-lg font-medium transition-colors disabled:opacity-50"
-            >
-              {funding ? "Deploying…" : "Deploy Contract"}
-            </button>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSelectedNetwork("sepolia")}
+                disabled={funding}
+                className={`flex-1 px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${selectedNetwork === "sepolia" ? "border-blue-500/50 bg-blue-500/10 text-blue-300" : "border-white/5 bg-gray-950 text-gray-500 hover:text-gray-300"}`}
+              >
+                Ethereum Sepolia
+              </button>
+              <button
+                onClick={() => setSelectedNetwork("solana_devnet")}
+                disabled={funding}
+                className={`flex-1 px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${selectedNetwork === "solana_devnet" ? "border-purple-500/50 bg-purple-500/10 text-purple-300" : "border-white/5 bg-gray-950 text-gray-500 hover:text-gray-300"}`}
+              >
+                Solana Devnet
+              </button>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-yellow-500 text-sm font-medium">
+                Not deployed yet
+              </span>
+              <button
+                onClick={handleDeploy}
+                disabled={funding}
+                className="px-3.5 py-2 text-xs bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/18 rounded-lg font-medium transition-colors disabled:opacity-50"
+              >
+                {funding ? "Deploying…" : "Deploy Contract"}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -144,7 +186,7 @@ export default function FundPool() {
       {match.contract_address && (
         <div className="bg-gray-900 border border-white/5 rounded-2xl p-5 mb-4">
           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            Amount (USDC)
+            Amount ({isSolanaAddress(match.contract_address) ? "SOL" : "USDC"})
           </label>
           <div className="flex gap-3">
             <input
@@ -183,15 +225,27 @@ export default function FundPool() {
       {/* Info box */}
       <div className="bg-gray-900/40 border border-white/4 rounded-xl p-4 text-xs text-gray-600 leading-relaxed">
         <p className="font-semibold text-gray-500 mb-1.5">How it works</p>
-        <p>
-          Pool funding calls{" "}
-          <code className="text-gray-400 bg-gray-800 px-1 py-0.5 rounded">
-            fundPool()
-          </code>{" "}
-          on the deployed escrow contract. The contract holds USDC until bets
-          are settled. Admin wallet must have sufficient Sepolia USDC. Deploy
-          via the admin UI using MetaMask (Foundry artifact embedded).
-        </p>
+        {isSolanaAddress(match.contract_address) ? (
+          <p>
+            Pool funding transfers SOL from your Phantom wallet to the derived
+            pool address on Solana Devnet. The pool address is deterministically
+            derived from your admin pubkey + match ID using{" "}
+            <code className="text-gray-400 bg-gray-800 px-1 py-0.5 rounded">
+              PublicKey.createWithSeed
+            </code>
+            .
+          </p>
+        ) : (
+          <p>
+            Pool funding calls{" "}
+            <code className="text-gray-400 bg-gray-800 px-1 py-0.5 rounded">
+              fundPool()
+            </code>{" "}
+            on the deployed escrow contract. The contract holds USDC until bets
+            are settled. Admin wallet must have sufficient Sepolia USDC. Deploy
+            via the admin UI using MetaMask (Foundry artifact embedded).
+          </p>
+        )}
       </div>
 
       {/* Danger zone — emergency withdraw */}
