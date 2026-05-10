@@ -8,6 +8,7 @@
  * POST body:
  * {
  *   match_id:               string,     // Supabase UUID — REQUIRED
+ *   manual_settle:          true,       // REQUIRED safety flag (manual admin action)
  *
  *   // --- AUTO-FETCH MODE (omit all four below) ----------------------------
  *   // Edge fn fetches final score + scorers from StatsPerform using
@@ -119,7 +120,7 @@ Deno.serve(async (req: Request) => {
     );
 
     const body = await req.json();
-    const { match_id, force } = body;
+    const { match_id, force, manual_settle } = body;
     // winner / home_goals / away_goals / goal_scorer_player_ids are optional
     // — omit all to trigger GoalServe auto-fetch mode.
     let winner: string | undefined = body.winner;
@@ -130,6 +131,15 @@ Deno.serve(async (req: Request) => {
 
     // ── Validate required fields ──────────────────────────────────────────
     if (!match_id) return json({ error: "match_id is required" }, 400);
+    if (manual_settle !== true) {
+      return json(
+        {
+          error:
+            "manual_settle=true is required. Automatic settlement is disabled on this branch.",
+        },
+        403,
+      );
+    }
 
     // ── Verify match exists ───────────────────────────────────────────────
     const { data: match, error: matchErr } = await supabase

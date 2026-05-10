@@ -29,6 +29,9 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({
 
   const short = `${depositAddress.slice(0, 6)}…${depositAddress.slice(-4)}`;
 
+  const accountExplorerUrl = (address: string) =>
+    `https://solscan.io/account/${address}?cluster=devnet`;
+
   const handleCopy = () => {
     navigator.clipboard.writeText(depositAddress).then(() => {
       setCopied(true);
@@ -71,7 +74,7 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({
               Fund In-App Balance
             </p>
             <p className="text-gray-400 text-[11px] mt-0.5">
-              Send USDC to your in-app wallet · Sepolia
+              Send USDC-dev to your in-app wallet · Solana Devnet
             </p>
           </div>
           <button
@@ -110,15 +113,15 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({
             </div>
 
             <p className="text-gray-400 text-xs mb-3 leading-relaxed">
-              Send USDC (Sepolia) from any external wallet to the address below.
-              Balance updates automatically within ~15 seconds.
+              Send USDC-dev (Solana devnet) from any external wallet to the
+              address below. Balance updates automatically within ~15 seconds.
             </p>
 
             {/* Match escrow contract address (unique per game) */}
             {contractAddress && (
               <div className="bg-indigo-950/40 border border-indigo-500/30 rounded-xl px-4 py-3 mb-3">
                 <p className="text-indigo-300 text-[10px] font-semibold uppercase tracking-wide mb-1">
-                  Match Escrow Contract
+                  Match Pool Address
                 </p>
                 {matchLabel && (
                   <p className="text-indigo-400 text-[10px] mb-1">
@@ -129,12 +132,12 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({
                   {contractAddress}
                 </p>
                 <a
-                  href={`https://sepolia.etherscan.io/address/${contractAddress}`}
+                  href={accountExplorerUrl(contractAddress)}
                   target="_blank"
                   rel="noreferrer"
                   className="text-indigo-400 text-[10px] hover:text-indigo-200 mt-1 inline-block"
                 >
-                  View on Etherscan ↗
+                  View on Solscan ↗
                 </a>
               </div>
             )}
@@ -186,7 +189,7 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({
             </div>
 
             <p className="text-gray-600 text-[10px] text-center">
-              {short} · Sepolia · USDC only
+              {short} · Solana Devnet · USDC-dev only
             </p>
           </>
         )}

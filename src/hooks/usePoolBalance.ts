@@ -1,7 +1,16 @@
 import { useState, useEffect } from "react";
 import { Interface } from "ethers";
-import { NETWORK_RPC } from "@/config/network";
+import { NETWORK_RPC } from "../config/network";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { getAssociatedTokenAddress } from "@solana/spl-token";
 const POLL_MS = 60_000; // refresh every 60 s
+
+const SOLANA_DEVNET_RPC =
+  (import.meta.env.VITE_SOLANA_DEVNET_RPC as string | undefined) ??
+  "https://api.devnet.solana.com";
+const SOLANA_DEVNET_USDC_MINT =
+  (import.meta.env.VITE_SOLANA_DEVNET_USDC_MINT as string | undefined) ??
+  "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr";
 
 // Minimal ABI for the public matches(string) getter.
 // V1 struct (mapping fields excluded from getter):
@@ -33,6 +42,24 @@ export function usePoolBalance(
 
     async function fetch_() {
       try {
+        const address = contractAddress;
+        if (!address) {
+          setPoolBalance(null);
+          return;
+        }
+
+        const isSolana = !address.startsWith("0x");
+        if (isSolana) {
+          const connection = new Connection(SOLANA_DEVNET_RPC, "confirmed");
+          const mint = new PublicKey(SOLANA_DEVNET_USDC_MINT);
+          const pool = new PublicKey(address);
+          const poolAta = await getAssociatedTokenAddress(mint, pool, true);
+          const bal = await connection.getTokenAccountBalance(poolAta);
+          if (cancelled) return;
+          setPoolBalance(Number(bal.value.uiAmount ?? 0));
+          return;
+        }
+
         const data = IFACE.encodeFunctionData("matches", [onChainMatchId]);
         const res = await fetch(NETWORK_RPC, {
           method: "POST",
@@ -40,7 +67,7 @@ export function usePoolBalance(
           body: JSON.stringify({
             jsonrpc: "2.0",
             method: "eth_call",
-            params: [{ to: contractAddress, data }, "latest"],
+            params: [{ to: address, data }, "latest"],
             id: 1,
           }),
         });

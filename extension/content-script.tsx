@@ -2,9 +2,14 @@
 // Injected into YouTube & tvgo.t-mobile.cz pages
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { Buffer } from "buffer";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BettingOverlay } from "../src/components/BettingOverlay";
 import "../src/styles/global.css";
+
+if (!(globalThis as { Buffer?: typeof Buffer }).Buffer) {
+  (globalThis as { Buffer?: typeof Buffer }).Buffer = Buffer;
+}
 
 const CONTAINER_ID = "goal-live-extension";
 let currentRoot: ReturnType<typeof ReactDOM.createRoot> | null = null;
@@ -50,19 +55,17 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-// Inject page-world MetaMask bridge so walletBridgeService can reach window.ethereum
-function injectEthBridge() {
-  const existing = document.getElementById("gl-eth-bridge");
+// Inject page-world bridge script for wallet providers (EVM + Solana)
+function injectWalletBridge() {
+  const existing = document.getElementById("gl-wallet-bridge");
   if (existing) return;
   const script = document.createElement("script");
-  script.id = "gl-eth-bridge";
+  script.id = "gl-wallet-bridge";
   script.src = chrome.runtime.getURL("injected.js");
   script.onload = () => script.remove();
   (document.head ?? document.documentElement).appendChild(script);
 }
-if (import.meta.env.VITE_WALLET_MODE !== "solana") {
-  injectEthBridge();
-}
+injectWalletBridge();
 
 function injectApp(matchKey?: string) {
   // Tear down any existing instance first

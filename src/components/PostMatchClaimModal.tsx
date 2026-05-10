@@ -40,6 +40,9 @@ export const PostMatchClaimModal: React.FC<PostMatchClaimModalProps> = ({
   const showNothingLeft =
     walletConnected && balancesSettled && !withdrawn && claimableAmount <= 0;
 
+  const txExplorerUrl = (signature: string) =>
+    `https://solscan.io/tx/${signature}?cluster=devnet`;
+
   async function handleClaim() {
     setPending(true);
     setError(null);
@@ -224,7 +227,7 @@ export const PostMatchClaimModal: React.FC<PostMatchClaimModalProps> = ({
               Your payout claim transaction was sent successfully.
             </p>
             <a
-              href={`https://sepolia.etherscan.io/tx/${txHash}`}
+              href={txExplorerUrl(txHash)}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-4 block break-all text-xs text-emerald-300 underline"

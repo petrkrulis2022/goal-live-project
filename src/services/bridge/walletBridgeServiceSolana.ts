@@ -61,6 +61,54 @@ function savePlayerAddress(addr: string) {
   localStorage.setItem(PLAYER_ADDR_KEY, addr);
 }
 
+let solReqCounter = 0;
+const solPending = new Map<
+  number,
+  { resolve: (v: unknown) => void; reject: (e: Error) => void }
+>();
+
+function solRequest(method: string, params?: unknown): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const reqId = ++solReqCounter;
+    solPending.set(reqId, { resolve, reject });
+    window.postMessage({ type: "GL_SOL_REQUEST", reqId, method, params }, "*");
+    setTimeout(() => {
+      if (solPending.has(reqId)) {
+        solPending.delete(reqId);
+        reject(new Error(`Phantom bridge request timed out: ${method}`));
+      }
+    }, 30_000);
+  });
+}
+
+function toBase64(bytes: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) {
+    bin += String.fromCharCode(bytes[i]);
+  }
+  return btoa(bin);
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("message", (event) => {
+    if (event.source !== window || !event.data) return;
+
+    if (event.data.type === "GL_SOL_RESPONSE") {
+      const { reqId, result, error, code } = event.data;
+      const pending = solPending.get(reqId);
+      if (!pending) return;
+      solPending.delete(reqId);
+      if (error) {
+        const err = new Error(error) as Error & { code?: number };
+        if (code !== undefined) err.code = code;
+        pending.reject(err);
+      } else {
+        pending.resolve(result);
+      }
+    }
+  });
+}
+
 class WalletBridgeServiceSolana implements IWalletService {
   private state: WalletState | null = null;
   private playerAddress: string = loadPlayerAddress();
@@ -89,9 +137,24 @@ class WalletBridgeServiceSolana implements IWalletService {
   }
 
   async connect(): Promise<WalletState> {
-    const phantom = getPhantom();
-    const resp = await phantom.connect();
-    const address = resp.publicKey.toBase58();
+    let address = "";
+
+    // Preferred path for extension runtime: page-world bridge
+    try {
+      const resp = (await solRequest("connect")) as { address?: string };
+      address = resp?.address ?? "";
+    } catch {
+      // Fallback for contexts where window.solana is directly accessible
+      const phantom = getPhantom();
+      const resp = await phantom.connect();
+      address = resp.publicKey.toBase58();
+      phantom.on("disconnect", this.onDisconnect);
+    }
+
+    if (!address) {
+      throw new Error("Phantom connected but no public key was returned.");
+    }
+
     const balance = await this.fetchUsdc(address);
     const ws: WalletState = {
       address,
@@ -101,7 +164,6 @@ class WalletBridgeServiceSolana implements IWalletService {
       connected: true,
     };
     this.emit(ws);
-    phantom.on("disconnect", this.onDisconnect);
     return ws;
   }
 
@@ -200,18 +262,34 @@ class WalletBridgeServiceSolana implements IWalletService {
     );
 
     tx.feePayer = owner;
-    tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    const { blockhash, lastValidBlockHeight } =
+      await connection.getLatestBlockhash();
+    tx.recentBlockhash = blockhash;
 
     let signature: string;
-    if (phantom.signAndSendTransaction) {
-      const res = await phantom.signAndSendTransaction(tx);
-      signature = typeof res === "string" ? res : res.signature;
-    } else {
-      const signed = await phantom.signTransaction(tx);
-      signature = await connection.sendRawTransaction(signed.serialize());
+    try {
+      const serialized = toBase64(
+        tx.serialize({ requireAllSignatures: false, verifySignatures: false }),
+      );
+      const bridgeRes = (await solRequest("signAndSendTransaction", {
+        serializedTransaction: serialized,
+      })) as { signature?: string };
+      if (!bridgeRes?.signature) throw new Error("Missing signature");
+      signature = bridgeRes.signature;
+    } catch {
+      if (phantom.signAndSendTransaction) {
+        const res = await phantom.signAndSendTransaction(tx);
+        signature = typeof res === "string" ? res : res.signature;
+      } else {
+        const signed = await phantom.signTransaction(tx);
+        signature = await connection.sendRawTransaction(signed.serialize());
+      }
     }
 
-    await connection.confirmTransaction(signature, "confirmed");
+    await connection.confirmTransaction(
+      { signature, blockhash, lastValidBlockHeight },
+      "confirmed",
+    );
     await this.getBalance();
     return signature;
   }

@@ -1,66 +1,13 @@
 import React, { useState } from "react";
 import { matchContractService } from "../services/matchContract";
 
-// ── postMessage bridge (same pattern as walletBridgeServiceHedera) ────────────
-let _reqCounter = 0;
-const _pending = new Map<
-  number,
-  { resolve: (v: unknown) => void; reject: (e: Error) => void }
->();
-if (typeof window !== "undefined") {
-  window.addEventListener("message", (event) => {
-    if (event.source !== window || !event.data) return;
-    if (event.data.type === "GL_ETH_RESPONSE") {
-      const { reqId, result, error, code } = event.data as {
-        reqId: number;
-        result?: unknown;
-        error?: string;
-        code?: number;
-      };
-      const p = _pending.get(reqId);
-      if (!p) return;
-      _pending.delete(reqId);
-      if (error) {
-        const err = new Error(error) as Error & { code?: number };
-        if (code !== undefined) err.code = code;
-        p.reject(err);
-      } else {
-        p.resolve(result);
-      }
-    }
-  });
-}
-function _bridgeRequest(method: string, params?: unknown[]): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    const reqId = ++_reqCounter;
-    _pending.set(reqId, { resolve, reject });
-    window.postMessage({ type: "GL_ETH_REQUEST", reqId, method, params }, "*");
-    setTimeout(() => {
-      if (_pending.has(reqId)) {
-        _pending.delete(reqId);
-        reject(new Error(`MetaMask request timed out: ${method}`));
-      }
-    }, 30_000);
-  });
+function getSolscanTxUrl(signature: string): string {
+  return `https://solscan.io/tx/${signature}?cluster=devnet`;
 }
 
-/** Send native HBAR (in whole HBAR units) from connected wallet to `to`. */
-async function sendHbar(
-  from: string,
-  to: string,
-  hbarAmount: number,
-): Promise<string> {
-  // 1 HBAR = 10^18 weibars on Hedera EVM
-  const weiHex = "0x" + BigInt(Math.round(hbarAmount * 1e18)).toString(16);
-  const txHash = await _bridgeRequest("eth_sendTransaction", [
-    { from, to, value: weiHex },
-  ]);
-  return txHash as string;
+function getSolscanAccountUrl(address: string): string {
+  return `https://solscan.io/account/${address}?cluster=devnet`;
 }
-
-// Hedera testnet match-pool treasury (placeholder for demo)
-// Replace with your deployed match contract address once available.
-const DEMO_MATCH_POOL = "0x0000000000000000000000000000000000000100";
 
 interface FundMatchModalProps {
   contractAddress: string;
@@ -86,9 +33,6 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
   const [errorMsg, setErrorMsg] = useState("");
   const [txHash, setTxHash] = useState("");
 
-  // True when no smart contract has been deployed for this match yet
-  const hbarMode = !contractAddress;
-
   const parsed = parseFloat(amount);
   const valid = !isNaN(parsed) && parsed > 0;
 
@@ -97,22 +41,12 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
     setErrorMsg("");
     try {
       setStep("sending");
-      if (hbarMode) {
-        // HBAR mode: send native HBAR to match pool treasury via MetaMask
-        const accounts = (await _bridgeRequest("eth_accounts")) as string[];
-        const from = accounts[0];
-        if (!from) throw new Error("No wallet connected");
-        const hash = await sendHbar(from, DEMO_MATCH_POOL, parsed);
-        setTxHash(hash);
-      } else {
-        // USDC mode: approve + fundMatch on smart contract
-        const hash = await matchContractService.fundMatch(
-          contractAddress,
-          matchId,
-          parsed,
-        );
-        setTxHash(hash);
-      }
+      const hash = await matchContractService.fundMatch(
+        contractAddress,
+        matchId,
+        parsed,
+      );
+      setTxHash(hash);
       setStep("done");
       onFunded(parsed);
       setTimeout(() => {
@@ -161,16 +95,16 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
             </div>
             <p className="text-white font-bold text-base mb-1">Funded!</p>
             <p className="text-gray-400 text-xs mb-2">
-              {"Your USDC is locked in the match pool."}
+              {"Your USDC-dev was sent to the Solana match pool."}
             </p>
             {txHash && (
               <a
-                href={`https://sepolia.etherscan.io/tx/${txHash}`}
+                href={getSolscanTxUrl(txHash)}
                 target="_blank"
                 rel="noreferrer"
                 className="text-indigo-400 text-[11px] hover:text-indigo-200"
               >
-                View on Etherscan ↗
+                View on Solscan ↗
               </a>
             )}
           </div>
@@ -181,18 +115,18 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
               {false ? null : (
                 <>
                   <p className="text-indigo-300 text-[10px] font-semibold uppercase tracking-wide mb-1">
-                    Match Escrow Contract
+                    Match Pool Address
                   </p>
                   <p className="text-white font-mono text-xs break-all">
                     {contractAddress}
                   </p>
                   <a
-                    href={`https://sepolia.etherscan.io/address/${contractAddress}`}
+                    href={getSolscanAccountUrl(contractAddress)}
                     target="_blank"
                     rel="noreferrer"
                     className="text-indigo-400 text-[10px] hover:text-indigo-200 mt-1 inline-block"
                   >
-                    View on Etherscan ↗
+                    View on Solscan ↗
                   </a>
                 </>
               )}
@@ -215,7 +149,7 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
                 className="w-full bg-gray-900 border border-white/15 rounded-xl pl-4 pr-16 py-3 text-white text-sm font-bold focus:outline-none focus:border-emerald-500/60 disabled:opacity-50"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
-                USDC
+                USDC-dev
               </span>
             </div>
 
@@ -243,7 +177,7 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
               </p>
             )}
 
-            {/* CTA — MetaMask prompt */}
+            {/* CTA — Phantom prompt */}
             <button
               onClick={handleFund}
               disabled={!valid || busy}
@@ -257,14 +191,12 @@ export const FundMatchModal: React.FC<FundMatchModalProps> = ({
               }}
             >
               {busy
-                ? step === "approving"
-                  ? "⏳ Confirm in MetaMask…"
-                  : "⏳ Sending transaction…"
-                : `⚡ Fund $${parsed > 0 ? parsed.toFixed(2) : "0.00"} via MetaMask`}
+                ? "⏳ Confirm in Phantom…"
+                : `⚡ Fund $${parsed > 0 ? parsed.toFixed(2) : "0.00"} via Phantom`}
             </button>
 
             <p className="text-gray-600 text-[10px] text-center mt-2">
-              2 MetaMask prompts: USDC approve + fundMatch
+              1 Phantom prompt: SPL USDC-dev transfer to pool ATA
             </p>
           </>
         )}

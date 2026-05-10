@@ -16,6 +16,10 @@ interface WithdrawModalProps {
 
 const PRESETS = [5, 10, 25, 50];
 
+function isSolanaAddress(value: string): boolean {
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value.trim());
+}
+
 export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   inAppBalance,
   lockedAmount,
@@ -35,7 +39,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   const effectivePlayerAddr = editingAddr
     ? addrInput
     : (playerAddress ?? addrInput);
-  const addrValid = /^0x[0-9a-fA-F]{40}$/.test(effectivePlayerAddr);
+  const addrValid = isSolanaAddress(effectivePlayerAddr);
 
   const saveAddr = () => {
     if (addrValid) {
@@ -71,6 +75,9 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
 
   const short = `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`;
   const isMock = txHash?.startsWith("0xmock_");
+  const txExplorerUrl = txHash
+    ? `https://solscan.io/tx/${txHash}?cluster=devnet`
+    : "";
 
   return (
     <div
@@ -83,7 +90,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
           <div>
             <p className="text-white font-bold text-base">Withdraw to Wallet</p>
             <p className="text-gray-400 text-[11px] font-mono mt-0.5">
-              From {short} (in-app) · Sepolia
+              From {short} (in-app) · Solana Devnet
             </p>
           </div>
           <button
@@ -115,7 +122,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                 type="text"
                 value={addrInput}
                 onChange={(e) => setAddrInput(e.target.value)}
-                placeholder="0x... your MetaMask player address"
+                placeholder="Phantom address (base58)"
                 className="flex-1 bg-gray-800 border border-white/15 rounded-lg px-3 py-2 text-white text-xs font-mono outline-none focus:border-blue-500"
               />
               <button
@@ -139,7 +146,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
           )}
           {editingAddr && !addrValid && addrInput !== "" && (
             <p className="text-red-400 text-[10px] mt-1">
-              Enter a valid 0x Ethereum address
+              Enter a valid Solana address
             </p>
           )}
         </div>
@@ -227,7 +234,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                     placeholder="Custom amount"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
-                    USDC
+                    USDC-dev
                   </span>
                 </div>
                 {!isValid && amount !== "" && (
@@ -242,9 +249,9 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
 
             {/* Info */}
             <p className="text-gray-500 text-[11px] mb-4 leading-relaxed">
-              Transfers USDC from your in-app wallet to the destination address
-              via Sepolia. MetaMask will prompt you to sign from your in-app
-              account ({short}).
+              Transfers USDC-dev from your in-app wallet to the destination
+              address on Solana Devnet. Phantom will prompt you to sign from
+              your in-app account ({short}).
             </p>
 
             {error && (
@@ -268,10 +275,10 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
               {pending ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="inline-block w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                  Waiting for MetaMask…
+                  Waiting for Phantom…
                 </span>
               ) : (
-                `Withdraw $${isNaN(parsed) ? "0" : parsed.toFixed(2)} USDC`
+                `Withdraw $${isNaN(parsed) ? "0" : parsed.toFixed(2)} USDC-dev`
               )}
             </button>
           </>
@@ -285,12 +292,12 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
               Withdrawal Initiated!
             </p>
             <p className="text-gray-400 text-xs mb-4">
-              ${parseFloat(amount).toFixed(2)} USDC is on its way to your
+              ${parseFloat(amount).toFixed(2)} USDC-dev is on its way to your
               wallet.
             </p>
             {!isMock && (
               <a
-                href={`https://sepolia.etherscan.io/tx/${txHash}`}
+                href={txExplorerUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-400 text-xs font-mono underline break-all mb-5"

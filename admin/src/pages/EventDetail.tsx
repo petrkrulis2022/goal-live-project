@@ -997,7 +997,11 @@ export default function EventDetail() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${anonKey}`,
         },
-        body: JSON.stringify({ match_id: match.id, force }),
+        body: JSON.stringify({
+          match_id: match.id,
+          force,
+          manual_settle: true,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
