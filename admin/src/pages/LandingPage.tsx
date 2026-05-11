@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const NAVY = "#0C2840";
 const CYAN = "#2EC5E0";
@@ -8,8 +9,8 @@ const DEMO_VIDEO_URL =
   "/media/videos/AI_Betting_Experience_In_Football_Broadcast.mp4";
 const SECONDARY_DEMO_VIDEO_URL = "/media/videos/Arsenal_Goal_From_Live_Bet.mp4";
 const EXTENSION_BETA_URL =
-  "https://github.com/petrkrulis2022/goal-live-project";
-const CONTACT_URL = "mailto:hello@goal.live";
+  "https://github.com/petrkrulis2022/goal-live-project/tree/solana-goalserve/goal.live/extension";
+const CONTACT_URL = "/contact";
 
 const SCREENSHOTS = [
   {
@@ -84,23 +85,7 @@ const REAL_RECORDINGS = [
   },
 ];
 
-const DEPLOYMENTS = [
-  {
-    name: "GoalLiveBetting V1 (Sepolia)",
-    address: "0x0ac469B0DE6C5d67fb904C54A1f7cA8c8bf347Bc",
-    url: "https://sepolia.etherscan.io/address/0x0ac469B0DE6C5d67fb904C54A1f7cA8c8bf347Bc",
-  },
-  {
-    name: "Chainlink KeystoneForwarder",
-    address: "0x15fc6ae953e024d975e77382eeec56a9101f9f88",
-    url: "https://sepolia.etherscan.io/address/0x15fc6ae953e024d975e77382eeec56a9101f9f88",
-  },
-  {
-    name: "USDC (Circle Sepolia)",
-    address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-    url: "https://sepolia.etherscan.io/address/0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-  },
-];
+const DEPLOYMENTS = [];
 
 const STAT_TEXT =
   "Live in-game betting is already larger than pre-match betting in many markets. We are bringing that real-time behavior onchain with a mainstream-first UX.";
@@ -241,6 +226,8 @@ function PitchCanvas() {
 }
 
 export default function LandingPage() {
+  const navigate = useNavigate();
+
   return (
     <div
       className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center"
@@ -257,13 +244,20 @@ export default function LandingPage() {
 
       {/* Logo icon — top left corner */}
       <div
-        className="absolute z-20 pointer-events-none"
-        style={{ top: 20, left: 24 }}
+        className="absolute z-10 pointer-events-none"
+        style={{
+          top: 0,
+          left: -20,
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          gap: "0.2rem",
+        }}
       >
         <img
-          src="/logo-icon.png"
+          src="/logo jesrsey text square.png"
           alt=""
-          style={{ height: 96, width: "auto", display: "block" }}
+          style={{ height: 220, width: "auto", display: "block" }}
         />
       </div>
 
@@ -302,52 +296,98 @@ export default function LandingPage() {
               flexShrink: 0,
             }}
           />
-          Chainlink CRE · Sepolia Testnet
+          Solana · Devnet
         </div>
 
-        {/* Logo */}
-        <div style={{ lineHeight: 1 }}>
-          <img
-            src="/logo.png"
-            alt="goal.live"
-            style={{ maxWidth: 500, width: "80vw", display: "block" }}
-          />
-        </div>
-
-        {/* Hero copy */}
-        <p
+        {/* Hero Title */}
+        <h1
           style={{
             fontFamily: "'DM Serif Display', serif",
-            fontSize: "clamp(1.05rem, 2.3vw, 1.45rem)",
-            color: "rgba(12,40,64,0.72)",
-            maxWidth: 760,
-            lineHeight: 1.5,
+            fontSize: "clamp(2.2rem, 4vw, 3.2rem)",
+            color: NAVY,
+            maxWidth: 800,
+            lineHeight: 1.2,
             margin: 0,
-            fontStyle: "italic",
+            fontWeight: 700,
           }}
         >
-          Gamified live event prediction markets powered by{" "}
-          <span
-            style={{ color: "#0A7B95", fontStyle: "normal", fontWeight: 600 }}
-          >
-            real-time on-chain odds oracles
-          </span>
+          Bet on the Match{" "}
+          <span style={{ color: CYAN }}>While You Watch It</span>
+        </h1>
+
+        <p
+          style={{
+            margin: 0,
+            maxWidth: 760,
+            color: "rgba(12,40,64,0.75)",
+            fontFamily: "'DM Serif Display', serif",
+            fontSize: "clamp(1rem, 1.8vw, 1.2rem)",
+            lineHeight: 1.7,
+            fontWeight: 500,
+          }}
+        >
+          Zero-latency betting inside video streams with instant onchain
+          settlement
         </p>
 
         <p
           style={{
             margin: 0,
-            maxWidth: 820,
-            color: "rgba(12,40,64,0.78)",
+            maxWidth: 760,
+            color: "rgba(12,40,64,0.8)",
             fontFamily: "'Inter', sans-serif",
             fontSize: "clamp(0.95rem, 1.5vw, 1.05rem)",
-            lineHeight: 1.65,
+            lineHeight: 1.7,
           }}
         >
-          We built the MVP on Sepolia for fastest Chainlink CRE development and
-          iteration. The same trust model is being prepared for Base Sepolia and
-          Base mainnet rollout.
+          Transform how you watch football - never miss a betting moment again
         </p>
+
+        <p
+          style={{
+            margin: 0,
+            maxWidth: 760,
+            color: "rgba(12,40,64,0.7)",
+            fontFamily: "'Inter', sans-serif",
+            fontSize: "0.95rem",
+            lineHeight: 1.6,
+          }}
+        >
+          We're eliminating the FOMO gap between seeing an opportunity and
+          acting on it. While traditional sportsbooks force you to leave the
+          stream and miss the action, goal.live puts contextual micro-betting
+          directly inside your viewing experience.
+        </p>
+
+        {/* CTA Button */}
+        <button
+          onClick={() => navigate("/beta")}
+          style={{
+            padding: "0.75rem 2.2rem",
+            background: CYAN,
+            color: "#fff",
+            border: "none",
+            borderRadius: 12,
+            fontFamily: "'DM Mono', monospace",
+            fontSize: "0.9rem",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            cursor: "pointer",
+            boxShadow: `0 4px 20px rgba(46,197,224,0.4)`,
+            transition: "all 0.3s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-2px)";
+            e.currentTarget.style.boxShadow = `0 6px 28px rgba(46,197,224,0.55)`;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = `0 4px 20px rgba(46,197,224,0.4)`;
+          }}
+        >
+          Join Beta Testing (100 Spots Available)
+        </button>
 
         {/* Divider */}
         <div
@@ -372,52 +412,117 @@ export default function LandingPage() {
           {[
             {
               title: "What Makes It Different",
-              text: "Users can place and change positions during the live match, not just before kickoff. It feels like a multiplayer game, while final settlement remains transparent and onchain.",
+              text: "No App-Switching. No Delays. No Missed Moments. Place micro-bets on real-time events (next goal, scorer, throw-ins) without ever leaving the stream. Think it, bet it, win it - all while the action unfolds. Your funds stay in your wallet with instant USDC payouts on Solana.",
             },
             {
-              title: "Why Base Is A Fit",
-              text: "Base combines mainstream distribution through Coinbase with a fast app ecosystem. We bring a category expansion: live sports and event prediction, not only static markets.",
+              title: "Raising Funds on Futard.io",
+              text: "We're fundraising to scale goal.live's stream-integrated betting infrastructure and expand our zero-latency overlay technology to more sports globally. Live in-game betting already exceeds pre-match betting in many markets.",
+              url: "https://www.futard.io/",
             },
             {
-              title: "Who It Is For",
-              text: "Mainstream live-event fans and communities on any device. Wallet complexity is increasingly abstracted away so non-crypto users can participate.",
+              title: "Who It's For",
+              text: "Mobile-first football fans frustrated by traditional betting friction. Web3-curious viewers with Phantom/MetaMask wallets. Live bettors tired of slow odds and app-switching delays. Community followers who want to bet while watching together.",
             },
-          ].map((item) => (
-            <div
-              key={item.title}
-              style={{
-                background: "rgba(255,255,255,0.72)",
-                border: "1px solid rgba(46,197,224,0.28)",
-                borderRadius: 16,
-                padding: "1rem 1rem 1.05rem",
-                boxShadow: "0 8px 24px rgba(12,40,64,0.06)",
-              }}
-            >
-              <h3
+          ].map((item, index) => {
+            const baseTileStyle = {
+              background: item.url
+                ? "rgba(46,197,224,0.08)"
+                : "rgba(255,255,255,0.72)",
+              border: item.url
+                ? "1.5px solid rgba(46,197,224,0.45)"
+                : "1px solid rgba(46,197,224,0.28)",
+              borderRadius: 16,
+              padding: "1rem 1rem 1.05rem",
+              boxShadow: item.url
+                ? "0 12px 32px rgba(46,197,224,0.15)"
+                : "0 8px 24px rgba(12,40,64,0.06)",
+              transition: "all 0.3s ease",
+            };
+
+            // Different colors for each tile headline
+            const headlineColors = ["#2EC5E0", "#00B8D4", "#1E9FB3"];
+            const headlineColor = headlineColors[index % headlineColors.length];
+
+            const tileContent = (
+              <div style={baseTileStyle}>
+                <h3
+                  style={{
+                    margin: "0 0 0.45rem",
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: "0.85rem",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.1em",
+                    fontWeight: 700,
+                    color: headlineColor,
+                  }}
+                >
+                  {item.title}
+                  {item.url && " ↗"}
+                </h3>
+                <p
+                  style={{
+                    margin: 0,
+                    marginBottom: item.url ? "0.6rem" : 0,
+                    color: "rgba(12,40,64,0.8)",
+                    fontSize: "0.93rem",
+                    lineHeight: 1.55,
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                >
+                  {item.text}
+                </p>
+                {item.url && (
+                  <p
+                    style={{
+                      margin: 0,
+                      color: CYAN,
+                      fontSize: "0.75rem",
+                      fontFamily: "'DM Mono', monospace",
+                      fontWeight: 600,
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    Click to visit →
+                  </p>
+                )}
+              </div>
+            );
+
+            return item.url ? (
+              <a
+                key={item.title}
+                href={item.url}
+                target="_blank"
+                rel="noreferrer"
                 style={{
-                  margin: "0 0 0.45rem",
-                  fontFamily: "'DM Mono', monospace",
-                  fontSize: "0.8rem",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                  color: "#0A7B95",
+                  textDecoration: "none",
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                  display: "block",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-4px)";
+                  const div = e.currentTarget.querySelector("div");
+                  if (div) {
+                    div.style.boxShadow = "0 16px 40px rgba(46,197,224,0.25)";
+                    div.style.borderColor = "rgba(46,197,224,0.65)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  const div = e.currentTarget.querySelector("div");
+                  if (div) {
+                    div.style.boxShadow = "0 12px 32px rgba(46,197,224,0.15)";
+                    div.style.borderColor = "rgba(46,197,224,0.45)";
+                  }
                 }}
               >
-                {item.title}
-              </h3>
-              <p
-                style={{
-                  margin: 0,
-                  color: "rgba(12,40,64,0.8)",
-                  fontSize: "0.93rem",
-                  lineHeight: 1.55,
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                {item.text}
-              </p>
-            </div>
-          ))}
+                {tileContent}
+              </a>
+            ) : (
+              <div key={item.title}>{tileContent}</div>
+            );
+          })}
         </div>
 
         {/* How it works */}
@@ -445,18 +550,25 @@ export default function LandingPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
               gap: "0.8rem",
               textAlign: "left",
             }}
           >
             {[
-              "1. Users place and adjust live bets instantly during match events.",
-              "2. Offchain services provide fast UX while preserving a verifiable audit trail.",
-              "3. Chainlink CRE triggers decentralized result settlement and onchain payouts.",
-            ].map((step) => (
+              {
+                step: "Watch",
+                desc: "Stream plays with betting overlay active",
+              },
+              {
+                step: "Spot",
+                desc: "See opportunity developing (corner kick, counter-attack)",
+              },
+              { step: "Bet", desc: "Instant micro-bet without leaving stream" },
+              { step: "Win", desc: "Automatic USDC payout to your wallet" },
+            ].map((item) => (
               <div
-                key={step}
+                key={item.step}
                 style={{
                   border: "1px solid rgba(12,40,64,0.1)",
                   borderRadius: 12,
@@ -468,10 +580,35 @@ export default function LandingPage() {
                   color: "rgba(12,40,64,0.84)",
                 }}
               >
-                {step}
+                <div
+                  style={{
+                    fontWeight: 600,
+                    color: NAVY,
+                    marginBottom: "0.3rem",
+                    fontSize: "1rem",
+                  }}
+                >
+                  {item.step}
+                </div>
+                <div
+                  style={{ color: "rgba(12,40,64,0.7)", fontSize: "0.88rem" }}
+                >
+                  {item.desc}
+                </div>
               </div>
             ))}
           </div>
+          <p
+            style={{
+              margin: "0.8rem 0 0 0",
+              fontFamily: "'Inter', sans-serif",
+              fontSize: "0.9rem",
+              color: "rgba(12,40,64,0.7)",
+              lineHeight: 1.6,
+            }}
+          >
+            No separate apps. No withdrawal delays. No missed moments.
+          </p>
         </section>
 
         {/* Media section */}
@@ -782,90 +919,6 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Credibility */}
-        <section
-          style={{
-            width: "min(980px, 92vw)",
-            background: "rgba(255,255,255,0.76)",
-            border: "1px solid rgba(46,197,224,0.24)",
-            borderRadius: 18,
-            padding: "1rem",
-            textAlign: "left",
-          }}
-        >
-          <h3
-            style={{
-              margin: "0 0 0.85rem",
-              fontFamily: "'DM Mono', monospace",
-              fontSize: "0.82rem",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-              color: "#0A7B95",
-            }}
-          >
-            Public Contracts And Trust Layer
-          </h3>
-          <p
-            style={{
-              margin: "0 0 0.85rem",
-              color: "rgba(12,40,64,0.78)",
-              fontFamily: "'Inter', sans-serif",
-              fontSize: "0.93rem",
-              lineHeight: 1.55,
-            }}
-          >
-            Core settlement logic is onchain. CRE orchestrates decentralized
-            reporting while users get instant product interactions in the app
-            layer.
-          </p>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-              gap: "0.6rem",
-            }}
-          >
-            {DEPLOYMENTS.map((d) => (
-              <a
-                key={d.address}
-                href={d.url}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  textDecoration: "none",
-                  border: "1px solid rgba(12,40,64,0.12)",
-                  borderRadius: 12,
-                  background: "rgba(255,255,255,0.82)",
-                  padding: "0.7rem 0.75rem",
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: "'DM Mono', monospace",
-                    fontSize: "0.72rem",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    color: "#0A7B95",
-                    marginBottom: "0.34rem",
-                  }}
-                >
-                  {d.name}
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'DM Mono', monospace",
-                    fontSize: "0.78rem",
-                    color: NAVY,
-                    wordBreak: "break-all",
-                  }}
-                >
-                  {d.address}
-                </div>
-              </a>
-            ))}
-          </div>
-        </section>
-
         {/* How it works link */}
         <a
           href="/architecture"
@@ -909,7 +962,7 @@ export default function LandingPage() {
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
-          How it works · CRE Architecture
+          How it works · Real-time Settlement
         </a>
 
         {/* CTA buttons */}
@@ -942,32 +995,6 @@ export default function LandingPage() {
             }}
           >
             Watch 60s Demo
-          </a>
-
-          <a
-            href={EXTENSION_BETA_URL}
-            target="_blank"
-            rel="noreferrer"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.65rem",
-              padding: "0.95rem 2.1rem",
-              background: `linear-gradient(135deg, ${LIGHT_BLUE} 0%, ${CYAN} 100%)`,
-              border: `1.5px solid rgba(255,255,255,0.35)`,
-              borderRadius: 14,
-              fontFamily: "'DM Mono', monospace",
-              fontSize: "0.9rem",
-              letterSpacing: "0.07em",
-              fontWeight: 500,
-              color: "#fff",
-              textDecoration: "none",
-              transition: "all 0.2s ease",
-              boxShadow: `0 4px 22px rgba(46,197,224,0.35)`,
-              textShadow: "0 1px 2px rgba(0,0,0,0.15)",
-            }}
-          >
-            Try Extension Beta
           </a>
 
           <a
@@ -1013,6 +1040,28 @@ export default function LandingPage() {
           >
             Admin Platform
           </a>
+
+          <a
+            href="/admin"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.65rem",
+              padding: "0.95rem 2.2rem",
+              background: "rgba(255,255,255,0.7)",
+              border: `1.5px solid rgba(46,197,224,0.38)`,
+              borderRadius: 14,
+              fontFamily: "'DM Mono', monospace",
+              fontSize: "0.9rem",
+              letterSpacing: "0.07em",
+              fontWeight: 500,
+              color: NAVY,
+              textDecoration: "none",
+              transition: "all 0.2s ease",
+            }}
+          >
+            Beta Testing Dashboard
+          </a>
         </div>
 
         {/* Footer note */}
@@ -1027,8 +1076,8 @@ export default function LandingPage() {
             fontWeight: 600,
           }}
         >
-          Built for Chainlink Hackathon · 2026 · Availability depends on
-          jurisdiction
+          Built on Solana · 2026 · Real-time Sports Betting · Availability
+          depends on jurisdiction
         </p>
       </div>
 
