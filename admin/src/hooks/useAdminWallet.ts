@@ -66,24 +66,34 @@ export function useAdminWallet() {
     }
   }
 
-  // On mount: restore MetaMask session if already connected
+  // On mount: restore trusted Phantom session if already connected
   useEffect(() => {
-    if (!window.ethereum) return;
-    window.ethereum
-      .request({ method: "eth_accounts" })
+    if (!window.solana?.isPhantom) return;
+    window.solana
+      .connect({ onlyIfTrusted: true })
       .then((res) => {
-        const accounts = res as string[];
-        const addr = accounts[0] ?? null;
-        if (addr) {
-          setAddress(addr);
-          setWalletType("metamask");
-          evaluateEth(addr);
+        const pubkey = res.publicKey.toString();
+        if (pubkey) {
+          setAddress(pubkey);
+          setWalletType("phantom");
+          evaluateSolana(pubkey);
         }
       })
       .catch(() => {});
   }, []);
 
-  // Listen for MetaMask account changes
+  // If Solana provider is present and already exposes a key, hydrate state.
+  useEffect(() => {
+    if (!window.solana?.isPhantom) return;
+    const existing = window.solana.publicKey?.toString() ?? null;
+    if (existing) {
+      setAddress(existing);
+      setWalletType("phantom");
+      evaluateSolana(existing);
+    }
+  }, []);
+
+  // Listen for MetaMask account changes (kept for legacy EVM pages)
   useEffect(() => {
     if (!window.ethereum) return;
     const handler = (...args: unknown[]) => {
@@ -93,14 +103,39 @@ export function useAdminWallet() {
       if (addr) {
         setWalletType("metamask");
         evaluateEth(addr);
-      } else {
+      } else if (walletType === "metamask") {
         setWalletType(null);
         setStatus("disconnected");
       }
     };
     window.ethereum.on("accountsChanged", handler);
     return () => window.ethereum!.removeListener("accountsChanged", handler);
-  }, []);
+  }, [walletType]);
+
+  // Listen for Phantom account changes
+  useEffect(() => {
+    if (!window.solana) return;
+    const accountChanged = (...args: unknown[]) => {
+      const nextPubkey =
+        (
+          args[0] as { toString?: () => string } | null | undefined
+        )?.toString?.() ?? null;
+      if (!nextPubkey) {
+        if (walletType === "phantom") {
+          setAddress(null);
+          setWalletType(null);
+          setStatus("disconnected");
+        }
+        return;
+      }
+      setAddress(nextPubkey);
+      setWalletType("phantom");
+      evaluateSolana(nextPubkey);
+    };
+    window.solana.on("accountChanged", accountChanged);
+    return () =>
+      window.solana!.removeListener("accountChanged", accountChanged);
+  }, [walletType]);
 
   // Listen for Phantom disconnect
   useEffect(() => {
@@ -176,7 +211,7 @@ export function useAdminWallet() {
     status,
     error,
     isAuthorized: status === "authorized",
-    connect: connectMetaMask, // kept for backward compat
+    connect: connectPhantom, // backward-compat default now targets Solana admin flow
     connectMetaMask,
     connectPhantom,
     disconnect,

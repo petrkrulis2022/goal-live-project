@@ -64,44 +64,28 @@ export default function App() {
           )}
 
           <div className="flex flex-col gap-3">
-            {/* MetaMask — Ethereum Sepolia */}
-            <button
-              onClick={wallet.connectMetaMask}
-              disabled={wallet.status === "connecting"}
-              className="w-full px-6 py-3 bg-green-500 text-black font-bold rounded-xl hover:bg-green-400 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 text-sm tracking-wide shadow-lg shadow-green-500/20 flex items-center justify-center gap-2"
-            >
-              {wallet.status === "connecting" ? (
-                <>
-                  <span className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                  Connecting…
-                </>
-              ) : (
-                <>
-                  <span>🦊</span>
-                  Connect MetaMask
-                </>
-              )}
-            </button>
-
-            <div className="flex items-center gap-3 text-gray-700 text-xs">
-              <div className="flex-1 h-px bg-white/5" />
-              <span>or</span>
-              <div className="flex-1 h-px bg-white/5" />
-            </div>
-
             {/* Phantom — Solana Devnet */}
             <button
               onClick={wallet.connectPhantom}
               disabled={wallet.status === "connecting"}
               className="w-full px-6 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-500 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 text-sm tracking-wide shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2"
             >
-              <span>👻</span>
-              Connect Phantom
+              {wallet.status === "connecting" ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Connecting…
+                </>
+              ) : (
+                <>
+                  <span>👻</span>
+                  Connect Phantom
+                </>
+              )}
             </button>
           </div>
 
           <p className="text-gray-600 text-xs mt-4">
-            MetaMask for Ethereum Sepolia · Phantom for Solana Devnet
+            Requires Phantom browser extension (Solana Devnet)
           </p>
         </div>
       </AuthScreen>
@@ -140,8 +124,7 @@ export default function App() {
           </div>
 
           <p className="text-gray-500 text-xs mb-5">
-            Switch accounts in MetaMask / Phantom and the page will update
-            automatically.
+            Switch accounts in Phantom and the page will update automatically.
           </p>
 
           <button
