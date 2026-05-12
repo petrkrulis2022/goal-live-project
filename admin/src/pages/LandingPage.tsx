@@ -11,6 +11,14 @@ const SECONDARY_DEMO_VIDEO_URL = "/media/videos/Arsenal_Goal_From_Live_Bet.mp4";
 const EXTENSION_BETA_URL =
   "https://github.com/petrkrulis2022/goal-live-project/tree/solana-sportsdata";
 const CONTACT_URL = "/contact";
+const TWITTER_URL =
+  import.meta.env.VITE_SOCIAL_X_URL ?? "https://x.com/goalLiveApp";
+const TELEGRAM_URL =
+  import.meta.env.VITE_SOCIAL_TELEGRAM_URL ??
+  "https://web.telegram.org/k/?account=2#-3975134423";
+const DISCORD_URL =
+  import.meta.env.VITE_SOCIAL_DISCORD_URL ??
+  "https://discord.com/channels/1468712852759253082/1468712858140409898";
 
 const SCREENSHOTS = [
   {
@@ -1060,6 +1068,47 @@ export default function LandingPage() {
           >
             Beta Testing Dashboard
           </a>
+        </div>
+
+        {/* Community Links */}
+        <div
+          style={{
+            display: "flex",
+            gap: "0.75rem",
+            justifyContent: "center",
+            flexWrap: "wrap",
+            marginTop: "1.5rem",
+            marginBottom: "0.5rem",
+          }}
+        >
+          {[
+            { label: "𝕏  Follow us", href: TWITTER_URL, bg: "#000" },
+            { label: "✈  Telegram", href: TELEGRAM_URL, bg: "#2CA5E0" },
+            { label: "💬  Discord", href: DISCORD_URL, bg: "#5865F2" },
+          ].map(({ label, href, bg }) => (
+            <a
+              key={label}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                padding: "0.5rem 1.1rem",
+                background: bg,
+                color: "#fff",
+                borderRadius: 8,
+                fontSize: "0.8rem",
+                fontWeight: 600,
+                fontFamily: "'DM Mono', monospace",
+                textDecoration: "none",
+                letterSpacing: "0.04em",
+                transition: "opacity 0.2s ease",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+            >
+              {label}
+            </a>
+          ))}
         </div>
 
         {/* Footer note */}
