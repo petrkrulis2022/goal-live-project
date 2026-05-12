@@ -11,6 +11,14 @@ const SECONDARY_DEMO_VIDEO_URL = "/media/videos/Arsenal_Goal_From_Live_Bet.mp4";
 const EXTENSION_BETA_URL =
   "https://github.com/petrkrulis2022/goal-live-project/tree/solana-goalserve/goal.live/extension";
 const CONTACT_URL = "/contact";
+const TWITTER_URL =
+  import.meta.env.VITE_SOCIAL_X_URL ?? "https://x.com/goalLiveApp";
+const TELEGRAM_URL =
+  import.meta.env.VITE_SOCIAL_TELEGRAM_URL ??
+  "https://web.telegram.org/k/?account=2#-3975134423";
+const DISCORD_URL =
+  import.meta.env.VITE_SOCIAL_DISCORD_URL ??
+  "https://discord.com/channels/1468712852759253082/1468712858140409898";
 
 const SCREENSHOTS = [
   {
@@ -89,6 +97,24 @@ const DEPLOYMENTS = [];
 
 const STAT_TEXT =
   "Live in-game betting is already larger than pre-match betting in many markets. We are bringing that real-time behavior onchain with a mainstream-first UX.";
+
+const SOCIAL_LINKS = [
+  {
+    label: "X / Twitter",
+    href: TWITTER_URL,
+    helper: "Follow product updates and live game announcements.",
+  },
+  {
+    label: "Telegram",
+    href: TELEGRAM_URL,
+    helper: "Join the beta chat and receive drop alerts.",
+  },
+  {
+    label: "Discord",
+    href: DISCORD_URL,
+    helper: "Community support, feedback, and test coordination.",
+  },
+];
 
 function TypewriterBanner() {
   const [displayed, setDisplayed] = useState("");
@@ -398,6 +424,102 @@ export default function LandingPage() {
             background: `linear-gradient(90deg, transparent, ${CYAN}, transparent)`,
           }}
         />
+
+        <section
+          style={{
+            width: "min(980px, 92vw)",
+            background: "rgba(255,255,255,0.76)",
+            border: "1px solid rgba(46,197,224,0.24)",
+            borderRadius: 18,
+            padding: "1rem",
+            textAlign: "left",
+          }}
+        >
+          <h3
+            style={{
+              margin: "0 0 0.85rem",
+              fontFamily: "'DM Mono', monospace",
+              fontSize: "0.82rem",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              color: "#0A7B95",
+            }}
+          >
+            Connect With goal.live
+          </h3>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: "0.8rem",
+            }}
+          >
+            {SOCIAL_LINKS.map((item) => {
+              const disabled = !item.href;
+
+              return (
+                <a
+                  key={item.label}
+                  href={item.href || undefined}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-disabled={disabled}
+                  onClick={(event) => {
+                    if (disabled) event.preventDefault();
+                  }}
+                  style={{
+                    textDecoration: "none",
+                    border: "1px solid rgba(12,40,64,0.12)",
+                    borderRadius: 12,
+                    background: disabled
+                      ? "rgba(240,244,248,0.8)"
+                      : "rgba(255,255,255,0.82)",
+                    padding: "0.85rem 0.95rem",
+                    color: NAVY,
+                    cursor: disabled ? "not-allowed" : "pointer",
+                    opacity: disabled ? 0.6 : 1,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: "'DM Mono', monospace",
+                      fontSize: "0.78rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      color: disabled ? "rgba(12,40,64,0.55)" : CYAN,
+                      marginBottom: "0.45rem",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {item.label}
+                  </div>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontFamily: "'Inter', sans-serif",
+                      fontSize: "0.88rem",
+                      lineHeight: 1.55,
+                      color: "rgba(12,40,64,0.78)",
+                    }}
+                  >
+                    {item.helper}
+                  </p>
+                  <div
+                    style={{
+                      marginTop: "0.55rem",
+                      fontFamily: "'DM Mono', monospace",
+                      fontSize: "0.72rem",
+                      color: disabled ? "rgba(12,40,64,0.45)" : "#0A7B95",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    {disabled ? "Add env URL to enable" : "Open channel →"}
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </section>
 
         {/* Core sections */}
         <div
