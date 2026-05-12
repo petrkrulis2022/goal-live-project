@@ -507,12 +507,43 @@ export default function BetaRegistration() {
               style={{
                 marginTop: "2rem",
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr",
+                gridTemplateColumns: "1fr 1fr 1fr",
                 gap: "0.8rem",
               }}
             >
               <a
-                href="https://t.me/goallive"
+                href="https://x.com/goalLiveApp"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  padding: "0.65rem",
+                  background: "transparent",
+                  border: `1px solid ${CYAN}`,
+                  borderRadius: 8,
+                  color: CYAN,
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: "0.8rem",
+                  fontWeight: 500,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  textDecoration: "none",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = CYAN;
+                  e.currentTarget.style.color = "#fff";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = CYAN;
+                }}
+              >
+                Follow on X
+              </a>
+              <a
+                href="https://web.telegram.org/k/?account=2#-3975134423"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -543,7 +574,7 @@ export default function BetaRegistration() {
                 Join Telegram
               </a>
               <a
-                href="https://discord.gg/goallive"
+                href="https://discord.com/channels/1468712852759253082/1468712858140409898"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
