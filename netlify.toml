@@ -1,6 +1,6 @@
 [build]
-  command = "npx vite build --config vite.admin.config.ts"
-  publish = "dist-admin"
+  command = "npx vite build"
+  publish = "dist"
 
 [[redirects]]
   from = "/*"
