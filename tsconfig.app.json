@@ -19,5 +19,5 @@
     "noUncheckedSideEffectImports": true,
     "types": ["chrome"]
   },
-  "include": ["src", "extension"]
+  "include": ["src", "extension", "match-live/src", "hockey-live/src"]
 }

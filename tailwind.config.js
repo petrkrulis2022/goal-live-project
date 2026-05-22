@@ -6,6 +6,8 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
     "./admin/**/*.{js,ts,jsx,tsx}",
     "./extension/**/*.{js,ts,jsx,tsx}",
+    "./match-live/**/*.{js,ts,jsx,tsx,html}",
+    "./hockey-live/**/*.{js,ts,jsx,tsx,html}",
   ],
   theme: {
     extend: {
