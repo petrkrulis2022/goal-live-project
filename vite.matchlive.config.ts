@@ -8,6 +8,13 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist-matchlive"),
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, "match-live/index.html"),
+        dual: path.resolve(__dirname, "match-live/dual.html"),
+        manager: path.resolve(__dirname, "match-live/manager.html"),
+      },
+    },
   },
   css: {
     postcss: path.resolve(__dirname, "postcss.config.js"),
@@ -21,7 +28,7 @@ export default defineConfig({
         rewrite: (p) =>
           p.replace(
             "/api/goalserve",
-            "/getfeed/5dc9cf20aca34682682708de71344f52",
+            "/getfeed/edc0ecd4f73c4c1a20f808dea8e5ebf2",
           ),
       },
       "/api/odds": {

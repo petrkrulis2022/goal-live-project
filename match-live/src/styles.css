@@ -46,6 +46,28 @@ body {
   animation: goal-flash 2s ease-out forwards;
 }
 
+@keyframes goal-flash-overlay {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.animate-goal-flash {
+  animation: goal-flash-overlay 2.5s ease-out forwards;
+}
+
+.font-inter {
+  font-family: "Inter", sans-serif;
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;

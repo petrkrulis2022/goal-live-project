@@ -43,3 +43,6 @@ supabase/.temp/
 # Keep large local media out of git
 admin/public/media/recordings/*.mkv
 dist-admin/media/
+
+# Patent application working materials
+patent/

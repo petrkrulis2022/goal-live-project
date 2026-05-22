@@ -365,35 +365,109 @@ export default function LandingPage() {
           directly inside your viewing experience.
         </p>
 
-        {/* CTA Button */}
-        <button
-          onClick={() => navigate("/beta")}
+        {/* CTA Buttons */}
+        <div
           style={{
-            padding: "0.75rem 2.2rem",
-            background: CYAN,
-            color: "#fff",
-            border: "none",
-            borderRadius: 12,
-            fontFamily: "'DM Mono', monospace",
-            fontSize: "0.9rem",
-            fontWeight: 600,
-            textTransform: "uppercase",
-            letterSpacing: "0.1em",
-            cursor: "pointer",
-            boxShadow: `0 4px 20px rgba(46,197,224,0.4)`,
-            transition: "all 0.3s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-2px)";
-            e.currentTarget.style.boxShadow = `0 6px 28px rgba(46,197,224,0.55)`;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = `0 4px 20px rgba(46,197,224,0.4)`;
+            display: "flex",
+            gap: "0.75rem",
+            flexWrap: "wrap",
+            justifyContent: "center",
           }}
         >
-          Join Beta Testing (100 Spots Available)
-        </button>
+          <button
+            onClick={() => navigate("/beta")}
+            style={{
+              padding: "0.75rem 2.2rem",
+              background: CYAN,
+              color: "#fff",
+              border: "none",
+              borderRadius: 12,
+              fontFamily: "'DM Mono', monospace",
+              fontSize: "0.9rem",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              cursor: "pointer",
+              boxShadow: `0 4px 20px rgba(46,197,224,0.4)`,
+              transition: "all 0.3s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-2px)";
+              e.currentTarget.style.boxShadow = `0 6px 28px rgba(46,197,224,0.55)`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = `0 4px 20px rgba(46,197,224,0.4)`;
+            }}
+          >
+            Join Beta Testing (100 Spots Available)
+          </button>
+
+          <button
+            onClick={() =>
+              window.open("/pitch-deck.html", "_blank", "noopener,noreferrer")
+            }
+            style={{
+              padding: "0.75rem 2.2rem",
+              background: "rgba(255,255,255,0.86)",
+              color: NAVY,
+              border: "1.5px solid rgba(46,197,224,0.55)",
+              borderRadius: 12,
+              fontFamily: "'DM Mono', monospace",
+              fontSize: "0.9rem",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              cursor: "pointer",
+              boxShadow: "0 4px 18px rgba(12,40,64,0.08)",
+              transition: "all 0.3s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-2px)";
+              e.currentTarget.style.boxShadow =
+                "0 6px 26px rgba(12,40,64,0.15)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow =
+                "0 4px 18px rgba(12,40,64,0.08)";
+            }}
+          >
+            Pitch Deck
+          </button>
+
+          <button
+            onClick={() =>
+              window.open("/pitch-deck.pdf", "_blank", "noopener,noreferrer")
+            }
+            style={{
+              padding: "0.75rem 2.2rem",
+              background: NAVY,
+              color: "#fff",
+              border: "1px solid rgba(12,40,64,0.85)",
+              borderRadius: 12,
+              fontFamily: "'DM Mono', monospace",
+              fontSize: "0.9rem",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              cursor: "pointer",
+              boxShadow: "0 4px 18px rgba(12,40,64,0.2)",
+              transition: "all 0.3s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-2px)";
+              e.currentTarget.style.boxShadow =
+                "0 6px 26px rgba(12,40,64,0.35)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 4px 18px rgba(12,40,64,0.2)";
+            }}
+          >
+            Download Pitch PDF
+          </button>
+        </div>
 
         {/* Divider */}
         <div

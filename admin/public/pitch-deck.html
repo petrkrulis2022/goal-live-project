@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>goal.live - Pitch Deck</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --navy: #0c2840;
+        --cyan: #2ec5e0;
+        --mint: #5ce2cf;
+        --paper: #f4f9fc;
+        --text: #17344d;
+        --white: #ffffff;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+        color: var(--text);
+        background: radial-gradient(
+          circle at 20% 0%,
+          #e8f8ff,
+          #f7fbff 52%,
+          #edf5fb 100%
+        );
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.8rem 1rem;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid rgba(12, 40, 64, 0.08);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+      }
+
+      .brand img {
+        width: 34px;
+        height: 34px;
+        object-fit: contain;
+      }
+
+      .brand span {
+        font-family: "DM Mono", monospace;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--navy);
+        font-weight: 700;
+        font-size: 0.8rem;
+      }
+
+      .topbar a {
+        text-decoration: none;
+        color: var(--white);
+        background: var(--navy);
+        border: 1px solid var(--navy);
+        border-radius: 999px;
+        padding: 0.45rem 0.9rem;
+        font-family: "DM Mono", monospace;
+        font-size: 0.74rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .topbar-links {
+        display: flex;
+        gap: 0.45rem;
+        align-items: center;
+      }
+
+      .topbar-links a.secondary {
+        background: #ffffff;
+        color: var(--navy);
+        border: 1px solid rgba(12, 40, 64, 0.25);
+      }
+
+      .deck {
+        width: min(1200px, 96vw);
+        margin: 1rem auto 3rem;
+        display: grid;
+        gap: 1.1rem;
+      }
+
+      .slide {
+        position: relative;
+        min-height: 92vh;
+        background: linear-gradient(
+          145deg,
+          rgba(255, 255, 255, 0.92),
+          rgba(245, 251, 255, 0.94)
+        );
+        border: 1px solid rgba(12, 40, 64, 0.08);
+        border-radius: 22px;
+        overflow: hidden;
+        padding: clamp(1.1rem, 2.8vw, 2.2rem);
+        box-shadow: 0 18px 50px rgba(12, 40, 64, 0.08);
+      }
+
+      .slide::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          120deg,
+          rgba(46, 197, 224, 0.08),
+          transparent 38%
+        );
+        pointer-events: none;
+      }
+
+      .slide-head {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .slide-kicker {
+        font-family: "DM Mono", monospace;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+        color: #0a6b82;
+        font-size: 0.74rem;
+        font-weight: 700;
+      }
+
+      .slide-num {
+        font-family: "DM Mono", monospace;
+        color: rgba(12, 40, 64, 0.45);
+        font-size: 0.76rem;
+      }
+
+      h1,
+      h2 {
+        position: relative;
+        z-index: 1;
+        font-family: "DM Serif Display", serif;
+        color: var(--navy);
+        line-height: 1.15;
+      }
+
+      h1 {
+        font-size: clamp(2rem, 4.8vw, 4.2rem);
+      }
+
+      h2 {
+        font-size: clamp(1.4rem, 2.8vw, 2.2rem);
+        margin-bottom: 0.7rem;
+      }
+
+      h3 {
+        font-family: "DM Mono", monospace;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #0b6d87;
+        font-size: 0.78rem;
+        margin-bottom: 0.42rem;
+      }
+
+      p,
+      li {
+        position: relative;
+        z-index: 1;
+        font-size: clamp(0.9rem, 1.15vw, 1.02rem);
+        line-height: 1.55;
+        color: rgba(23, 52, 77, 0.92);
+      }
+
+      ul {
+        margin-left: 1.05rem;
+      }
+
+      li {
+        margin-bottom: 0.32rem;
+      }
+
+      .cover {
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 1rem;
+        height: 100%;
+        align-items: center;
+      }
+
+      .cover-art {
+        position: relative;
+        border-radius: 18px;
+        overflow: hidden;
+        min-height: 58vh;
+        border: 1px solid rgba(12, 40, 64, 0.1);
+      }
+
+      .cover-art img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .cover-overlay {
+        position: absolute;
+        inset: auto 0 0 0;
+        background: linear-gradient(
+          to top,
+          rgba(8, 25, 41, 0.78),
+          rgba(8, 25, 41, 0)
+        );
+        color: #fff;
+        padding: 1rem;
+      }
+
+      .founder {
+        display: grid;
+        gap: 0.6rem;
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid rgba(12, 40, 64, 0.1);
+        border-radius: 16px;
+        padding: 1rem;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.85rem;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.85rem;
+      }
+
+      .card {
+        background: rgba(255, 255, 255, 0.84);
+        border: 1px solid rgba(12, 40, 64, 0.1);
+        border-radius: 14px;
+        padding: 0.9rem;
+      }
+
+      .accent {
+        border-left: 4px solid var(--cyan);
+      }
+
+      .image-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 0.8rem;
+      }
+
+      .image-panel {
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid rgba(12, 40, 64, 0.1);
+        background: #0e2234;
+      }
+
+      .image-panel img {
+        width: 100%;
+        height: 100%;
+        min-height: 220px;
+        object-fit: cover;
+      }
+
+      .chip {
+        display: inline-block;
+        font-family: "DM Mono", monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 0.33rem 0.6rem;
+        border-radius: 999px;
+        background: rgba(46, 197, 224, 0.14);
+        border: 1px solid rgba(46, 197, 224, 0.35);
+        color: #0b6d87;
+        margin-bottom: 0.45rem;
+      }
+
+      .ask {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.85rem;
+      }
+
+      @media (max-width: 920px) {
+        .slide {
+          min-height: auto;
+        }
+
+        .cover,
+        .grid-2,
+        .grid-3,
+        .image-grid,
+        .ask {
+          grid-template-columns: 1fr;
+        }
+
+        .cover-art {
+          min-height: 38vh;
+        }
+      }
+
+      @media print {
+        body {
+          background: #ffffff;
+        }
+
+        .topbar {
+          display: none;
+        }
+
+        .deck {
+          width: 100%;
+          margin: 0;
+          gap: 0;
+        }
+
+        .slide {
+          min-height: auto;
+          border-radius: 0;
+          border: none;
+          box-shadow: none;
+          margin: 0;
+          break-after: page;
+          page-break-after: always;
+          padding: 14mm;
+        }
+
+        .slide:last-child {
+          break-after: auto;
+          page-break-after: auto;
+        }
+      }
+
+      @page {
+        size: A4 landscape;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="brand">
+        <img src="/logo-icon.png" alt="goal.live" />
+        <span>goal.live pitch deck</span>
+      </div>
+      <div class="topbar-links">
+        <a class="secondary" href="/pitch-deck.pdf" download>Download PDF</a>
+        <a href="/">Back to site</a>
+      </div>
+    </div>
+
+    <main class="deck">
+      <section class="slide" id="s1">
+        <div class="slide-head">
+          <div class="slide-kicker">Page 1 · Title</div>
+          <div class="slide-num">01 / 06</div>
+        </div>
+        <div class="cover">
+          <div>
+            <h1>goal.live</h1>
+            <h2>E-sports meet prediction markets</h2>
+            <div class="founder">
+              <div class="chip">Founder</div>
+              <p>
+                <strong
+                  >Peter Krulis - Sports Betting & Web3 Entrepreneur</strong
+                >
+              </p>
+              <p>
+                Company exit, live sports data expertise, proven Web3
+                go-to-market execution.
+              </p>
+            </div>
+          </div>
+          <div class="cover-art">
+            <img src="/logo.png" alt="goal.live logo" />
+            <div class="cover-overlay">
+              Patent-pending interactive betting overlays for live streams.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide" id="s2">
+        <div class="slide-head">
+          <div class="slide-kicker">Page 2 · SCQA</div>
+          <div class="slide-num">02 / 06</div>
+        </div>
+        <h2>SCQA</h2>
+        <div class="grid-2">
+          <article class="card accent">
+            <h3>Situation</h3>
+            <p>
+              Live sports in-game betting is already larger than pre-match
+              betting, but existing platforms feel static - placing bets then
+              waiting passively for outcomes.
+            </p>
+          </article>
+          <article class="card accent">
+            <h3>Complication</h3>
+            <p>
+              Real sports are dynamic and thrilling. Current betting is not -
+              platforms kill the excitement forcing users to leave streams,
+              navigate boring apps, and miss the live action while placing bets.
+            </p>
+          </article>
+          <article class="card accent">
+            <h3>Question</h3>
+            <p>
+              How do we make betting as dynamic and interactive as the sports
+              themselves?
+            </p>
+          </article>
+          <article class="card accent">
+            <h3>Answer</h3>
+            <p>
+              We built patent-pending betting overlays that turn any sport
+              stream into an interactive gaming experience - bet on in-game
+              micro-moments in real-time without ever leaving your screen. Any
+              sport. Any device. Any event.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="slide" id="s3">
+        <div class="slide-head">
+          <div class="slide-kicker">Page 3 · Use Case + Founder Story</div>
+          <div class="slide-num">03 / 06</div>
+        </div>
+        <h2>Use Case + Founder Story</h2>
+        <div class="image-grid">
+          <div class="image-panel">
+            <img
+              src="/media/images/goal.live%20screenshot.jpg"
+              alt="goal.live product screenshot"
+            />
+          </div>
+          <div class="image-panel">
+            <img
+              src="/media/images/Gemini_Generated_Image_1z82a81z82a81z82.png"
+              alt="broadcast interaction concept"
+            />
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 0.85rem">
+          <article class="card">
+            <h3>Why Me</h3>
+            <p>
+              Former professional football player with deep industry connections
+              across sports data (StatsPerform, Ross, Phenix), live event
+              collection (ex-Sportsradar scout), and Web3 development. I
+              understand the complete ecosystem: how fans think, what drives
+              betting behavior, and the technical infrastructure needed to
+              deliver real-time experiences.
+            </p>
+          </article>
+          <article class="card">
+            <h3>The User Problem</h3>
+            <p>
+              Sports are interactive and thrilling, but betting is static and
+              boring. Fans want to react to developing moments, but current
+              platforms force them to leave streams, miss action, and bet on
+              stale odds.
+            </p>
+          </article>
+        </div>
+        <article class="card" style="margin-top: 0.85rem">
+          <h3>Why Now</h3>
+          <p>
+            Live betting already exceeds pre-match betting, proving fans want
+            real-time engagement. Polymarket showed onchain prediction markets
+            work ($1B+ volume). Crypto infrastructure now enables instant
+            settlement while overlay technology makes betting part of viewing,
+            not separate from it.
+          </p>
+        </article>
+      </section>
+
+      <section class="slide" id="s4">
+        <div class="slide-head">
+          <div class="slide-kicker">Page 4 · Solution + Differentiation</div>
+          <div class="slide-num">04 / 06</div>
+        </div>
+        <h2>Solution + Differentiation</h2>
+        <div class="grid-2">
+          <article class="card accent">
+            <h3>What We Built</h3>
+            <p>
+              Patent-pending betting overlays turning any sports stream into an
+              interactive gaming experience. Users bet on micro-moments directly
+              inside video players with instant onchain USDC settlement.
+            </p>
+          </article>
+          <article class="card accent">
+            <h3>Revenue Model</h3>
+            <p>
+              1.5-2% take rate on live bets + fiat on-ramp fees + USDC deposit
+              spreads + token trading fees + validator fees + SportScout oracle
+              licensing. Target ARPA: $540/year.
+            </p>
+          </article>
+        </div>
+        <div class="grid-2" style="margin-top: 0.85rem">
+          <article class="card">
+            <h3>Why We Win</h3>
+            <ul>
+              <li>Regulatory counter-positioning vs legacy sportsbooks</li>
+              <li>
+                Exclusive real-time sports data + proprietary SportScout network
+              </li>
+              <li>Interactive gaming experience vs passive betting</li>
+              <li>Instant settlement + transparent onchain infrastructure</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Why Competitors Fail</h3>
+            <p>
+              They build better sportsbooks when users want interactive sports
+              experiences. We compete against passive viewing, not only betting
+              apps.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="slide" id="s5">
+        <div class="slide-head">
+          <div class="slide-kicker">Page 5 · Validation + Roadmap</div>
+          <div class="slide-num">05 / 06</div>
+        </div>
+        <h2>Validation + Roadmap</h2>
+        <div class="grid-3">
+          <article class="card">
+            <h3>Early Validation</h3>
+            <p>
+              6 active beta testers currently using our live overlay system.
+              Users average 15+ micro-bets per match when friction is removed.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Major Validation Event</h3>
+            <p>
+              FIFA World Cup (June 11 - July 18) with 100 beta testers. Testnet
+              USDC gameplay with real mainnet USDC winnings across 64 matches.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Quick Win</h3>
+            <p>
+              World Cup proves behavior at scale. Long-term goal: infrastructure
+              layer for live sports engagement across major leagues.
+            </p>
+          </article>
+        </div>
+        <article class="card" style="margin-top: 0.85rem">
+          <h3>12-Month Roadmap</h3>
+          <p>
+            Optimize MVP from beta feedback → integrate StatsPerform odds/events
+            → solve latency with Phenix streaming → implement clickable player
+            interactions (Piero by Ross or proprietary) → onboard market makers
+            → launch GOAL token for equity/rewards → secure major European
+            league partnership.
+          </p>
+        </article>
+      </section>
+
+      <section class="slide" id="s6">
+        <div class="slide-head">
+          <div class="slide-kicker">Page 6 · Team + Ask</div>
+          <div class="slide-num">06 / 06</div>
+        </div>
+        <h2>Team + Ask</h2>
+        <div class="ask">
+          <article class="card">
+            <h3>Team</h3>
+            <ul>
+              <li>
+                Peter Krulis - Founder (company exit, ex-Sportsradar scout,
+                Web3)
+              </li>
+              <li>Bekhzod Akhrorov - Senior Unreal Engine Developer</li>
+              <li>Pierre Abeille - Frontend Developer (Angular/React)</li>
+              <li>
+                Oussama Hammach - Full-Stack & Data Engineer, PhD Cybersecurity
+              </li>
+              <li>
+                Veronica Vassileva - Enterprise Solutions
+                (ex-Meta/Shopify/Microsoft)
+              </li>
+              <li>Andre Marcal - Senior Client Delivery Lead</li>
+              <li>Victor Manuel D. - Customer Success Specialist</li>
+              <li>
+                Advisor: Thomas Mastroianni - Quantitative Finance & Financial
+                AI
+              </li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Raising</h3>
+            <p><strong>$1 million seed round</strong></p>
+            <h3 style="margin-top: 0.8rem">Use of Funds</h3>
+            <p>
+              Post-World Cup MVP optimization, data integrations, latency
+              reduction, clickable interactions, liquidity onboarding, GOAL
+              token launch, and major league partnership execution.
+            </p>
+            <h3 style="margin-top: 0.8rem">Vision</h3>
+            <p>
+              By 2027, goal.live becomes the infrastructure for live sports
+              engagement-making passive viewing extinct and capturing the
+              multi-billion dollar live betting market moving onchain.
+            </p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
