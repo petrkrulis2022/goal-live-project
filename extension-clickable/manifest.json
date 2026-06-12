@@ -6,13 +6,15 @@
   "permissions": ["activeTab"],
   "host_permissions": [
     "https://www.youtube.com/*",
-    "https://tvgo.t-mobile.cz/*"
+    "https://tvgo.t-mobile.cz/*",
+    "https://*.ceskatelevize.cz/*"
   ],
   "content_scripts": [
     {
       "matches": [
         "https://www.youtube.com/watch*",
-        "https://tvgo.t-mobile.cz/*"
+        "https://tvgo.t-mobile.cz/*",
+        "https://*.ceskatelevize.cz/*"
       ],
       "js": ["content-script.js"],
       "all_frames": true,
