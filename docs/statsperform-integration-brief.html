@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>goal.live × Stats Perform — Integration Brief</title>
+<style>
+  @page { size: A4; margin: 16mm 18mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", -apple-system, Helvetica, Arial, sans-serif;
+    color: #15293b; margin: 0; padding: 32px 40px; max-width: 860px;
+    margin-inline: auto; font-size: 13.5px; line-height: 1.5; background: #fff;
+  }
+  header { border-bottom: 3px solid #0e7490; padding-bottom: 10px; margin-bottom: 18px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h1 .accent { color: #06b6d4; }
+  .meta { color: #50697e; font-size: 12px; }
+  h2 {
+    font-size: 14.5px; text-transform: uppercase; letter-spacing: .04em;
+    color: #0e7490; margin: 18px 0 6px; border-bottom: 1px solid #dbe7ee; padding-bottom: 3px;
+  }
+  h3 { font-size: 13.5px; margin: 10px 0 3px; }
+  p, ul, ol { margin: 5px 0; }
+  ul, ol { padding-left: 20px; }
+  li { margin: 2px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0; font-size: 12.5px; }
+  th, td { border: 1px solid #c8d8e2; padding: 4px 8px; text-align: left; }
+  th { background: #eef6fa; }
+  .ok { color: #047857; font-weight: 600; white-space: nowrap; }
+  pre {
+    background: #f1f7fa; border: 1px solid #dbe7ee; border-radius: 6px;
+    padding: 8px 12px; font-size: 11.5px; overflow-x: auto; line-height: 1.45;
+  }
+  .key { background: #ecfeff; border-left: 4px solid #06b6d4; padding: 8px 12px; border-radius: 0 6px 6px 0; }
+  footer { margin-top: 20px; padding-top: 8px; border-top: 1px solid #dbe7ee; color: #50697e; font-size: 11.5px; font-style: italic; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>goal<span class="accent">.live</span> × Stats Perform — Integration Brief</h1>
+  <div class="meta">
+    Prepared for: Stats Perform / Opta Business Development &nbsp;·&nbsp;
+    Contact: Peter Krulis, Founder — petrkrulis@gmail.com &nbsp;·&nbsp; June 12, 2026
+  </div>
+</header>
+
+<h2>1. What goal.live is</h2>
+<p>goal.live is a <strong>patent-pending interactive betting overlay for live sports streams</strong>. Instead of forcing fans to leave the stream and bet on stale odds in a separate app, our overlay renders betting markets directly on top of the video player — users bet on in-game micro-moments (next goal scorer, next corner, next card) in real time, with instant on-chain USDC settlement. Any sport, any device, any event.</p>
+<ul>
+  <li>6 active beta testers today, averaging <strong>15+ micro-bets per match</strong> when friction is removed.</li>
+  <li><strong>FIFA World Cup (June 11 – July 18, 2026): 100-tester beta across all 64 matches</strong> — our major validation event, running now.</li>
+  <li>$1M seed round in progress; our 12-month roadmap explicitly includes Stats Perform odds/event integration and Phenix-based latency reduction as the next two milestones.</li>
+</ul>
+
+<h2>2. What we have already built on Opta</h2>
+<p>We are not starting from zero — we have a <strong>working integration against the Opta SDAPI</strong> (trial key), live in our platform today:</p>
+<table>
+  <tr><th>Component</th><th>Opta product used</th><th>Status</th></tr>
+  <tr><td>OAuth 2.0 client-credentials flow against <code>api.statsperform.com</code></td><td>API Gateway</td><td class="ok">✔ Live</td></tr>
+  <tr><td>Match status, score, minute sync (polled every minute via cron)</td><td><strong>MA1 – Fixtures &amp; Results</strong> (<code>live=yes</code>)</td><td class="ok">✔ Live</td></tr>
+  <tr><td>Goal &amp; corner event detection (typeId 16 / 22, own-goal qualifier 55)</td><td><strong>MA3 – Match Events</strong></td><td class="ok">✔ Live</td></tr>
+  <tr><td>Auto-seeding starting XIs into our player markets</td><td><strong>MA46 – Provisional Line-Ups</strong></td><td class="ok">✔ Live</td></tr>
+  <tr><td>Bet locking, settlement triggers, odds history</td><td>Internal, driven by MA1/MA3 data</td><td class="ok">✔ Live</td></tr>
+</table>
+<p>The full Opta soccer feed catalogue (MA0–MA62, TM, PE feeds) is already mapped in our data layer, and our oracle/settlement pipeline (Chainlink CRE, Hedera, Solana variants) consumes the same normalized event schema.</p>
+
+<h2>3. What we need from Stats Perform</h2>
+<p>Our product lives or dies on one thing: <strong>video, events, and odds arriving on the user's screen at the same moment, with sub-second latency</strong>. We believe Stats Perform is the only provider that can deliver all three from a single source, especially since the Phenix acquisition. Concretely:</p>
+
+<h3>a) Ultra-low-latency live video — Realtime Streaming / Bet LiveStreams (Phenix)</h3>
+<ul>
+  <li>Sub-second (~0.5s) glass-to-glass streams of football matches that our overlay renders on top of.</li>
+  <li><strong>Cross-device audience sync (≤100 ms)</strong> so every user sees the same frame when a market opens or suspends — critical for fairness and courtsiding protection in micro-betting.</li>
+  <li>Playback SDK / embeddable player we can wrap with our overlay (web first; browser-extension and mobile next).</li>
+</ul>
+
+<h3>b) Real-time match events — MA3 push / RunningBall Ultrafast Data</h3>
+<ul>
+  <li>Upgrade from our current 60-second MA1/MA3 polling to <strong>push delivery</strong> (webhooks or streaming API) for goals, corners, cards, penalties, VAR, dangerous attacks.</li>
+  <li>Event timestamps we can use to align data with the video timeline (see d).</li>
+</ul>
+
+<h3>c) Live odds &amp; micro-markets — Bet Trading Data / Opta for Prediction Markets</h3>
+<ul>
+  <li>Real-time in-play odds for match and micro-moment markets (next goal, next scorer, next corner, race-to-X), pushed as they change so our on-screen odds are never stale.</li>
+  <li>Player-level pricing to power our clickable-player overlay (bet by tapping a player on the pitch).</li>
+  <li>Settlement-grade results data — our smart contracts settle bets autonomously from these feeds, so we need the same source of truth for pricing and resolution.</li>
+</ul>
+
+<h3>d) Synchronization layer — the key ask</h3>
+<p class="key">A common clock between stream and data: per-frame or per-segment timestamps on the video plus matching timestamps on events/odds, so our platform can <strong>gate market open/suspend/settle to what the user has actually seen</strong>, consistently across all devices. This sync is the core of our patent-pending UX, and the reason we want video + data from one provider rather than stitching vendors together.</p>
+
+<h2>4. Proposed integration architecture</h2>
+<pre>Opta MA feeds / RunningBall push ──► goal.live sync layer (already built)
+Bet Trading Data (odds push)     ──► odds engine ──► markets + on-chain settlement
+Realtime Streaming (Phenix)      ──► video player ◄── overlay (timestamp-synced)</pre>
+<p>We would start with <strong>one league / competition scope on trial-to-production keys</strong>, validate the synced pipeline during the remainder of the World Cup beta, then expand coverage with our post-seed league partnerships.</p>
+
+<h2>5. Asks for the BD team</h2>
+<ol>
+  <li>Production access &amp; pricing for: <strong>MA1/MA3 (push), MA46, Bet Trading Data (or Opta for Prediction Markets), Realtime Streaming / Bet LiveStreams</strong> for one pilot competition.</li>
+  <li>Technical documentation for push delivery and the stream/data synchronization mechanism (timestamps, SDKs).</li>
+  <li>Betting-rights guidance: which competitions Stats Perform can license to us for streaming with betting overlays in our launch markets (EU, starting CZ).</li>
+  <li>A technical call between our engineering team and your solutions engineers to validate the sync architecture.</li>
+</ol>
+
+<footer>goal.live — E-sports meet prediction markets. Patent-pending interactive betting overlays for live streams.</footer>
+
+</body>
+</html>
