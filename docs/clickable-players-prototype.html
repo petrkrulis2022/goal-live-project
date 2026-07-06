@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>goal.live — Clickable Players Prototype</title>
+<style>
+  :root {
+    --cyan: #22d3ee;
+    --green: #34d399;
+    --home: #f4c430;   /* Galatasaray gold */
+    --home-ink: #7a1d1d;
+    --away: #d11f3a;   /* Liverpool red */
+    --ink: #0a0f14;
+    --panel: rgba(12, 18, 26, 0.82);
+    --stroke: rgba(255, 255, 255, 0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Segoe UI", -apple-system, system-ui, sans-serif;
+    background: #05080b;
+    color: #eaf2f7;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── Stage ───────────────────────────────────────────── */
+  #stage {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 120% 90% at 50% 30%, #14361f 0%, #0c2417 55%, #061009 100%);
+  }
+  /* pitch stripes */
+  #pitch {
+    position: absolute;
+    inset: 4% 3%;
+    border-radius: 10px;
+    background:
+      repeating-linear-gradient(90deg,
+        rgba(255,255,255,0.035) 0 8.33%,
+        rgba(0,0,0,0.04) 8.33% 16.66%);
+    box-shadow: inset 0 0 120px rgba(0,0,0,0.65), 0 30px 80px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+  /* field markings */
+  .line { position: absolute; border: 2px solid rgba(255,255,255,0.22); }
+  #halfway { left: 50%; top: 0; bottom: 0; border: none; border-left: 2px solid rgba(255,255,255,0.22); }
+  #circle { left: 50%; top: 50%; width: 18%; aspect-ratio: 1; transform: translate(-50%,-50%); border-radius: 50%; }
+  #spot { left: 50%; top: 50%; width: 8px; height: 8px; transform: translate(-50%,-50%); border-radius: 50%; background: rgba(255,255,255,0.5); border: none; }
+  .box-l { left: 0; top: 24%; width: 14%; height: 52%; border-left: none; }
+  .box-r { right: 0; top: 24%; width: 14%; height: 52%; border-right: none; }
+  .six-l { left: 0; top: 36%; width: 6%; height: 28%; border-left: none; }
+  .six-r { right: 0; top: 36%; width: 6%; height: 28%; border-right: none; }
+  .goal-l { left: -1%; top: 44%; width: 1.4%; height: 12%; border-right: none; background: rgba(255,255,255,0.06); }
+  .goal-r { right: -1%; top: 44%; width: 1.4%; height: 12%; border-left: none; background: rgba(255,255,255,0.06); }
+  #vignette { position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse 80% 70% at 50% 45%, transparent 55%, rgba(0,0,0,0.55) 100%); }
+
+  /* ── Player markers ──────────────────────────────────── */
+  .marker {
+    position: absolute;
+    width: 40px; height: 40px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 15px;
+    cursor: pointer;
+    transition: transform .14s ease, box-shadow .2s ease, filter .2s ease;
+    animation: bob 4s ease-in-out infinite;
+    z-index: 5;
+  }
+  @keyframes bob { 0%,100%{ margin-top:0 } 50%{ margin-top:-3px } }
+  .marker .ring {
+    position: absolute; inset: -6px; border-radius: 50%;
+    border: 2px solid transparent; transition: border-color .2s;
+  }
+  .marker.home { background: radial-gradient(circle at 35% 30%, #ffe27a, var(--home)); color: var(--home-ink);
+    box-shadow: 0 4px 14px rgba(0,0,0,.5), 0 0 0 2px rgba(255,255,255,.25) inset; }
+  .marker.away { background: radial-gradient(circle at 35% 30%, #ff6b80, var(--away)); color: #fff;
+    box-shadow: 0 4px 14px rgba(0,0,0,.5), 0 0 0 2px rgba(255,255,255,.18) inset; }
+  .marker:hover { transform: translate(-50%, -50%) scale(1.22); z-index: 20; }
+  .marker:hover .ring { border-color: var(--cyan); }
+  .marker.selected { transform: translate(-50%, -50%) scale(1.22); z-index: 20; }
+  .marker.selected .ring { border-color: var(--cyan); box-shadow: 0 0 22px var(--cyan); }
+  .marker.scored { animation: pop .7s ease; }
+  @keyframes pop { 0%{ transform: translate(-50%,-50%) scale(1) } 40%{ transform: translate(-50%,-50%) scale(1.8) } 100%{ transform: translate(-50%,-50%) scale(1) } }
+
+  /* hover tooltip */
+  .tip {
+    position: absolute; left: 50%; bottom: 130%;
+    transform: translateX(-50%);
+    background: var(--panel); border: 1px solid var(--stroke);
+    border-radius: 9px; padding: 7px 11px; white-space: nowrap;
+    font-size: 12.5px; pointer-events: none; opacity: 0; transition: opacity .15s;
+    backdrop-filter: blur(8px); box-shadow: 0 8px 24px rgba(0,0,0,.5); z-index: 30;
+  }
+  .marker:hover .tip { opacity: 1; }
+  .tip b { color: #fff; }
+  .tip .o { color: var(--cyan); font-weight: 800; }
+  .tip .p { color: #9fb3c0; font-size: 11px; }
+
+  /* ball */
+  #ball { position: absolute; width: 16px; height: 16px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff, #c8d2d8);
+    box-shadow: 0 3px 8px rgba(0,0,0,.6); transform: translate(-50%,-50%);
+    transition: left 1.2s ease, top 1.2s ease; z-index: 6; }
+
+  /* ── HUD ─────────────────────────────────────────────── */
+  .hud { position: absolute; z-index: 40; }
+  #scorebar { top: 22px; left: 22px; display: flex; align-items: center; gap: 14px;
+    background: var(--panel); border: 1px solid var(--stroke); border-radius: 12px;
+    padding: 10px 16px; backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  #logo { font-weight: 800; font-size: 17px; letter-spacing: -.5px; }
+  #logo .dot { color: var(--cyan); }
+  .sep { width: 1px; height: 26px; background: var(--stroke); }
+  .score { font-weight: 800; font-size: 18px; letter-spacing: .5px; }
+  .score .gal { color: var(--home); } .score .liv { color: #ff6b80; }
+  .minute { color: #9fb3c0; font-weight: 700; font-size: 14px; }
+  .live { display: inline-flex; align-items: center; gap: 6px; color: #ff5a6a; font-weight: 800; font-size: 12px; letter-spacing: 1px; }
+  .live .d { width: 8px; height: 8px; border-radius: 50%; background: #ff5a6a; animation: blink 1.1s infinite; }
+  @keyframes blink { 0%,100%{ opacity:1 } 50%{ opacity:.25 } }
+
+  #balance { top: 22px; right: 22px; background: var(--panel); border: 1px solid var(--stroke);
+    border-radius: 12px; padding: 10px 18px; backdrop-filter: blur(10px); text-align: right;
+    box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  #balance .lab { font-size: 10.5px; letter-spacing: 1.5px; color: #7e93a1; font-weight: 700; }
+  #balance .val { font-size: 22px; font-weight: 800; color: var(--green); }
+  #balance .val.flash { animation: flashGreen .8s; }
+  @keyframes flashGreen { 0%{ color:#fff; text-shadow:0 0 18px var(--green) } 100%{ color:var(--green) } }
+
+  #hint { bottom: 24px; left: 50%; transform: translateX(-50%); color: #9fb3c0;
+    font-size: 13.5px; background: rgba(8,12,16,.6); padding: 8px 16px; border-radius: 20px;
+    border: 1px solid var(--stroke); backdrop-filter: blur(6px); }
+  #hint b { color: var(--cyan); }
+
+  #simBtn { bottom: 24px; right: 22px; background: linear-gradient(135deg, var(--cyan), #0891b2);
+    color: #04222a; font-weight: 800; font-size: 14px; border: none; border-radius: 24px;
+    padding: 13px 22px; cursor: pointer; box-shadow: 0 8px 24px rgba(34,211,238,.4);
+    transition: transform .1s, box-shadow .2s; }
+  #simBtn:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(34,211,238,.55); }
+  #simBtn:active { transform: translateY(0); }
+
+  /* ── Bet panel ───────────────────────────────────────── */
+  #panel { position: absolute; top: 0; right: 0; height: 100%; width: 340px; z-index: 60;
+    background: linear-gradient(180deg, rgba(10,16,22,.96), rgba(8,12,16,.98));
+    border-left: 1px solid var(--stroke); backdrop-filter: blur(16px);
+    box-shadow: -20px 0 50px rgba(0,0,0,.5); transform: translateX(100%);
+    transition: transform .3s cubic-bezier(.4,0,.2,1); padding: 26px 24px; display: flex; flex-direction: column; }
+  #panel.open { transform: translateX(0); }
+  #panel .close { position: absolute; top: 16px; right: 18px; background: none; border: none;
+    color: #7e93a1; font-size: 24px; cursor: pointer; line-height: 1; }
+  #panel .close:hover { color: #fff; }
+  .pteam { font-size: 11px; letter-spacing: 1.5px; font-weight: 800; text-transform: uppercase; }
+  .pname { font-size: 27px; font-weight: 800; margin: 4px 0 2px; letter-spacing: -.5px; }
+  .ppos { color: #9fb3c0; font-size: 13px; margin-bottom: 20px; }
+  .markethdr { font-size: 11px; letter-spacing: 2px; color: var(--cyan); font-weight: 800; margin-bottom: 8px; }
+  .oddsrow { display: flex; align-items: baseline; gap: 10px; margin-bottom: 22px;
+    padding-bottom: 18px; border-bottom: 1px solid var(--stroke); }
+  .oddsrow .big { font-size: 38px; font-weight: 800; color: #fff; }
+  .oddsrow .x { color: var(--cyan); font-size: 20px; font-weight: 800; }
+  .oddsrow .tag { margin-left: auto; font-size: 11px; color: #9fb3c0; }
+  .stakelab { font-size: 12px; color: #9fb3c0; margin-bottom: 9px; font-weight: 600; }
+  .stakes { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 20px; }
+  .stakes button { background: rgba(255,255,255,.05); border: 1px solid var(--stroke); color: #eaf2f7;
+    border-radius: 10px; padding: 12px 0; font-weight: 800; font-size: 15px; cursor: pointer; transition: all .15s; }
+  .stakes button:hover { border-color: var(--cyan); }
+  .stakes button.active { background: var(--cyan); color: #04222a; border-color: var(--cyan); }
+  .payout { background: rgba(52,211,153,.08); border: 1px solid rgba(52,211,153,.25);
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+  .payout .l { font-size: 12px; color: #9fb3c0; }
+  .payout .v { font-size: 24px; font-weight: 800; color: var(--green); }
+  #placeBtn { margin-top: auto; background: linear-gradient(135deg, var(--green), #059669); color: #022; border: none;
+    border-radius: 14px; padding: 16px; font-size: 16px; font-weight: 800; cursor: pointer;
+    box-shadow: 0 8px 24px rgba(52,211,153,.35); transition: transform .1s; }
+  #placeBtn:hover { transform: translateY(-2px); }
+  #placeBtn .sub { display: block; font-size: 11px; font-weight: 600; opacity: .8; margin-top: 2px; }
+
+  /* ── Bets tray ───────────────────────────────────────── */
+  #tray { position: absolute; bottom: 78px; left: 22px; z-index: 40; width: 290px;
+    display: flex; flex-direction: column; gap: 8px; }
+  .bet { background: var(--panel); border: 1px solid var(--stroke); border-left: 3px solid var(--cyan);
+    border-radius: 10px; padding: 9px 12px; backdrop-filter: blur(10px); font-size: 13px;
+    animation: slideUp .3s ease; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+  @keyframes slideUp { from { opacity:0; transform: translateY(12px) } to { opacity:1; transform: translateY(0) } }
+  .bet.won { border-left-color: var(--green); }
+  .bet.lost { border-left-color: #ef4444; opacity: .6; }
+  .bet .who { font-weight: 800; }
+  .bet .meta { color: #9fb3c0; font-size: 11.5px; }
+  .bet .status { margin-left: auto; font-weight: 800; font-size: 12px; }
+  .bet.pending .status { color: var(--cyan); }
+  .bet.won .status { color: var(--green); }
+  .bet.lost .status { color: #ef4444; }
+
+  /* ── Toast + Goal banner ─────────────────────────────── */
+  #toast { position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--panel); border: 1px solid var(--green); border-radius: 12px; padding: 12px 20px;
+    font-weight: 700; font-size: 14px; opacity: 0; transition: all .3s; z-index: 70; backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast .c { color: var(--cyan); }
+
+  #goalBanner { position: absolute; inset: 0; display: grid; place-items: center; z-index: 65;
+    pointer-events: none; opacity: 0; }
+  #goalBanner.show { animation: goalFlash 2.2s ease; }
+  @keyframes goalFlash { 0%{ opacity:0 } 12%{ opacity:1 } 78%{ opacity:1 } 100%{ opacity:0 } }
+  #goalBanner .txt { font-size: 96px; font-weight: 900; letter-spacing: -3px;
+    background: linear-gradient(135deg, var(--cyan), var(--green)); -webkit-background-clip: text;
+    background-clip: text; color: transparent; text-shadow: 0 0 60px rgba(34,211,238,.4);
+    transform: scale(.8); animation: goalPop 2.2s ease; }
+  @keyframes goalPop { 0%{ transform: scale(.6) } 14%{ transform: scale(1.05) } 100%{ transform: scale(1) } }
+  #goalBanner .sub { text-align: center; color: #fff; font-size: 22px; font-weight: 800; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="pitch">
+    <div class="line" id="halfway"></div>
+    <div class="line" id="circle"></div>
+    <div class="line" id="spot"></div>
+    <div class="line box-l"></div><div class="line box-r"></div>
+    <div class="line six-l"></div><div class="line six-r"></div>
+    <div class="goal-l"></div><div class="goal-r"></div>
+    <div id="ball"></div>
+  </div>
+  <div id="vignette"></div>
+
+  <!-- HUD -->
+  <div class="hud" id="scorebar">
+    <span id="logo">goal<span class="dot">.</span>live</span>
+    <span class="sep"></span>
+    <span class="score"><span class="gal">GAL</span> <span id="homeScore">1</span>–<span id="awayScore">0</span> <span class="liv">LIV</span></span>
+    <span class="minute" id="clock">67'</span>
+    <span class="sep"></span>
+    <span class="live"><span class="d"></span>LIVE</span>
+  </div>
+  <div class="hud" id="balance">
+    <div class="lab">BALANCE</div>
+    <div class="val" id="balVal">$50.00</div>
+  </div>
+
+  <div class="hud" id="hint">Click any <b>player</b> to bet on them scoring the next goal</div>
+  <button class="hud" id="simBtn">⚽ Simulate next goal</button>
+
+  <div id="tray"></div>
+
+  <!-- Bet panel -->
+  <div id="panel">
+    <button class="close" onclick="closePanel()">×</button>
+    <div class="pteam" id="pTeam"></div>
+    <div class="pname" id="pName"></div>
+    <div class="ppos" id="pPos"></div>
+    <div class="markethdr">NEXT GOAL SCORER</div>
+    <div class="oddsrow"><span class="big" id="pOdds"></span><span class="x">×</span><span class="tag">decimal odds</span></div>
+    <div class="stakelab">Choose stake (USDC)</div>
+    <div class="stakes" id="stakes"></div>
+    <div class="payout"><span class="l">Potential payout</span><span class="v" id="pPayout"></span></div>
+    <button id="placeBtn" onclick="placeBet()">PLACE BET<span class="sub" id="placeSub"></span></button>
+  </div>
+
+  <div id="toast"></div>
+  <div id="goalBanner"><div><div class="txt">GOAL!</div><div class="sub" id="goalSub"></div></div></div>
+</div>
+
+<script>
+// ── Player data: Galatasaray (home, gold) vs Liverpool (away, red) ──
+const players = [
+  // Galatasaray — attacking right →
+  { id:'h1', team:'home', n:1,  name:'Muslera',  pos:'Goalkeeper', x:6,  y:50, odds:41.0 },
+  { id:'h2', team:'home', n:2,  name:'Boey',     pos:'Defender',   x:20, y:20, odds:23.0 },
+  { id:'h3', team:'home', n:6,  name:'Nelsson',  pos:'Defender',   x:19, y:40, odds:26.0 },
+  { id:'h4', team:'home', n:5,  name:'Sánchez',  pos:'Defender',   x:19, y:60, odds:24.0 },
+  { id:'h5', team:'home', n:3,  name:'Angelino', pos:'Defender',   x:20, y:80, odds:17.0 },
+  { id:'h6', team:'home', n:8,  name:'Torreira', pos:'Midfielder', x:34, y:32, odds:11.0 },
+  { id:'h7', team:'home', n:22, name:'Demirbay', pos:'Midfielder', x:33, y:50, odds:9.5  },
+  { id:'h8', team:'home', n:10, name:'Mertens',  pos:'Midfielder', x:34, y:68, odds:7.5  },
+  { id:'h9', team:'home', n:7,  name:'Yılmaz',   pos:'Forward',    x:46, y:26, odds:4.8  },
+  { id:'h10',team:'home', n:45, name:'Osimhen',  pos:'Forward',    x:47, y:50, odds:3.4  },
+  { id:'h11',team:'home', n:9,  name:'Icardi',   pos:'Forward',    x:46, y:74, odds:3.8  },
+  // Liverpool — attacking left ←
+  { id:'a1', team:'away', n:1,  name:'Alisson',     pos:'Goalkeeper', x:94, y:50, odds:43.0 },
+  { id:'a2', team:'away', n:66, name:'Alexander-Arnold', pos:'Defender', x:80, y:20, odds:16.0 },
+  { id:'a3', team:'away', n:4,  name:'Van Dijk',    pos:'Defender',   x:81, y:40, odds:19.0 },
+  { id:'a4', team:'away', n:5,  name:'Konaté',      pos:'Defender',   x:81, y:60, odds:25.0 },
+  { id:'a5', team:'away', n:26, name:'Robertson',   pos:'Defender',   x:80, y:80, odds:21.0 },
+  { id:'a6', team:'away', n:10, name:'Mac Allister',pos:'Midfielder', x:66, y:32, odds:10.0 },
+  { id:'a7', team:'away', n:3,  name:'Endo',        pos:'Midfielder', x:67, y:50, odds:12.0 },
+  { id:'a8', team:'away', n:8,  name:'Szoboszlai',  pos:'Midfielder', x:66, y:68, odds:8.0  },
+  { id:'a9', team:'away', n:11, name:'Salah',       pos:'Forward',    x:54, y:26, odds:3.2  },
+  { id:'a10',team:'away', n:9,  name:'Núñez',       pos:'Forward',    x:53, y:50, odds:4.0  },
+  { id:'a11',team:'away', n:7,  name:'Díaz',        pos:'Forward',    x:54, y:74, odds:4.6  },
+];
+
+const STAKES = [1, 5, 10, 25];
+let balance = 50.0;
+let selected = null;
+let stake = 5;
+let openBets = []; // {id, player, stake, odds}
+
+const pitch = document.getElementById('pitch');
+const $ = id => document.getElementById(id);
+
+// ── Render markers ──
+players.forEach(p => {
+  const m = document.createElement('div');
+  m.className = `marker ${p.team}`;
+  m.style.left = p.x + '%';
+  m.style.top = p.y + '%';
+  m.style.animationDelay = (Math.random() * -4) + 's';
+  m.dataset.id = p.id;
+  m.innerHTML = `<span class="ring"></span>${p.n}
+    <div class="tip"><b>${p.name}</b> <span class="o">${p.odds.toFixed(2)}×</span><br><span class="p">${p.pos} · next goal</span></div>`;
+  m.addEventListener('click', () => selectPlayer(p, m));
+  pitch.appendChild(m);
+});
+
+function markerEl(id){ return pitch.querySelector(`.marker[data-id="${id}"]`); }
+
+// ── Select / bet panel ──
+function selectPlayer(p, el) {
+  selected = p;
+  document.querySelectorAll('.marker.selected').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  $('pTeam').textContent = p.team === 'home' ? 'GALATASARAY' : 'LIVERPOOL';
+  $('pTeam').style.color = p.team === 'home' ? 'var(--home)' : '#ff6b80';
+  $('pName').textContent = p.name;
+  $('pPos').textContent = `#${p.n} · ${p.pos}`;
+  $('pOdds').textContent = p.odds.toFixed(2);
+  stake = 5;
+  renderStakes();
+  $('panel').classList.add('open');
+}
+function renderStakes() {
+  $('stakes').innerHTML = STAKES.map(s =>
+    `<button class="${s===stake?'active':''}" onclick="setStake(${s})">$${s}</button>`).join('');
+  const payout = stake * selected.odds;
+  $('pPayout').textContent = '$' + payout.toFixed(2);
+  $('placeSub').textContent = `$${stake} → $${payout.toFixed(2)} if ${selected.name} scores next`;
+}
+function setStake(s){ stake = s; renderStakes(); }
+function closePanel(){ $('panel').classList.remove('open');
+  document.querySelectorAll('.marker.selected').forEach(e => e.classList.remove('selected')); selected = null; }
+
+// ── Place bet ──
+function placeBet() {
+  if (!selected) return;
+  if (stake > balance) { toast(`Insufficient balance`, '#ef4444'); return; }
+  balance -= stake;
+  updateBalance();
+  const bet = { id: 'b'+Date.now(), player: selected, stake, odds: selected.odds };
+  openBets.push(bet);
+  renderTray();
+  toast(`Bet locked: <span class="c">$${stake}</span> on ${selected.name} · ${selected.odds.toFixed(2)}×`);
+  closePanel();
+}
+
+function renderTray() {
+  $('tray').innerHTML = openBets.slice(-4).reverse().map(b => {
+    const st = b.result === 'won' ? 'won' : b.result === 'lost' ? 'lost' : 'pending';
+    const label = b.result === 'won' ? `+$${(b.stake*b.odds).toFixed(2)}` : b.result === 'lost' ? 'LOST' : 'LIVE';
+    return `<div class="bet ${st}">
+      <span class="who">${b.player.name}</span>
+      <span class="meta">next goal · ${b.odds.toFixed(2)}×</span>
+      <span class="status">${label}</span></div>`;
+  }).join('');
+}
+
+// ── Simulate next goal ──
+$('simBtn').addEventListener('click', simulateGoal);
+function simulateGoal() {
+  // weight by inverse odds so favourites score more often
+  const weights = players.map(p => 1 / p.odds);
+  const total = weights.reduce((a,b)=>a+b,0);
+  let r = Math.random() * total, scorer = players[0];
+  for (let i=0;i<players.length;i++){ r -= weights[i]; if (r<=0){ scorer = players[i]; break; } }
+
+  // move ball to scorer, pop marker
+  const el = markerEl(scorer.id);
+  $('ball').style.left = scorer.x + '%';
+  $('ball').style.top = scorer.y + '%';
+  el.classList.add('scored');
+  setTimeout(()=> el.classList.remove('scored'), 700);
+
+  // update score
+  if (scorer.team === 'home') $('homeScore').textContent = +$('homeScore').textContent + 1;
+  else $('awayScore').textContent = +$('awayScore').textContent + 1;
+
+  // goal banner
+  $('goalSub').textContent = `${scorer.name} — ${scorer.team==='home'?'Galatasaray':'Liverpool'}`;
+  const gb = $('goalBanner'); gb.classList.remove('show'); void gb.offsetWidth; gb.classList.add('show');
+
+  // settle open bets
+  let winnings = 0;
+  openBets.forEach(b => {
+    if (b.result) return;
+    if (b.player.id === scorer.id) { b.result = 'won'; winnings += b.stake * b.odds; }
+    else { b.result = 'lost'; }
+  });
+  renderTray();
+  if (winnings > 0) {
+    setTimeout(() => {
+      balance += winnings; updateBalance(true);
+      toast(`You won <span class="c">$${winnings.toFixed(2)}</span> — ${scorer.name} scored! 🎉`);
+    }, 900);
+  }
+}
+
+function updateBalance(flash) {
+  $('balVal').textContent = '$' + balance.toFixed(2);
+  if (flash) { const v = $('balVal'); v.classList.remove('flash'); void v.offsetWidth; v.classList.add('flash'); }
+}
+
+let toastTimer;
+function toast(html, border) {
+  const t = $('toast'); t.innerHTML = html;
+  t.style.borderColor = border || 'var(--green)';
+  t.classList.add('show'); clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove('show'), 3200);
+}
+
+// idle ball drift near midfield
+$('ball').style.left = '50%'; $('ball').style.top = '50%';
+
+// live clock tick (cosmetic)
+let min = 67;
+setInterval(() => { min = min < 90 ? min + 1 : 67; $('clock').textContent = min + "'"; }, 5000);
+</script>
+</body>
+</html>
