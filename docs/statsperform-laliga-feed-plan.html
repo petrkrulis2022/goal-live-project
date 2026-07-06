@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>goal.live × Stats Perform — La Liga Feed &amp; API Integration Plan</title>
+<style>
+  @page { size: A4; margin: 15mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", -apple-system, Helvetica, Arial, sans-serif;
+    color: #15293b; margin: 0; padding: 32px 40px; max-width: 900px;
+    margin-inline: auto; font-size: 12.5px; line-height: 1.5; background: #fff;
+  }
+  header { border-bottom: 3px solid #0e7490; padding-bottom: 10px; margin-bottom: 16px; }
+  h1 { font-size: 21px; margin: 0 0 4px; }
+  h1 .accent { color: #06b6d4; }
+  .meta { color: #50697e; font-size: 11.5px; }
+  h2 {
+    font-size: 14px; text-transform: uppercase; letter-spacing: .04em;
+    color: #0e7490; margin: 18px 0 6px; border-bottom: 1px solid #dbe7ee; padding-bottom: 3px;
+  }
+  h3 { font-size: 12.8px; margin: 10px 0 3px; }
+  p, ul, ol { margin: 5px 0; }
+  ul, ol { padding-left: 20px; }
+  li { margin: 2px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0; font-size: 11.3px; }
+  th, td { border: 1px solid #c8d8e2; padding: 4px 7px; text-align: left; vertical-align: top; }
+  th { background: #eef6fa; }
+  code { background: #f1f7fa; padding: 1px 4px; border-radius: 3px; font-size: 10.8px; }
+  .ok { color: #047857; font-weight: 600; white-space: nowrap; }
+  .new { color: #0e7490; font-weight: 600; white-space: nowrap; }
+  pre {
+    background: #f1f7fa; border: 1px solid #dbe7ee; border-radius: 6px;
+    padding: 8px 12px; font-size: 10.6px; overflow-x: auto; line-height: 1.45;
+  }
+  .key { background: #ecfeff; border-left: 4px solid #06b6d4; padding: 8px 12px; border-radius: 0 6px 6px 0; }
+  footer { margin-top: 18px; padding-top: 8px; border-top: 1px solid #dbe7ee; color: #50697e; font-size: 11px; font-style: italic; }
+  @media print { body { padding: 0; } h2 { page-break-after: avoid; } table { page-break-inside: avoid; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>goal<span class="accent">.live</span> × Stats Perform — Feed &amp; API Integration Plan</h1>
+  <div class="meta">
+    Developer licence application · Soccer — Spanish La Liga, season 2026/27 &nbsp;·&nbsp;
+    DotLive Interactive — Peter Krulis, Founder — petrkrulis@gmail.com &nbsp;·&nbsp; July 2026<br/>
+    Companion to our earlier <em>goal.live × Stats Perform Integration Brief</em> (June 2026).
+  </div>
+</header>
+
+<h2>1. Product &amp; current integration status</h2>
+<p>goal.live is a patent-pending interactive betting overlay rendered on top of live football streams: users bet on in-game micro-moments (next goal, next corner, next scorer) without leaving the stream, with instant on-chain USDC settlement. Our platform already runs a <strong>working Opta SDAPI integration</strong> on trial keys:</p>
+<table>
+  <tr><th>Component</th><th>Feed / product</th><th>Endpoint (as integrated)</th><th>Status</th></tr>
+  <tr><td>OAuth 2.0 client-credentials auth</td><td>SDAPI Gateway</td><td><code>api.statsperform.com</code></td><td class="ok">✔ Live</td></tr>
+  <tr><td>Match status, score, minute sync (60&nbsp;s cron)</td><td><strong>MA1</strong> Fixtures &amp; Results</td><td><code>/soccerdata/match/{outletAuthKey}?live=yes&amp;_dlt=…</code></td><td class="ok">✔ Live</td></tr>
+  <tr><td>Goal / corner event detection (typeId 16/22, own-goal q.55)</td><td><strong>MA3</strong> Match Events</td><td><code>/soccerdata/matchevent/{outletAuthKey}/{fixtureUuid}</code></td><td class="ok">✔ Live</td></tr>
+  <tr><td>Starting XI auto-seeding into player markets</td><td><strong>MA46</strong> Provisional Line-Ups</td><td><code>/soccerdata/matchprovisionallineup/…</code></td><td class="ok">✔ Live</td></tr>
+  <tr><td>Bet locking, odds history, on-chain settlement pipeline</td><td>Internal (driven by MA1/MA3)</td><td>Supabase edge functions + smart-contract oracle</td><td class="ok">✔ Live</td></tr>
+</table>
+<p>This document sets out every additional feed, API and delivery mechanism we intend to use under the La Liga developer licence, and how each maps to product functionality.</p>
+
+<h2>2. Betting markets — current and planned (feed mapping)</h2>
+<p>We currently operate four markets: <em>match outcome (1X2), total goals, next corner, next goal scorer</em>. Under this licence we will expand to the full set of high-demand in-play markets (the markets with the highest live-betting volume at major sportsbooks), each priced and settled from Opta feeds:</p>
+<table>
+  <tr><th>Market</th><th>Status</th><th>Priced from</th><th>Settled from</th></tr>
+  <tr><td>Match outcome (1X2), live</td><td class="ok">Live</td><td><strong>MA21</strong> Live Win Probability</td><td>MA1 / MA3DP</td></tr>
+  <tr><td>Total goals (O/U), exact goals</td><td class="ok">Live</td><td>MA21 goal-rate model + <strong>MA12</strong> xG</td><td>MA3DP goal events</td></tr>
+  <tr><td>Next corner / corners race / corner totals</td><td class="ok">Live</td><td><strong>MA47</strong> Match Corners Preview + in-play state</td><td>MA3DP corner events (typeId 6/22)</td></tr>
+  <tr><td>Next goal scorer / anytime scorer</td><td class="ok">Live</td><td><strong>TM15</strong> Team &amp; Player Forecast + MA46 line-ups</td><td>MA3DP goal events + scorer ID</td></tr>
+  <tr><td>Next team to score</td><td class="new">Planned</td><td>MA21 + MA27 Momentum</td><td>MA3DP</td></tr>
+  <tr><td>Both teams to score (BTTS)</td><td class="new">Planned</td><td>MA21 goal-rate model</td><td>MA3DP</td></tr>
+  <tr><td>Cards: next card, booking points, red card</td><td class="new">Planned</td><td>MA3 card history + referee profile (<strong>PE3/PE13</strong>)</td><td>MA3DP card events (typeId 17)</td></tr>
+  <tr><td>Player props: shots / shots on target / fouls / player card</td><td class="new">Planned</td><td><strong>Dynamic Betting Stats API</strong> + MA3 per-player events</td><td>MA3DP qualified events</td></tr>
+  <tr><td>Penalty awarded in match</td><td class="new">Planned</td><td><strong>MA19</strong> Match Penalties Preview</td><td>MA3DP penalty events</td></tr>
+  <tr><td>Half-time markets (HT result, goals per half)</td><td class="new">Planned</td><td>MA21 + period state</td><td>MA1/MA3DP period boundaries</td></tr>
+</table>
+<p class="key"><strong>Why these markets:</strong> next goal, over/under totals, corners, bookings and player props are consistently the highest-volume in-play markets at leading sportsbooks — they are also precisely the micro-moment markets our overlay UX is designed for. Every market above is fully priceable and settleable from Opta data alone, keeping Stats Perform the single source of truth.</p>
+
+<h2>3. Live events — migration from polling to push (SDDP)</h2>
+<p>Today we poll MA1/MA3 every 60 seconds, which caps our market-suspension latency. Under the developer licence we will migrate the live pipeline to <strong>Sports Data Delta Push (SDDP)</strong> feeds:</p>
+<table>
+  <tr><th>Push feed</th><th>Replaces (poll)</th><th>Content / use in goal.live</th></tr>
+  <tr><td><strong>MA1DP</strong> — Live Score</td><td>MA1 polling</td><td>Score, match status, period, minute — drives match lifecycle, bet-window open/close</td></tr>
+  <tr><td><strong>MA3DP</strong> — Match Events Data</td><td>MA3 polling</td><td>Time-coded events (goals, corners, cards, penalties, VAR, substitutions) with player IDs and qualifiers — drives instant market suspension and on-chain settlement triggers</td></tr>
+  <tr><td><strong>MA2DP</strong> — Match Stats Data</td><td>—</td><td>Live team stats (shots, possession, SOT) — overlay stat strip + player-prop settlement inputs</td></tr>
+  <tr><td><strong>MA18DP</strong> — Match Events Aggregated Stats</td><td>—</td><td>Aggregated per-player event stats — player-prop markets (shots, fouls, cards per player)</td></tr>
+</table>
+<p><strong>Integration change on our side:</strong> we will add a persistent push-consumer service (long-lived connection per the SDDP integration guide) in front of our existing normalisation layer. Deltas are applied to match state in Supabase and fanned out to clients over our existing realtime channels — the downstream pipeline (odds engine, bet locking, smart-contract settlement) is unchanged. Target: <strong>event-to-market-suspension &lt; 1 s</strong> from delta receipt (vs up to 60 s today). We request SDDP onboarding documentation and a sandbox/staging endpoint to validate connection management, recovery/replay and message ordering before the season starts.</p>
+
+<h2>4. Probabilities as odds — Opta model feeds as our pricing source</h2>
+<p>This is the most important element of this application. Traditional bookmaker odds feeds are third-party prices; Stats Perform's <strong>model-generated probabilities</strong> let us price markets directly from Opta's predictive models — a cleaner fit for our transparent, on-chain product:</p>
+<table>
+  <tr><th>Feed</th><th>Endpoint</th><th>What it gives us</th></tr>
+  <tr><td><strong>MA21</strong> Live Win Probability</td><td><code>/soccerdata/matchlivewinprobability/{outletAuthKey}/{fixtureUuid}</code></td><td>Pre-match + live home/draw/away probabilities from Opta's goal-rate model (100,000+ simulations; inputs incl. team quality, cards, game state, xG, stoppage time). Updated ~1/min in-play.</td></tr>
+  <tr><td><strong>TM15</strong> Team &amp; Player Forecast</td><td>per docs</td><td>Pre-match player probabilities — goalscorer priors for scorer markets</td></tr>
+  <tr><td><strong>TM11/TM12</strong> Tournament / Season Simulations</td><td>per docs</td><td>Season-level probabilities — futures/outright markets (later phase)</td></tr>
+  <tr><td><strong>MA12</strong> Match Expected Goals</td><td>per docs</td><td>Live xG — input to totals/next-goal pricing and overlay display</td></tr>
+  <tr><td><strong>MA19 / MA47</strong> Penalties / Corners Preview</td><td>per docs</td><td>Market-specific priors (penalty propensity, corner rates)</td></tr>
+  <tr><td><strong>MA15</strong> Match Facts Betting</td><td><code>/soccerdata/matchfactsbetting/{outletAuthKey}/{fixtureUuid}</code></td><td>Automated betting-relevant facts — surfaced as bet-suggestion cards in the overlay</td></tr>
+  <tr><td><strong>Dynamic Betting Stats API</strong></td><td>per docs</td><td>On-demand situational betting stats for player props and market context</td></tr>
+</table>
+<h3>How probability-driven betting works in goal.live</h3>
+<pre>MA21 / forecast feeds ──► probability normaliser ──► goal.live pricing engine
+                                                        │  decimal odds = 1 / p, plus transparent margin
+                                                        ▼
+                        overlay markets (odds shown with "powered by Opta model" fair-value)
+                                                        │  user taps player / market → stake
+                                                        ▼
+                        bet locked (Supabase + on-chain audit) ──► MA3DP event settles market
+                                                        ▼
+                        smart-contract payout in USDC (oracle writes result from MA1/MA3)</pre>
+<ol>
+  <li><strong>Pricing:</strong> model probability <em>p</em> → fair decimal odds <em>1/p</em> → small transparent overround applied → published to all clients simultaneously via our realtime layer. Because our escrow is per-match pool based, probabilities can also drive a <em>parimutuel view</em> (pool share vs model fair value), which suits prediction-market regulation contexts.</li>
+  <li><strong>Repricing:</strong> every MA21 update (and every MA3DP event) triggers reprice; markets auto-suspend on goal/penalty/red-card deltas before reopening at new prices.</li>
+  <li><strong>Settlement:</strong> unchanged — MA3DP events (goal + scorer ID, corner, card) drive our existing oracle → smart contract settlement, so pricing and resolution share one Opta source of truth.</li>
+  <li><strong>Transparency:</strong> we display the model probability alongside odds — a differentiator only possible with model-based feeds rather than bookmaker prices.</li>
+</ol>
+
+<h2>5. Live video — Bet LiveStreams (La Liga 2026/27) + VOD</h2>
+<ul>
+  <li><strong>Live, ultra-low latency (the core ask):</strong> <strong>Bet LiveStreams</strong> delivered over <strong>Realtime Streaming</strong> (Phenix technology) — sub-second glass-to-glass latency with cross-device sync, for La Liga 2026/27 in our licensed markets. Our overlay wraps the stream player; market open/suspend states are gated to the synced video timeline. We request the playback SDK and the stream/data timestamp documentation.</li>
+  <li><strong>VOD API</strong> (<code>docs/rh/video(vod)</code> — API reference &amp; query parameters + shared authorisation guide): on-demand assets — goals, highlights, near-live clips — used for (a) instant replay cards in the overlay after a settled bet ("watch the goal you won on") and (b) match recap pages on our site. We will authenticate per the shared API Overview &amp; Authorisation guide.</li>
+  <li><strong>SmartReels</strong> (Broadcasts API): automated, personalised highlight reels and <em>catch-up-to-live</em> — lets a user joining mid-match catch up in 60 seconds, then land in the live synced stream with markets open. Strong retention feature for our beta cohort.</li>
+</ul>
+
+<h2>6. Everything synced — target architecture</h2>
+<pre>            ┌──────────────────────────── Stats Perform ────────────────────────────┐
+            │ SDDP push: MA1DP · MA3DP · MA2DP · MA18DP     (events, score, stats)  │
+            │ SDAPI pull: MA21 · MA12 · MA15 · MA19 · MA46 · MA47 · TM15 (models)   │
+            │ Bet LiveStreams / Realtime Streaming (sub-second video, synced)       │
+            │ VOD API · SmartReels · SmartRatings · Editorial (content layer)       │
+            └───────────────┬───────────────────────────────┬───────────────────────┘
+                            ▼                               ▼
+              goal.live ingest & sync layer          video player (Phenix SDK)
+              (push consumer + normaliser,                   ▲
+               common-clock timestamp gate) ─────────────────┘
+                            ▼
+              pricing engine (probabilities → odds) ──► realtime fan-out to overlay
+                            ▼
+              bet lock / settle (Supabase + on-chain oracle, USDC escrow)</pre>
+<p>The common-clock gate — aligning MA3DP event timestamps and odds updates with the video timeline — is the piece we most want to validate with your solutions engineers; it is the core of our patent-pending UX and the reason we are consolidating video + events + probabilities with Stats Perform.</p>
+
+<h2>7. Additional services we intend to use</h2>
+<table>
+  <tr><th>Product</th><th>API</th><th>Use in goal.live</th></tr>
+  <tr><td><strong>SmartRatings</strong></td><td>Alerts API</td><td>Real-time excitement ratings &amp; alerts — notify users when a La Liga match "catches fire" (push notification → deep-link into stream + markets). Drives session starts.</td></tr>
+  <tr><td><strong>SmartReels</strong></td><td>Broadcasts API</td><td>Auto-generated highlights &amp; catch-up-to-live inside the overlay and on our site.</td></tr>
+  <tr><td><strong>Editorial</strong></td><td>Editorial APIs (<code>docs/rh/editorial</code>)</td><td>Match previews/recaps and football news on our website — content service around the betting product.</td></tr>
+  <tr><td><strong>MA6</strong> Commentary</td><td>SDAPI</td><td>Live text commentary ticker in the overlay.</td></tr>
+  <tr><td><strong>MA27</strong> Match Momentum</td><td>SDAPI</td><td>Momentum/pressure widget; also a trigger for contextual market prompts ("momentum surge — next goal?").</td></tr>
+  <tr><td><strong>MA20 / TM10</strong> Player Ratings</td><td>SDAPI</td><td>Live player ratings shown on tap of a player (clickable-player UX).</td></tr>
+  <tr><td><strong>MA25</strong> Match Tracking / <strong>Opta Vision</strong></td><td>SDAPI / per docs</td><td>Post-match XY tracking (MA25) for replay &amp; calibration of our clickable-player overlay; we would welcome a conversation about live tracking (Opta Vision / enriched events MA35-36) availability for La Liga to anchor player hotspots to real positions.</td></tr>
+  <tr><td><strong>MA53</strong> Match Stream</td><td><code>/soccerdata/matchstream/{outletAuthKey}/{fixtureUuid}</code></td><td>Combined previews / commentary / betting-insight stream — single-call content for match pages.</td></tr>
+</table>
+
+<h2>8. Coverage, auth &amp; operational notes</h2>
+<ul>
+  <li><strong>Competition scope:</strong> Spanish La Liga, 2026/27 season (Tournament Calendar via OT2; fixtures via MA0/MA1). La Liga's top coverage tier gives full MA3 event detail incl. player qualifiers required for our settlement logic (per Soccer Coverage Tiers documentation).</li>
+  <li><strong>Auth:</strong> existing OAuth 2.0 client-credentials flow against the SDAPI gateway; VOD/streaming auth per the shared API Overview &amp; Authorisation guide; outlet keys per environment (staging/production).</li>
+  <li><strong>Rate discipline:</strong> with SDDP push replacing live polling, our remaining REST polling is limited to model feeds (MA21 1/min in-play per guidelines, delta parameter <code>_dlt</code> used throughout) — well inside documented polling frequencies.</li>
+  <li><strong>Compliance:</strong> betting operation runs under our licensing roadmap (EU, starting CZ); settlement-grade data usage confined to licensed markets; we follow feed-security best practice per the FAQs.</li>
+</ul>
+
+<h2>9. What we ask from Stats Perform</h2>
+<ol>
+  <li>Developer licence enabling, for La Liga 2026/27: <strong>SDAPI soccer feeds</strong> (MA0/MA1, MA3, MA6, MA12, MA15, MA19, MA20, MA21, MA27, MA46, MA47, MA53, TM15, OT2, PE3/PE13), <strong>SDDP push</strong> (MA1DP, MA2DP, MA3DP, MA18DP), <strong>Dynamic Betting Stats API</strong>, <strong>VOD API</strong>, <strong>SmartRatings Alerts API</strong>, <strong>SmartReels Broadcasts API</strong>, <strong>Editorial API</strong>.</li>
+  <li><strong>Bet LiveStreams / Realtime Streaming</strong> commercial terms for La Liga 2026/27 in our launch markets, incl. playback SDK and stream/data synchronisation documentation.</li>
+  <li>SDDP onboarding pack + staging environment for push-consumer validation ahead of the season.</li>
+  <li>A technical session with your solutions engineers on the video↔data common-clock synchronisation.</li>
+</ol>
+
+<footer>goal.live — a DotLive Interactive product. Patent-pending interactive betting overlays for live streams. Feed codes and endpoints referenced from Stats Perform SDAPI/SDDP documentation (documentation.statsperform.com).</footer>
+
+</body>
+</html>

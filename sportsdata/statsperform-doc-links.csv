@@ -1,0 +1,70 @@
+description,url,sheet,cell
+Stats Perform Feed Developer Docs,https://documentation.statsperform.com/,DATA FEED + BUNDLE OVERVIEW,C2
+Venues (OT3),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-venues.htm,DATA FEED + BUNDLE OVERVIEW,E10
+Team Standings (TM2),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-team-standings.htm,DATA FEED + BUNDLE OVERVIEW,E11
+Teams (TM1),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-teams.htm,DATA FEED + BUNDLE OVERVIEW,E14
+Squads (TM3),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-squads.htm,DATA FEED + BUNDLE OVERVIEW,E15
+Areas (OT4),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-areas.htm,DATA FEED + BUNDLE OVERVIEW,E16
+Deletions (DEL),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-deletions.htm,DATA FEED + BUNDLE OVERVIEW,E17
+MA2 (basic) - Basic Match Stats,https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-statistics.htm,DATA FEED + BUNDLE OVERVIEW,E18
+Match Preview (MA8),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-preview.htm,DATA FEED + BUNDLE OVERVIEW,E19
+Soccer Integration Guide,https://documentation.statsperform.com/docs/rh/sddp/Topics/Soccer/soccer-sddp-integration-guide.htm,DATA FEED + BUNDLE OVERVIEW,E2
+Live Score (MA1DP),https://documentation.statsperform.com/docs/rh/sddp/Topics/Soccer/sports-data-delta-push-integration-guide-ma1dp.htm,DATA FEED + BUNDLE OVERVIEW,E20
+Commentary (MA6),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-commentary.htm,DATA FEED + BUNDLE OVERVIEW,E23
+Seasonal Stats (TM4),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-seasonal-stats.htm,DATA FEED + BUNDLE OVERVIEW,E24
+Transfers (TM7),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-transfers.htm,DATA FEED + BUNDLE OVERVIEW,E25
+Referees (PE3),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-referees.htm,DATA FEED + BUNDLE OVERVIEW,E26
+Rankings (PE4),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-rankings.htm,DATA FEED + BUNDLE OVERVIEW,E27
+Top Performers (PE6),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-top-performers.htm,DATA FEED + BUNDLE OVERVIEW,E28
+Trophies (TM8),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-trophies.htm,DATA FEED + BUNDLE OVERVIEW,E29
+Player Career (PE2),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-player-career.htm,DATA FEED + BUNDLE OVERVIEW,E30
+Match Stats Data (MA2DP),https://documentation.statsperform.com/docs/rh/sddp/Topics/Soccer/sports-data-delta-push-integration-guide-ma2dp.htm,DATA FEED + BUNDLE OVERVIEW,E31
+Match Penalties Preview (MA19),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-penalties-preview.htm,DATA FEED + BUNDLE OVERVIEW,E33
+Match Events (MA3),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-events.htm,DATA FEED + BUNDLE OVERVIEW,E34
+Pass Matrix And Average Formation (MA4),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-pass-matrix.htm,DATA FEED + BUNDLE OVERVIEW,E35
+Possession (MA5),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-possession.htm,DATA FEED + BUNDLE OVERVIEW,E36
+Match Events Data (MA3DP),https://documentation.statsperform.com/docs/rh/sddp/Topics/Soccer/sports-data-delta-push-integration-guide-ma3dp.htm,DATA FEED + BUNDLE OVERVIEW,E37
+Match Events Aggregated Stats Data (MA18DP),https://documentation.statsperform.com/docs/rh/sddp/Topics/Soccer/sports-data-delta-push-integration-guide-ma18dp.htm,DATA FEED + BUNDLE OVERVIEW,E38
+Match Expected Goals (MA12),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-expected-goals.htm,DATA FEED + BUNDLE OVERVIEW,E40
+Season Expected Goals (TM9),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-season-expected-goals.htm,DATA FEED + BUNDLE OVERVIEW,E41
+Possession Events (MA13),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-possession-events.htm,DATA FEED + BUNDLE OVERVIEW,E42
+Player Contract (PE12),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-player-contract.htm,DATA FEED + BUNDLE OVERVIEW,E46
+Fixtures And Results (MA1_Detailed),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-fixtures-and-results-detailed.html,DATA FEED + BUNDLE OVERVIEW,E47
+Season Power Rankings (TM14),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-season-power-ratings.html,DATA FEED + BUNDLE OVERVIEW,E48
+Tournament Simulations (TM11),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-tournament-simulations.htm,DATA FEED + BUNDLE OVERVIEW,E49
+Season Simulations (TM12),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-season-simulations.htm,DATA FEED + BUNDLE OVERVIEW,E50
+Team and Player Forecast (TM15),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-team-player-forecast.htm,DATA FEED + BUNDLE OVERVIEW,E51
+Match Facts (MA9),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-facts.htm,DATA FEED + BUNDLE OVERVIEW,E52
+Match Facts All (MA16),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-facts-all.htm,DATA FEED + BUNDLE OVERVIEW,E53
+NLG Match Preview (MA22),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-nlg-match-preview.htm,DATA FEED + BUNDLE OVERVIEW,E54
+NLG Match Recap (MA26),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-nlg-match-recap.htm,DATA FEED + BUNDLE OVERVIEW,E55
+NLG Dynamic Player Bios (PE9),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-nlg-dynamic-player-bios.htm,DATA FEED + BUNDLE OVERVIEW,E56
+Match Facts Betting (MA15),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-automated-betting-facts.html,DATA FEED + BUNDLE OVERVIEW,E57
+Automated Insights (MA23),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-automated-insights.htm,DATA FEED + BUNDLE OVERVIEW,E58
+Shape Remote (MA34),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-shape-broadcast.html,DATA FEED + BUNDLE OVERVIEW,E59
+Enriched Soccer Events Remote (MA35),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-enriched-soccer-events-broadcast.htm,DATA FEED + BUNDLE OVERVIEW,E60
+Remote Aggregated Events (MA39),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-remote-aggregated-events.htm,DATA FEED + BUNDLE OVERVIEW,E61
+Remote Pressure Timelines (MA41),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-remote-pressure-timelines.htm,DATA FEED + BUNDLE OVERVIEW,E62
+Remote Aggregated Fitness (MA44),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-remote-aggregated-fitness.htm,DATA FEED + BUNDLE OVERVIEW,E63
+Match Possession Value (MA30),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-possession-value.html,DATA FEED + BUNDLE OVERVIEW,E64
+Match Events Possession Value (MA32),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-events-possession-value.html,DATA FEED + BUNDLE OVERVIEW,E65
+Player Possession Value (PE10),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-player-possession.htm,DATA FEED + BUNDLE OVERVIEW,E66
+Match Playtime (MA43),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-playtime.htm,DATA FEED + BUNDLE OVERVIEW,E67
+Season Playtime (TM17),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-season-playtime.htm,DATA FEED + BUNDLE OVERVIEW,E68
+TV Listing (MA31),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-tv-listing.htm,DATA FEED + BUNDLE OVERVIEW,E69
+Tournament Calendar (OT2),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-tournament-calendars.htm,DATA FEED + BUNDLE OVERVIEW,E7
+Contestant Participation (TM16),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-contestant-participation.htm,DATA FEED + BUNDLE OVERVIEW,E70
+Injuries (PE7),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-injuries.htm,DATA FEED + BUNDLE OVERVIEW,E71
+Suspensions (PE8),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-suspensions.htm,DATA FEED + BUNDLE OVERVIEW,E72
+Match Provisional LineUps (MA46),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-provisional-linup.htm,DATA FEED + BUNDLE OVERVIEW,E73
+Match Momentum (MA27),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-momentum.htm,DATA FEED + BUNDLE OVERVIEW,E74
+Live Win Probability (MA21),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-live-win-probability.htm,DATA FEED + BUNDLE OVERVIEW,E75
+Match Player Ratings (MA20),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-match-player-ratings.htm,DATA FEED + BUNDLE OVERVIEW,E76
+Season Player Ratings (TM10),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-season-player-ratings.htm,DATA FEED + BUNDLE OVERVIEW,E77
+Live Action Widget (V3 widget portal with instructions),http://widget.cloud.opta.net/helper/v3/,DATA FEED + BUNDLE OVERVIEW,E78
+Tournament Schedule (MA0),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-tournament-schedule.htm,DATA FEED + BUNDLE OVERVIEW,E8
+Fixtures And Results (MA1),https://documentation.statsperform.com/docs/rh/sdapi/Topics/soccer/opta-sdapi-soccer-api-fixtures-and-results.htm,DATA FEED + BUNDLE OVERVIEW,E9
+Shortened link,https://t.ly/9gti-,DATA FEED + BUNDLE OVERVIEW,G10
+Shortened link,https://rb.gy/e7p1kg,DATA FEED + BUNDLE OVERVIEW,G15
+Shortened link,https://rb.gy/1ypckj,DATA FEED + BUNDLE OVERVIEW,G30
+Shortened link,https://rb.gy/whdltu,DATA FEED + BUNDLE OVERVIEW,G9
